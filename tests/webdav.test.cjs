@@ -1,0 +1,113 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const { Vault } = require('../electron/vault.cjs');
+const { WebDAVSync } = require('../electron/sync.cjs');
+const { davServer } = require('./helpers/dav-server.cjs');
+const base = path.resolve(__dirname, '../../../work/webdav-tests');
+async function fixture(t, options = {}) {
+  await fs.mkdir(base, { recursive: true });
+  const root = await fs.mkdtemp(path.join(base, 'case-'));
+  const vault = await new Vault(root).init(), server = await davServer(options);
+  const config = { url: server.url, directory: '/Moyu', username: 'user', password: 'secret', sync: {deletion:'sync'} };
+  const sync = new WebDAVSync(vault, async () => config);
+  t.after(async () => {
+    await server.close();
+    assert.equal(path.dirname(root), base);
+    await fs.rm(root, { recursive: true, force: true });
+  });
+  return { vault, server, sync, config };
+}
+test('WebDAV uses only its configured existing collection on scoped servers', async t => {
+  const { vault, server, sync } = await fixture(t, { denyRoot: true });
+  server.directories.add('/Moyu');
+  await vault.create('attachments', 'folder');
+  await fs.writeFile(path.join(vault.root, 'attachments/中文 % 20.svg'), '<svg/>');
+  assert.deepEqual(await sync.test(), { message: '连接成功', exists: true });
+  await sync.sync();
+  assert.equal(server.files.get('/Moyu/attachments/中文 % 20.svg').toString(), '<svg/>');
+  assert(!server.requests.some(r => r.method === 'PROPFIND' && r.path === '/'));
+});
+test('WebDAV missing established remote collection never deletes the local vault', async t => {
+  const { vault, server, sync } = await fixture(t);
+  await vault.create('笔记.md', 'file', '保留正文');
+  await sync.sync();
+  server.files.clear();
+  server.directories.delete('/Moyu');
+  await assert.rejects(sync.sync(), /远端.*目录/);
+  assert.equal((await vault.read('笔记.md')).content, '保留正文');
+  assert(!server.directories.has('/Moyu'));
+  server.directories.add('/Moyu');
+  server.files.set('/Moyu/笔记.md', Buffer.from('保留正文'));
+  assert.equal((await sync.sync()).changes.length, 0);
+});
+test('WebDAV repeated unresolved conflicts reuse the same recovery copy', async t => {
+  const { vault, server, sync } = await fixture(t);
+  const doc = await vault.create('笔记.md', 'file', 'base');
+  await sync.sync();
+  await vault.save(doc.path, 'local', doc.version);
+  server.files.set('/Moyu/笔记.md', Buffer.from('remote'));
+  for (let i = 0; i < 3; i++) assert.equal((await sync.sync()).conflicts.length, 1);
+  const folder = path.join(vault.root, '.data/recovery');
+  assert.equal((await fs.readdir(folder)).length, 2);
+  server.files.set('/Moyu/笔记.md', Buffer.from('new remote'));
+  await sync.sync();
+  assert.equal((await fs.readdir(folder)).length, 4);
+});
+test('WebDAV converges through renames, binary downloads, both deletion conflicts and both resolutions', async t => {
+  const { vault, server, sync } = await fixture(t);
+  const doc = await vault.create('旧名.md', 'file', 'base');
+  await sync.sync();
+  await vault.rename(doc.path, '新名.md');
+  await sync.sync();
+  assert(!server.files.has('/Moyu/旧名.md'));
+  assert.equal(server.files.get('/Moyu/新名.md').toString(), 'base');
+  server.files.set('/Moyu/下载.png', Buffer.from([0, 255, 1, 2]));
+  await sync.sync();
+  assert.deepEqual(await fs.readFile(path.join(vault.root, '下载.png')), Buffer.from([0, 255, 1, 2]));
+  const current = await vault.read('新名.md');
+  await vault.save(current.path, 'local edit', current.version);
+  server.files.delete('/Moyu/新名.md');
+  let c = (await sync.sync()).conflicts[0];
+  assert.equal(c.remote, null);
+  await sync.resolve({ ...c, choice: 'local' });
+  assert.equal(server.files.get('/Moyu/新名.md').toString(), 'local edit');
+  await fs.unlink(path.join(vault.root, '新名.md'));
+  server.files.set('/Moyu/新名.md', Buffer.from('remote edit'));
+  c = (await sync.sync()).conflicts[0];
+  assert.equal(c.local, null);
+  await sync.resolve({ ...c, choice: 'remote' });
+  assert.equal((await vault.read('新名.md')).content, 'remote edit');
+  const requests = server.requests.length;
+  assert.equal((await sync.sync()).changes.length, 0);
+  assert(!server.requests.slice(requests).some(r => ['PUT', 'DELETE', 'MKCOL'].includes(r.method)));
+});
+test('WebDAV incorrect credentials and GET version races preserve local documents', async t => {
+  const { vault, server, sync, config } = await fixture(t);
+  const doc = await vault.create('笔记.md', 'file', 'base');
+  await sync.sync();
+  config.password = 'wrong';
+  await assert.rejects(sync.test());
+  await assert.rejects(sync.sync());
+  assert.equal((await vault.read(doc.path)).content, 'base');
+  config.password = 'secret';
+  server.files.set('/Moyu/笔记.md', Buffer.from('before GET'));
+  server.setRace({ path: '/Moyu/笔记.md', method: 'GET', content: 'during GET' });
+  await assert.rejects(sync.sync());
+  assert.equal((await vault.read(doc.path)).content, 'base');
+  await sync.sync();
+  assert.equal((await vault.read(doc.path)).content, 'during GET');
+});
+test('Interrupted multi-file sync recovers each completed baseline and preserves a subsequent local revert',async t=>{
+  const {vault,server,sync}=await fixture(t);
+  await vault.create('a.md','file','old a');await vault.create('b.md','file','old b');await sync.sync();
+  for(const name of ['a.md','b.md']){const d=await vault.read(name);await vault.save(name,'new '+name,d.version);}
+  const original=sync.client.bind(sync);
+  sync.client=async()=>{const c=await original(),request=c.client.customRequest.bind(c.client);c.client.customRequest=async(name,opts)=>{if(name.endsWith('/b.md')&&opts.method==='PUT')throw Error('Interrupted upload');return request(name,opts);};return c;};
+  await assert.rejects(sync.sync(),/Interrupted/);assert.equal(server.files.get('/Moyu/a.md').toString(),'new a.md');
+  const a=await vault.read('a.md');await vault.save('a.md','old a',a.version);
+  const restarted=new WebDAVSync(vault,sync.config);await restarted.sync();
+  assert.equal((await vault.read('a.md')).content,'old a');assert.equal(server.files.get('/Moyu/a.md').toString(),'old a');assert.equal(server.files.get('/Moyu/b.md').toString(),'new b.md');
+  const folder=path.join(vault.dataDirectory||path.join(vault.root,'.data'),'sync');assert(!(await fs.readdir(folder)).some(name=>name.endsWith('.pending.jsonl')));
+});

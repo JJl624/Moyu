@@ -1,0 +1,4215 @@
+{
+  "global": {
+    "name": "共同选项",
+    "version": "",
+    "configKey": "顶层",
+    "url": "https://dprint.dev/config/",
+    "rows": [
+      {
+        "name": "lineWidth",
+        "type": "number",
+        "values": "1–1000",
+        "description": "最大行宽",
+        "default": 120
+      },
+      {
+        "name": "indentWidth",
+        "type": "number",
+        "values": "1–16",
+        "description": "缩进空格数",
+        "default": 2
+      },
+      {
+        "name": "useTabs",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "使用 Tab 缩进",
+        "default": false
+      },
+      {
+        "name": "newLineKind",
+        "type": "string",
+        "values": "lf / crlf / auto / system",
+        "description": "换行符",
+        "default": "lf"
+      }
+    ]
+  },
+  "typescript": {
+    "name": "dprint-plugin-typescript",
+    "version": "0.96.1",
+    "configKey": "typescript",
+    "helpUrl": "https://dprint.dev/plugins/typescript",
+    "configSchemaUrl": "https://plugins.dprint.dev/dprint/dprint-plugin-typescript/0.96.1/schema.json",
+    "updateUrl": "https://plugins.dprint.dev/dprint/dprint-plugin-typescript/latest.json",
+    "rows": [
+      {
+        "name": "locked",
+        "type": "boolean",
+        "description": "禁止其他配置覆盖此处的 TypeScript 配置。",
+        "values": "true / false",
+        "originalDescription": "Whether the configuration is not allowed to be overridden or extended."
+      },
+      {
+        "name": "lineWidth",
+        "type": "number",
+        "description": "目标最大行宽。",
+        "default": 120,
+        "values": "",
+        "originalDescription": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases."
+      },
+      {
+        "name": "indentWidth",
+        "type": "number",
+        "description": "每级缩进的空格数。",
+        "default": 2,
+        "values": "",
+        "originalDescription": "The number of columns for an indent."
+      },
+      {
+        "name": "useTabs",
+        "type": "boolean",
+        "description": "是否使用制表符缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to use tabs (true) or spaces (false)."
+      },
+      {
+        "name": "semiColons",
+        "type": "string",
+        "description": "分号的保留与插入规则。",
+        "default": "prefer",
+        "values": "always / prefer / asi",
+        "originalDescription": "How semi-colons should be used."
+      },
+      {
+        "name": "quoteStyle",
+        "type": "string",
+        "description": "字符串引号风格；可保留或强制选择单引号、双引号。",
+        "default": "alwaysDouble",
+        "values": "alwaysDouble / alwaysSingle / preferDouble / preferSingle",
+        "originalDescription": "How to use single or double quotes."
+      },
+      {
+        "name": "quoteProps",
+        "type": "string",
+        "description": "对象属性名的引号保留规则。",
+        "default": "preserve",
+        "values": "asNeeded / consistent / preserve",
+        "originalDescription": "Change when properties in objects are quoted."
+      },
+      {
+        "name": "newLineKind",
+        "type": "string",
+        "description": "输出的换行符类型；auto 保留原文件主要行尾，system 使用运行平台行尾。",
+        "default": "lf",
+        "values": "auto / crlf / lf / system",
+        "originalDescription": "The kind of newline to use."
+      },
+      {
+        "name": "useBraces",
+        "type": "string",
+        "description": "控制单条语句的控制流代码体是否使用花括号。",
+        "default": "whenNotSingleLine",
+        "values": "maintain / whenNotSingleLine / always / preferNone",
+        "originalDescription": "If braces should be used or not."
+      },
+      {
+        "name": "bracePosition",
+        "type": "string",
+        "description": "左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "singleBodyPosition",
+        "type": "string",
+        "description": "未包裹花括号的单条语句代码体是否换行。",
+        "default": "maintain",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the expression of a statement that could possibly be on one line (ex. `if (true) console.log(5);`)."
+      },
+      {
+        "name": "nextControlFlowPosition",
+        "type": "string",
+        "description": "else、catch、finally 等后续控制流与前一个右花括号是否同一行。",
+        "default": "sameLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the next control flow within a control flow statement."
+      },
+      {
+        "name": "trailingCommas",
+        "type": "string",
+        "description": "尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "operatorPosition",
+        "type": "string",
+        "description": "多行表达式中运算符位于上一行末尾还是下一行开头。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the operator for expressions that span multiple lines."
+      },
+      {
+        "name": "preferHanging",
+        "type": "boolean",
+        "description": "多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "preferSingleLine",
+        "type": "boolean",
+        "description": "在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "deno",
+        "type": "boolean",
+        "description": "采用 Deno 的格式化约定。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Top level configuration that sets the configuration to what is used in Deno."
+      },
+      {
+        "name": "arrowFunction.useParentheses",
+        "type": "string",
+        "description": "箭头函数：单个箭头函数形参是否保留括号。",
+        "default": "maintain",
+        "values": "force / maintain / preferNone",
+        "originalDescription": "Whether to use parentheses around a single parameter in an arrow function."
+      },
+      {
+        "name": "binaryExpression.linePerExpression",
+        "type": "boolean",
+        "description": "二元表达式：多行时是否将各个表达式分行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to force a line per expression when spanning multiple lines."
+      },
+      {
+        "name": "jsx.bracketPosition",
+        "type": "string",
+        "description": "JSX：多行 JSX 标签末尾的 > 或 /> 是否单独换行。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "If the end angle bracket of a jsx open element or self closing element should be on the same or next line when the attributes span multiple lines."
+      },
+      {
+        "name": "jsxOpeningElement.bracketPosition",
+        "type": "string",
+        "description": "JSX 起始标签：多行 JSX 标签末尾的 > 或 /> 是否单独换行。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "If the end angle bracket of a jsx open element or self closing element should be on the same or next line when the attributes span multiple lines."
+      },
+      {
+        "name": "jsxSelfClosingElement.bracketPosition",
+        "type": "string",
+        "description": "JSX 自闭合标签：多行 JSX 标签末尾的 > 或 /> 是否单独换行。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "If the end angle bracket of a jsx open element or self closing element should be on the same or next line when the attributes span multiple lines."
+      },
+      {
+        "name": "jsx.forceNewLinesSurroundingContent",
+        "type": "boolean",
+        "description": "JSX：是否强制在 JSX 子内容前后换行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Forces newlines surrounding the content of JSX elements."
+      },
+      {
+        "name": "jsx.quoteStyle",
+        "type": "string",
+        "description": "JSX：字符串引号风格；可保留或强制选择单引号、双引号。",
+        "default": "preferDouble",
+        "values": "preferDouble / preferSingle",
+        "originalDescription": "How to use single or double quotes in JSX attributes."
+      },
+      {
+        "name": "jsx.multiLineParens",
+        "type": "string",
+        "description": "JSX：多行 JSX 外层括号的保留规则。",
+        "default": "prefer",
+        "values": "never / prefer / always",
+        "originalDescription": "Surrounds the top-most JSX element or fragment in parentheses when it spans multiple lines."
+      },
+      {
+        "name": "memberExpression.linePerExpression",
+        "type": "boolean",
+        "description": "成员访问表达式：多行时是否将各个表达式分行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to force a line per expression when spanning multiple lines."
+      },
+      {
+        "name": "typeLiteral.separatorKind",
+        "type": "string",
+        "description": "类型字面量：类型成员之间使用逗号还是分号。",
+        "default": "semiColon",
+        "values": "semiColon / comma",
+        "originalDescription": "The kind of separator to use in type literals."
+      },
+      {
+        "name": "typeLiteral.separatorKind.singleLine",
+        "type": "string",
+        "description": "类型字面量：单行类型成员之间的分隔符。",
+        "default": "semiColon",
+        "values": "semiColon / comma",
+        "originalDescription": "The kind of separator to use in type literals."
+      },
+      {
+        "name": "typeLiteral.separatorKind.multiLine",
+        "type": "string",
+        "description": "类型字面量：多行类型成员之间的分隔符。",
+        "default": "semiColon",
+        "values": "semiColon / comma",
+        "originalDescription": "The kind of separator to use in type literals."
+      },
+      {
+        "name": "enumDeclaration.memberSpacing",
+        "type": "string",
+        "description": "枚举声明：枚举成员之间是否保留或插入空行。",
+        "default": "maintain",
+        "values": "newLine / blankLine / maintain",
+        "originalDescription": "How to space the members of an enum."
+      },
+      {
+        "name": "spaceAround",
+        "type": "boolean",
+        "description": "是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "arguments.spaceAround",
+        "type": "boolean",
+        "description": "实参列表：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "arrayExpression.spaceAround",
+        "type": "boolean",
+        "description": "数组表达式：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "arrayPattern.spaceAround",
+        "type": "boolean",
+        "description": "数组解构：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "catchClause.spaceAround",
+        "type": "boolean",
+        "description": "catch 子句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "doWhileStatement.spaceAround",
+        "type": "boolean",
+        "description": "do / while 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "forInStatement.spaceAround",
+        "type": "boolean",
+        "description": "for / in 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "forOfStatement.spaceAround",
+        "type": "boolean",
+        "description": "for / of 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "forStatement.spaceAround",
+        "type": "boolean",
+        "description": "for 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "ifStatement.spaceAround",
+        "type": "boolean",
+        "description": "if 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "parameters.spaceAround",
+        "type": "boolean",
+        "description": "形参列表：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "parenExpression.spaceAround",
+        "type": "boolean",
+        "description": "括号表达式：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "switchStatement.spaceAround",
+        "type": "boolean",
+        "description": "switch 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "tupleType.spaceAround",
+        "type": "boolean",
+        "description": "元组类型：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "whileStatement.spaceAround",
+        "type": "boolean",
+        "description": "while 语句：是否在括号或方括号内部、表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to place spaces around enclosed expressions."
+      },
+      {
+        "name": "spaceSurroundingProperties",
+        "type": "boolean",
+        "description": "是否在花括号内的首尾属性外侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space surrounding the properties of single line object-like nodes."
+      },
+      {
+        "name": "objectExpression.spaceSurroundingProperties",
+        "type": "boolean",
+        "description": "对象表达式：是否在花括号内的首尾属性外侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space surrounding the properties of a single line object expression."
+      },
+      {
+        "name": "objectPattern.spaceSurroundingProperties",
+        "type": "boolean",
+        "description": "对象解构：是否在花括号内的首尾属性外侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space surrounding the properties of a single line object pattern."
+      },
+      {
+        "name": "typeLiteral.spaceSurroundingProperties",
+        "type": "boolean",
+        "description": "类型字面量：是否在花括号内的首尾属性外侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space surrounding the properties of a single line type literal."
+      },
+      {
+        "name": "binaryExpression.spaceSurroundingBitwiseAndArithmeticOperator",
+        "type": "boolean",
+        "description": "二元表达式：是否在位运算及算术运算符两侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to surround the operator in a binary expression with spaces."
+      },
+      {
+        "name": "commentLine.forceSpaceAfterSlashes",
+        "type": "boolean",
+        "description": "单行注释：是否强制在 // 后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Forces a space after the double slash in a comment line."
+      },
+      {
+        "name": "constructor.spaceBeforeParentheses",
+        "type": "boolean",
+        "description": "构造函数：是否在名称或关键字与左圆括号之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the parentheses of a constructor."
+      },
+      {
+        "name": "constructorType.spaceAfterNewKeyword",
+        "type": "boolean",
+        "description": "构造函数类型：是否在 new 关键字后添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `new` keyword in a constructor type."
+      },
+      {
+        "name": "constructSignature.spaceAfterNewKeyword",
+        "type": "boolean",
+        "description": "构造签名：是否在 new 关键字后添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `new` keyword in a construct signature."
+      },
+      {
+        "name": "doWhileStatement.spaceAfterWhileKeyword",
+        "type": "boolean",
+        "description": "do / while 语句：是否在 while 关键字后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `while` keyword in a do while statement."
+      },
+      {
+        "name": "exportDeclaration.spaceSurroundingNamedExports",
+        "type": "boolean",
+        "description": "导出声明：是否在命名导出花括号内的首尾成员外侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add spaces around named exports in an export declaration."
+      },
+      {
+        "name": "forInStatement.spaceAfterForKeyword",
+        "type": "boolean",
+        "description": "for / in 语句：是否在 for 关键字后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `for` keyword in a \"for in\" statement."
+      },
+      {
+        "name": "forOfStatement.spaceAfterForKeyword",
+        "type": "boolean",
+        "description": "for / of 语句：是否在 for 关键字后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `for` keyword in a \"for of\" statement."
+      },
+      {
+        "name": "forStatement.spaceAfterForKeyword",
+        "type": "boolean",
+        "description": "for 语句：是否在 for 关键字后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `for` keyword in a \"for\" statement."
+      },
+      {
+        "name": "forStatement.spaceAfterSemiColons",
+        "type": "boolean",
+        "description": "for 语句：是否在 for 语句的分号后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the semi-colons in a \"for\" statement."
+      },
+      {
+        "name": "functionDeclaration.spaceBeforeParentheses",
+        "type": "boolean",
+        "description": "函数声明：是否在名称或关键字与左圆括号之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the parentheses of a function declaration."
+      },
+      {
+        "name": "functionExpression.spaceBeforeParentheses",
+        "type": "boolean",
+        "description": "函数表达式：是否在名称或关键字与左圆括号之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the parentheses of a function expression."
+      },
+      {
+        "name": "functionExpression.spaceAfterFunctionKeyword",
+        "type": "boolean",
+        "description": "函数表达式：是否在 function 关键字后添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the function keyword of a function expression."
+      },
+      {
+        "name": "functionExpression.flatIife",
+        "type": "boolean",
+        "description": "函数表达式：是否将立即执行函数表达式的起始和结束部分紧凑排列。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to skip indenting the body of a function expression used in an IIFE."
+      },
+      {
+        "name": "getAccessor.spaceBeforeParentheses",
+        "type": "boolean",
+        "description": "get 访问器：是否在名称或关键字与左圆括号之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the parentheses of a get accessor."
+      },
+      {
+        "name": "ifStatement.spaceAfterIfKeyword",
+        "type": "boolean",
+        "description": "if 语句：是否在 if 关键字后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `if` keyword in an \"if\" statement."
+      },
+      {
+        "name": "importDeclaration.spaceSurroundingNamedImports",
+        "type": "boolean",
+        "description": "导入声明：是否在命名导入花括号内的首尾成员外侧添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add spaces around named imports in an import declaration."
+      },
+      {
+        "name": "jsxSelfClosingElement.spaceBeforeSlash",
+        "type": "boolean",
+        "description": "JSX 自闭合标签：是否在自闭合标签的 / 前添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before a JSX element's slash when self closing."
+      },
+      {
+        "name": "jsxExpressionContainer.spaceSurroundingExpression",
+        "type": "boolean",
+        "description": "JSX 表达式容器：是否在 JSX 花括号内表达式两侧添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space surrounding the expression of a JSX container."
+      },
+      {
+        "name": "method.spaceBeforeParentheses",
+        "type": "boolean",
+        "description": "方法：是否在名称或关键字与左圆括号之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the parentheses of a method."
+      },
+      {
+        "name": "setAccessor.spaceBeforeParentheses",
+        "type": "boolean",
+        "description": "set 访问器：是否在名称或关键字与左圆括号之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the parentheses of a set accessor."
+      },
+      {
+        "name": "taggedTemplate.spaceBeforeLiteral",
+        "type": "boolean",
+        "description": "带标签的模板字符串：是否在标签和模板字符串之间添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the literal in a tagged template."
+      },
+      {
+        "name": "typeAnnotation.spaceBeforeColon",
+        "type": "boolean",
+        "description": "类型注解：是否在类型注解的冒号前添加空格。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the colon of a type annotation."
+      },
+      {
+        "name": "typeAssertion.spaceBeforeExpression",
+        "type": "boolean",
+        "description": "类型断言：是否在类型断言和后续表达式之间添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space before the expression in a type assertion."
+      },
+      {
+        "name": "whileStatement.spaceAfterWhileKeyword",
+        "type": "boolean",
+        "description": "while 语句：是否在 while 关键字后添加空格。",
+        "default": true,
+        "values": "true / false",
+        "originalDescription": "Whether to add a space after the `while` keyword in a while statement."
+      },
+      {
+        "name": "module.sortImportDeclarations",
+        "type": "string",
+        "description": "模块：导入声明的排序规则；maintain 保留原顺序。",
+        "default": "caseInsensitive",
+        "values": "maintain / caseSensitive / caseInsensitive",
+        "originalDescription": "The kind of sort ordering to use."
+      },
+      {
+        "name": "module.sortExportDeclarations",
+        "type": "string",
+        "description": "模块：导出声明的排序规则；maintain 保留原顺序。",
+        "default": "caseInsensitive",
+        "values": "maintain / caseSensitive / caseInsensitive",
+        "originalDescription": "The kind of sort ordering to use."
+      },
+      {
+        "name": "exportDeclaration.sortNamedExports",
+        "type": "string",
+        "description": "导出声明：命名导出成员的排序规则。",
+        "default": "caseInsensitive",
+        "values": "maintain / caseSensitive / caseInsensitive",
+        "originalDescription": "The kind of sort ordering to use."
+      },
+      {
+        "name": "exportDeclaration.sortTypeOnlyExports",
+        "type": "string",
+        "description": "导出声明：纯类型导出成员的排序规则。",
+        "default": "none",
+        "values": "first / last / none",
+        "originalDescription": "The kind of sort ordering to use for typed imports and exports."
+      },
+      {
+        "name": "importDeclaration.sortNamedImports",
+        "type": "string",
+        "description": "导入声明：命名导入成员的排序规则。",
+        "default": "caseInsensitive",
+        "values": "maintain / caseSensitive / caseInsensitive",
+        "originalDescription": "The kind of sort ordering to use."
+      },
+      {
+        "name": "importDeclaration.sortTypeOnlyImports",
+        "type": "string",
+        "description": "导入声明：纯类型导入成员的排序规则。",
+        "default": "none",
+        "values": "first / last / none",
+        "originalDescription": "The kind of sort ordering to use for typed imports and exports."
+      },
+      {
+        "name": "ignoreNodeCommentText",
+        "type": "string",
+        "description": "用于跳过下一节点格式化的注释标记。",
+        "default": "dprint-ignore",
+        "values": "",
+        "originalDescription": "The text to use for an ignore comment (ex. `// dprint-ignore`)."
+      },
+      {
+        "name": "ignoreFileCommentText",
+        "type": "string",
+        "description": "用于跳过整份文件格式化的注释标记。",
+        "default": "dprint-ignore-file",
+        "values": "",
+        "originalDescription": "The text to use for a file ignore comment (ex. `// dprint-ignore-file`)."
+      },
+      {
+        "name": "forInStatement.useBraces",
+        "type": "string",
+        "description": "for / in 语句：控制单条语句的控制流代码体是否使用花括号。",
+        "default": "whenNotSingleLine",
+        "values": "maintain / whenNotSingleLine / always / preferNone",
+        "originalDescription": "If braces should be used or not."
+      },
+      {
+        "name": "forOfStatement.useBraces",
+        "type": "string",
+        "description": "for / of 语句：控制单条语句的控制流代码体是否使用花括号。",
+        "default": "whenNotSingleLine",
+        "values": "maintain / whenNotSingleLine / always / preferNone",
+        "originalDescription": "If braces should be used or not."
+      },
+      {
+        "name": "forStatement.useBraces",
+        "type": "string",
+        "description": "for 语句：控制单条语句的控制流代码体是否使用花括号。",
+        "default": "whenNotSingleLine",
+        "values": "maintain / whenNotSingleLine / always / preferNone",
+        "originalDescription": "If braces should be used or not."
+      },
+      {
+        "name": "ifStatement.useBraces",
+        "type": "string",
+        "description": "if 语句：控制单条语句的控制流代码体是否使用花括号。",
+        "default": "whenNotSingleLine",
+        "values": "maintain / whenNotSingleLine / always / preferNone",
+        "originalDescription": "If braces should be used or not."
+      },
+      {
+        "name": "whileStatement.useBraces",
+        "type": "string",
+        "description": "while 语句：控制单条语句的控制流代码体是否使用花括号。",
+        "default": "whenNotSingleLine",
+        "values": "maintain / whenNotSingleLine / always / preferNone",
+        "originalDescription": "If braces should be used or not."
+      },
+      {
+        "name": "arrowFunction.bracePosition",
+        "type": "string",
+        "description": "箭头函数：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "classDeclaration.bracePosition",
+        "type": "string",
+        "description": "类声明：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "classExpression.bracePosition",
+        "type": "string",
+        "description": "类表达式：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "constructor.bracePosition",
+        "type": "string",
+        "description": "构造函数：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "doWhileStatement.bracePosition",
+        "type": "string",
+        "description": "do / while 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "enumDeclaration.bracePosition",
+        "type": "string",
+        "description": "枚举声明：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "forInStatement.bracePosition",
+        "type": "string",
+        "description": "for / in 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "forOfStatement.bracePosition",
+        "type": "string",
+        "description": "for / of 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "forStatement.bracePosition",
+        "type": "string",
+        "description": "for 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "functionDeclaration.bracePosition",
+        "type": "string",
+        "description": "函数声明：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "functionExpression.bracePosition",
+        "type": "string",
+        "description": "函数表达式：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "getAccessor.bracePosition",
+        "type": "string",
+        "description": "get 访问器：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "ifStatement.bracePosition",
+        "type": "string",
+        "description": "if 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "interfaceDeclaration.bracePosition",
+        "type": "string",
+        "description": "接口声明：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "moduleDeclaration.bracePosition",
+        "type": "string",
+        "description": "模块声明：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "method.bracePosition",
+        "type": "string",
+        "description": "方法：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "setAccessor.bracePosition",
+        "type": "string",
+        "description": "set 访问器：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "staticBlock.bracePosition",
+        "type": "string",
+        "description": "静态代码块：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "switchStatement.bracePosition",
+        "type": "string",
+        "description": "switch 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "switchCase.bracePosition",
+        "type": "string",
+        "description": "switch 分支：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "tryStatement.bracePosition",
+        "type": "string",
+        "description": "try 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "whileStatement.bracePosition",
+        "type": "string",
+        "description": "while 语句：左花括号与声明或控制语句是否位于同一行。",
+        "default": "sameLineUnlessHanging",
+        "values": "maintain / sameLine / nextLine / sameLineUnlessHanging",
+        "originalDescription": "Where to place the opening brace."
+      },
+      {
+        "name": "forInStatement.singleBodyPosition",
+        "type": "string",
+        "description": "for / in 语句：未包裹花括号的单条语句代码体是否换行。",
+        "default": "maintain",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the expression of a statement that could possibly be on one line (ex. `if (true) console.log(5);`)."
+      },
+      {
+        "name": "forOfStatement.singleBodyPosition",
+        "type": "string",
+        "description": "for / of 语句：未包裹花括号的单条语句代码体是否换行。",
+        "default": "maintain",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the expression of a statement that could possibly be on one line (ex. `if (true) console.log(5);`)."
+      },
+      {
+        "name": "forStatement.singleBodyPosition",
+        "type": "string",
+        "description": "for 语句：未包裹花括号的单条语句代码体是否换行。",
+        "default": "maintain",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the expression of a statement that could possibly be on one line (ex. `if (true) console.log(5);`)."
+      },
+      {
+        "name": "ifStatement.singleBodyPosition",
+        "type": "string",
+        "description": "if 语句：未包裹花括号的单条语句代码体是否换行。",
+        "default": "maintain",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the expression of a statement that could possibly be on one line (ex. `if (true) console.log(5);`)."
+      },
+      {
+        "name": "whileStatement.singleBodyPosition",
+        "type": "string",
+        "description": "while 语句：未包裹花括号的单条语句代码体是否换行。",
+        "default": "maintain",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the expression of a statement that could possibly be on one line (ex. `if (true) console.log(5);`)."
+      },
+      {
+        "name": "ifStatement.nextControlFlowPosition",
+        "type": "string",
+        "description": "if 语句：else、catch、finally 等后续控制流与前一个右花括号是否同一行。",
+        "default": "sameLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the next control flow within a control flow statement."
+      },
+      {
+        "name": "tryStatement.nextControlFlowPosition",
+        "type": "string",
+        "description": "try 语句：else、catch、finally 等后续控制流与前一个右花括号是否同一行。",
+        "default": "sameLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the next control flow within a control flow statement."
+      },
+      {
+        "name": "doWhileStatement.nextControlFlowPosition",
+        "type": "string",
+        "description": "do / while 语句：else、catch、finally 等后续控制流与前一个右花括号是否同一行。",
+        "default": "sameLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the next control flow within a control flow statement."
+      },
+      {
+        "name": "arguments.trailingCommas",
+        "type": "string",
+        "description": "实参列表：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "parameters.trailingCommas",
+        "type": "string",
+        "description": "形参列表：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "arrayExpression.trailingCommas",
+        "type": "string",
+        "description": "数组表达式：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "arrayPattern.trailingCommas",
+        "type": "string",
+        "description": "数组解构：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "enumDeclaration.trailingCommas",
+        "type": "string",
+        "description": "枚举声明：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "exportDeclaration.trailingCommas",
+        "type": "string",
+        "description": "导出声明：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "importDeclaration.trailingCommas",
+        "type": "string",
+        "description": "导入声明：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "objectExpression.trailingCommas",
+        "type": "string",
+        "description": "对象表达式：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "objectPattern.trailingCommas",
+        "type": "string",
+        "description": "对象解构：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "tupleType.trailingCommas",
+        "type": "string",
+        "description": "元组类型：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "typeLiteral.trailingCommas",
+        "type": "string",
+        "description": "类型字面量：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "typeParameters.trailingCommas",
+        "type": "string",
+        "description": "类型参数列表：尾随逗号的保留规则。",
+        "default": "onlyMultiLine",
+        "values": "never / always / onlyMultiLine",
+        "originalDescription": "If trailing commas should be used."
+      },
+      {
+        "name": "binaryExpression.operatorPosition",
+        "type": "string",
+        "description": "二元表达式：多行表达式中运算符位于上一行末尾还是下一行开头。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the operator for expressions that span multiple lines."
+      },
+      {
+        "name": "conditionalExpression.operatorPosition",
+        "type": "string",
+        "description": "条件表达式：多行表达式中运算符位于上一行末尾还是下一行开头。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the operator for expressions that span multiple lines."
+      },
+      {
+        "name": "conditionalType.operatorPosition",
+        "type": "string",
+        "description": "条件类型：多行表达式中运算符位于上一行末尾还是下一行开头。",
+        "default": "nextLine",
+        "values": "maintain / sameLine / nextLine",
+        "originalDescription": "Where to place the operator for expressions that span multiple lines."
+      },
+      {
+        "name": "arguments.preferHanging",
+        "type": "string",
+        "description": "实参列表：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": "never",
+        "values": "always / onlySingleItem / never",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "arrayExpression.preferHanging",
+        "type": "string",
+        "description": "数组表达式：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": "never",
+        "values": "always / onlySingleItem / never",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "arrayPattern.preferHanging",
+        "type": "boolean",
+        "description": "数组解构：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "doWhileStatement.preferHanging",
+        "type": "boolean",
+        "description": "do / while 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "exportDeclaration.preferHanging",
+        "type": "boolean",
+        "description": "导出声明：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "extendsClause.preferHanging",
+        "type": "boolean",
+        "description": "extends 子句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "forInStatement.preferHanging",
+        "type": "boolean",
+        "description": "for / in 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "forOfStatement.preferHanging",
+        "type": "boolean",
+        "description": "for / of 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "forStatement.preferHanging",
+        "type": "boolean",
+        "description": "for 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "ifStatement.preferHanging",
+        "type": "boolean",
+        "description": "if 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "implementsClause.preferHanging",
+        "type": "boolean",
+        "description": "implements 子句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "importDeclaration.preferHanging",
+        "type": "boolean",
+        "description": "导入声明：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "jsxAttributes.preferHanging",
+        "type": "boolean",
+        "description": "JSX 属性：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "objectExpression.preferHanging",
+        "type": "boolean",
+        "description": "对象表达式：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "objectPattern.preferHanging",
+        "type": "boolean",
+        "description": "对象解构：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "parameters.preferHanging",
+        "type": "string",
+        "description": "形参列表：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": "never",
+        "values": "always / onlySingleItem / never",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "sequenceExpression.preferHanging",
+        "type": "boolean",
+        "description": "逗号表达式：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "switchStatement.preferHanging",
+        "type": "boolean",
+        "description": "switch 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "tupleType.preferHanging",
+        "type": "string",
+        "description": "元组类型：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": "never",
+        "values": "always / onlySingleItem / never",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "typeLiteral.preferHanging",
+        "type": "boolean",
+        "description": "类型字面量：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "typeParameters.preferHanging",
+        "type": "string",
+        "description": "类型参数列表：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": "never",
+        "values": "always / onlySingleItem / never",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "unionAndIntersectionType.preferHanging",
+        "type": "boolean",
+        "description": "联合类型和交叉类型：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "variableStatement.preferHanging",
+        "type": "boolean",
+        "description": "变量声明：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "whileStatement.preferHanging",
+        "type": "boolean",
+        "description": "while 语句：多行时优先使用悬挂布局：首项留在起始行，后续项换行并缩进。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Set to prefer hanging indentation when exceeding the line width instead of making code split up on multiple lines."
+      },
+      {
+        "name": "arrayExpression.preferSingleLine",
+        "type": "boolean",
+        "description": "数组表达式：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "arrayPattern.preferSingleLine",
+        "type": "boolean",
+        "description": "数组解构：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "arguments.preferSingleLine",
+        "type": "boolean",
+        "description": "实参列表：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "binaryExpression.preferSingleLine",
+        "type": "boolean",
+        "description": "二元表达式：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "computed.preferSingleLine",
+        "type": "boolean",
+        "description": "计算属性：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "conditionalExpression.preferSingleLine",
+        "type": "boolean",
+        "description": "条件表达式：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "conditionalType.preferSingleLine",
+        "type": "boolean",
+        "description": "条件类型：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "decorators.preferSingleLine",
+        "type": "boolean",
+        "description": "装饰器：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "exportDeclaration.preferSingleLine",
+        "type": "boolean",
+        "description": "导出声明：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "forStatement.preferSingleLine",
+        "type": "boolean",
+        "description": "for 语句：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "importDeclaration.preferSingleLine",
+        "type": "boolean",
+        "description": "导入声明：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "jsxAttributes.preferSingleLine",
+        "type": "boolean",
+        "description": "JSX 属性：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "jsxElement.preferSingleLine",
+        "type": "boolean",
+        "description": "JSX 元素：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "mappedType.preferSingleLine",
+        "type": "boolean",
+        "description": "映射类型：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "memberExpression.preferSingleLine",
+        "type": "boolean",
+        "description": "成员访问表达式：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "objectExpression.preferSingleLine",
+        "type": "boolean",
+        "description": "对象表达式：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "objectPattern.preferSingleLine",
+        "type": "boolean",
+        "description": "对象解构：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "parameters.preferSingleLine",
+        "type": "boolean",
+        "description": "形参列表：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "parentheses.preferSingleLine",
+        "type": "boolean",
+        "description": "括号内容：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "tupleType.preferSingleLine",
+        "type": "boolean",
+        "description": "元组类型：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "typeLiteral.preferSingleLine",
+        "type": "boolean",
+        "description": "类型字面量：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "typeParameters.preferSingleLine",
+        "type": "boolean",
+        "description": "类型参数列表：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "unionAndIntersectionType.preferSingleLine",
+        "type": "boolean",
+        "description": "联合类型和交叉类型：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "variableStatement.preferSingleLine",
+        "type": "boolean",
+        "description": "变量声明：在行宽允许时优先保持单行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should revert back from being on multiple lines to being on a single line when able."
+      },
+      {
+        "name": "exportDeclaration.forceSingleLine",
+        "type": "boolean",
+        "description": "导出声明：是否强制将声明排为一行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should be forced to be on a single line if able."
+      },
+      {
+        "name": "importDeclaration.forceSingleLine",
+        "type": "boolean",
+        "description": "导入声明：是否强制将声明排为一行。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "If code should be forced to be on a single line if able."
+      },
+      {
+        "name": "exportDeclaration.forceMultiLine",
+        "type": "string",
+        "description": "导出声明：声明必须采用多行布局的条件。",
+        "default": "never",
+        "values": "always / never / whenMultiple",
+        "originalDescription": "If code import/export specifiers should be forced to be on multiple lines."
+      },
+      {
+        "name": "importDeclaration.forceMultiLine",
+        "type": "string",
+        "description": "导入声明：声明必须采用多行布局的条件。",
+        "default": "never",
+        "values": "always / never / whenMultiple",
+        "originalDescription": "If code import/export specifiers should be forced to be on multiple lines."
+      },
+      {
+        "name": "fileIndentLevel",
+        "type": "number",
+        "values": "非负整数",
+        "description": "文件整体额外缩进的层级，适用于嵌入其他文档的代码。",
+        "default": 0
+      },
+      {
+        "name": "conditionalExpression.linePerExpression",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "条件表达式采用多行时，将各分支表达式分行。",
+        "default": false
+      }
+    ],
+    "url": "https://dprint.dev/plugins/typescript"
+  },
+  "ruff": {
+    "name": "dprint-plugin-ruff",
+    "version": "0.9.1",
+    "configKey": "ruff",
+    "helpUrl": "https://dprint.dev/plugins/ruff",
+    "configSchemaUrl": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json",
+    "updateUrl": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/latest.json",
+    "rows": [
+      {
+        "name": "indentWidth",
+        "type": "number",
+        "description": "缩进宽度。",
+        "default": 4,
+        "values": "",
+        "originalDescription": "The number of characters for an indent."
+      },
+      {
+        "name": "indentStyle",
+        "type": "string",
+        "description": "使用空格或制表符缩进。",
+        "default": "space",
+        "values": "tab / space",
+        "originalDescription": "Whether to use tabs or spaces."
+      },
+      {
+        "name": "lineLength",
+        "type": "number",
+        "description": "目标最大行宽。",
+        "default": 88,
+        "values": "",
+        "originalDescription": "How many characters can be written on a single line."
+      },
+      {
+        "name": "quoteStyle",
+        "type": "string",
+        "description": "字符串引号风格。",
+        "default": "double",
+        "values": "double / single",
+        "originalDescription": "The type of quote used when representing string literals."
+      },
+      {
+        "name": "lineEnding",
+        "type": "string",
+        "description": "输出换行符类型。",
+        "default": "lf",
+        "values": "lf / cr-lf",
+        "originalDescription": "The kind of line ending."
+      },
+      {
+        "name": "skipMagicTrailingComma",
+        "type": "boolean",
+        "description": "忽略已有尾随逗号带来的强制展开布局。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Ignore the magic trailing comma."
+      },
+      {
+        "name": "preview",
+        "type": "boolean",
+        "description": "启用 Ruff 的预览格式化规则，规则可能尚未稳定。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to enable preview mode. When preview mode is enabled, Ruff will use unstable rules, fixes, and formatting."
+      },
+      {
+        "name": "fixLintErrors",
+        "type": "object",
+        "description": "选择格式化时同时执行的 Ruff 修正规则。",
+        "default": {},
+        "values": "对象",
+        "originalDescription": "Whether to apply configured Ruff lint fixes."
+      },
+      {
+        "name": "fixLintErrors.unusedImport",
+        "type": "boolean",
+        "description": "删除未使用的导入（F401）。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to remove unused imports using Ruff's F401 rule."
+      },
+      {
+        "name": "fixLintErrors.unsortedImports",
+        "type": "boolean",
+        "description": "整理导入顺序（I001）。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to sort imports using Ruff's I001 rule."
+      },
+      {
+        "name": "fixLintErrors.missingRequiredImport",
+        "type": "boolean",
+        "description": "补充缺少的指定导入（I002）。",
+        "default": false,
+        "values": "true / false",
+        "originalDescription": "Whether to add missing required imports using Ruff's I002 rule."
+      },
+      {
+        "name": "fixLintErrors.requiredImports",
+        "type": "array",
+        "description": "启用补充导入时应加入的 import 语句数组。",
+        "default": [],
+        "values": "数组",
+        "originalDescription": "Import statements to add when missingRequiredImport is enabled."
+      }
+    ],
+    "url": "https://dprint.dev/plugins/ruff"
+  },
+  "clangFormat": {
+    "name": "dprint-plugin-clang-format",
+    "version": "0.1.0",
+    "configKey": "clangFormat",
+    "url": "https://clang.llvm.org/docs/ClangFormatStyleOptions.html",
+    "rows": [
+      {
+        "name": "BasedOnStyle",
+        "type": "string",
+        "values": "LLVM / Google / Chromium / Mozilla / WebKit / Microsoft / GNU",
+        "description": "未单独配置的选项使用此预定义风格。",
+        "originalDescription": "The style used for all options not specifically set in the configuration."
+      },
+      {
+        "name": "AccessModifierOffset",
+        "type": "number",
+        "values": "",
+        "description": "public、private 等访问标签相对常规缩进的偏移，可为负数。",
+        "originalDescription": "The extra indent or outdent of access modifiers, e.g. public:."
+      },
+      {
+        "name": "AlignAfterOpenBracket",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "设置左括号之后的内容的对齐方式。",
+        "originalDescription": "If true, horizontally aligns arguments after an open bracket."
+      },
+      {
+        "name": "AlignArrayOfStructures",
+        "type": "string",
+        "values": "Left / Right / None",
+        "description": "设置结构体数组的各列的对齐方式。",
+        "originalDescription": "If not None, when using initialization for an array of structs aligns the fields into columns."
+      },
+      {
+        "name": "AlignConsecutiveAssignments",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置连续赋值语句的对齐方式。",
+        "originalDescription": "Style of aligning consecutive assignments."
+      },
+      {
+        "name": "AlignConsecutiveAssignments.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveAssignments.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveAssignments.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveAssignments.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveAssignments.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveAssignments.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveAssignments.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置连续位字段的对齐方式。",
+        "originalDescription": "Style of aligning consecutive bit fields."
+      },
+      {
+        "name": "AlignConsecutiveBitFields.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveBitFields.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置连续声明的对齐方式。",
+        "originalDescription": "Style of aligning consecutive declarations."
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveDeclarations.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignConsecutiveMacros",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置连续宏定义的对齐方式。",
+        "originalDescription": "Style of aligning consecutive macro definitions."
+      },
+      {
+        "name": "AlignConsecutiveMacros.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveMacros.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveMacros.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveMacros.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveMacros.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveMacros.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveMacros.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignConsecutiveShortCaseStatements",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置连续短 case 语句的对齐方式。",
+        "originalDescription": "Style of aligning consecutive short case labels. Only applies if AllowShortCaseExpressionOnASingleLine or AllowShortCaseLabelsOnASingleLine is true."
+      },
+      {
+        "name": "AlignConsecutiveShortCaseStatements.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveShortCaseStatements.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveShortCaseStatements.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveShortCaseStatements.AlignCaseArrows",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐 case 的箭头。",
+        "originalDescription": "对齐 case 的箭头。"
+      },
+      {
+        "name": "AlignConsecutiveShortCaseStatements.AlignCaseColons",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐 case 标签的冒号。",
+        "originalDescription": "对齐 case 标签的冒号。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置TableGen DAG 参数冒号的对齐方式。",
+        "originalDescription": "Style of aligning consecutive TableGen DAGArg operator colons. If enabled, align the colon inside DAGArg which have line break inside. This works only when TableGenBreakInsideDAGArg is BreakElements or BreakAll and the DAGArg is not excepted by TableGenBreakingDAGArgOperators's effect."
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenBreakingDAGArgColons.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置TableGen 条件运算冒号的对齐方式。",
+        "originalDescription": "Style of aligning consecutive TableGen cond operator colons. Align the colons of cases inside !cond operators."
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenCondOperatorColons.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置TableGen 定义冒号的对齐方式。",
+        "originalDescription": "Style of aligning consecutive TableGen definition colons. This aligns the inheritance colons of consecutive definitions."
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.AcrossEmptyLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越空行对齐。",
+        "originalDescription": "跨越空行对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.AcrossComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "跨越注释对齐。",
+        "originalDescription": "跨越注释对齐。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.AlignCompound",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "同时对齐 += 等复合赋值运算符。",
+        "originalDescription": "同时对齐 += 等复合赋值运算符。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.AlignFunctionDeclarations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数声明。",
+        "originalDescription": "对齐函数声明。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.AlignFunctionPointers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "对齐函数指针声明。",
+        "originalDescription": "对齐函数指针声明。"
+      },
+      {
+        "name": "AlignConsecutiveTableGenDefinitionColons.PadOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补齐较短运算符前的空格，使赋值运算符右侧对齐。",
+        "originalDescription": "补齐较短运算符前的空格，使赋值运算符右侧对齐。"
+      },
+      {
+        "name": "AlignEscapedNewlines",
+        "type": "string",
+        "values": "DontAlign / Left / LeftWithLastLine / Right",
+        "description": "设置带反斜杠的续行符的对齐方式。",
+        "originalDescription": "Options for aligning backslashes in escaped newlines."
+      },
+      {
+        "name": "AlignOperands",
+        "type": "string",
+        "values": "DontAlign / Align / AlignAfterOperator",
+        "description": "设置表达式操作数的对齐方式。",
+        "originalDescription": "If true, horizontally align operands of binary and ternary expressions."
+      },
+      {
+        "name": "AlignTrailingComments",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "设置行尾注释的对齐方式。",
+        "originalDescription": "Control of trailing comments."
+      },
+      {
+        "name": "AlignTrailingComments.Kind",
+        "type": "string",
+        "values": "Leave / Always / Never",
+        "description": "行尾注释的对齐策略。",
+        "originalDescription": "行尾注释的对齐策略。"
+      },
+      {
+        "name": "AlignTrailingComments.OverEmptyLines",
+        "type": "number",
+        "values": "",
+        "description": "允许跨越多少个空行进行对齐。",
+        "originalDescription": "允许跨越多少个空行进行对齐。"
+      },
+      {
+        "name": "AlignTrailingComments.AlignPPAndNotPP",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "预处理指令后的注释与其他行尾注释一起对齐。",
+        "originalDescription": "预处理指令后的注释与其他行尾注释一起对齐。"
+      },
+      {
+        "name": "AllowAllArgumentsOnNextLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否允许全部实参移到下一行。",
+        "originalDescription": "If a function call or braced initializer list doesn't fit on a line, allow putting all arguments onto the next line, even if BinPackArguments is false."
+      },
+      {
+        "name": "AllowAllConstructorInitializersOnNextLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否允许全部构造初始化项移到下一行；旧版兼容选项。",
+        "originalDescription": "This option is **deprecated**. See NextLine of PackConstructorInitializers."
+      },
+      {
+        "name": "AllowAllParametersOfDeclarationOnNextLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否允许声明的全部形参移到下一行。",
+        "originalDescription": "If the function declaration doesn't fit on a line, allow putting all parameters of a function declaration onto the next line even if BinPackParameters is OnePerLine."
+      },
+      {
+        "name": "AllowBreakBeforeNoexceptSpecifier",
+        "type": "string",
+        "values": "Never / OnlyWithParen / Always",
+        "description": "noexcept 说明符之前的换行规则。",
+        "originalDescription": "Controls if there could be a line break before a noexcept specifier."
+      },
+      {
+        "name": "AllowBreakBeforeQtProperty",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否允许在 Qt 属性声明前换行。",
+        "originalDescription": "Allow breaking before Q_Property keywords READ, WRITE, etc. as if they were preceded by a comma (,). This allows them to be formatted according to BinPackParameters."
+      },
+      {
+        "name": "AllowShortBlocksOnASingleLine",
+        "type": "string",
+        "values": "Never / Empty / Always",
+        "description": "短代码块保留单行的规则。",
+        "originalDescription": "Dependent on the value, while (true) { continue; } can be put on a single line."
+      },
+      {
+        "name": "AllowShortCaseExpressionOnASingleLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "短case 表达式保留单行的规则。",
+        "originalDescription": "Whether to merge a short switch labeled rule into a single line."
+      },
+      {
+        "name": "AllowShortCaseLabelsOnASingleLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "短case 标签保留单行的规则。",
+        "originalDescription": "If true, short case labels will be contracted to a single line."
+      },
+      {
+        "name": "AllowShortCompoundRequirementOnASingleLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "短复合约束要求保留单行的规则。",
+        "originalDescription": "Allow short compound requirement on a single line."
+      },
+      {
+        "name": "AllowShortEnumsOnASingleLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "短枚举保留单行的规则。",
+        "originalDescription": "Allow short enums on a single line."
+      },
+      {
+        "name": "AllowShortFunctionsOnASingleLine",
+        "type": "string",
+        "values": "None / InlineOnly / Empty / Inline / All",
+        "description": "短函数保留单行的规则。",
+        "originalDescription": "Dependent on the value, int f() { return 0; } can be put on a single line."
+      },
+      {
+        "name": "AllowShortIfStatementsOnASingleLine",
+        "type": "string",
+        "values": "Never / WithoutElse / OnlyFirstIf / AllIfsAndElse",
+        "description": "短if 语句保留单行的规则。",
+        "originalDescription": "Dependent on the value, if (a) return; can be put on a single line."
+      },
+      {
+        "name": "AllowShortLambdasOnASingleLine",
+        "type": "string",
+        "values": "None / Empty / Inline / All",
+        "description": "短Lambda 函数保留单行的规则。",
+        "originalDescription": "Dependent on the value, auto lambda []() { return 0; } can be put on a single line."
+      },
+      {
+        "name": "AllowShortLoopsOnASingleLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "短循环保留单行的规则。",
+        "originalDescription": "If true, while (true) continue; can be put on a single line."
+      },
+      {
+        "name": "AllowShortNamespacesOnASingleLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "短命名空间保留单行的规则。",
+        "originalDescription": "If true, namespace a { class b; } can be put on a single line."
+      },
+      {
+        "name": "AlwaysBreakAfterDefinitionReturnType",
+        "type": "string",
+        "values": "None / All / TopLevel",
+        "description": "函数定义的返回类型是否独占一行；旧版兼容选项。",
+        "originalDescription": "The function definition return type breaking style to use. This option is **deprecated** and is retained for backwards compatibility."
+      },
+      {
+        "name": "AlwaysBreakBeforeMultilineStrings",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在多行字符串前换行。",
+        "originalDescription": "If true, always break before multiline string literals."
+      },
+      {
+        "name": "AttributeMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应作为属性处理的宏名称数组。",
+        "originalDescription": "A vector of strings that should be interpreted as attributes/qualifiers instead of identifiers. This can be useful for language extensions or static analyzer annotations."
+      },
+      {
+        "name": "BinPackArguments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否允许多个实参紧凑排列在同一行。",
+        "originalDescription": "If false, a function call's arguments will either be all on the same line or will have one line each."
+      },
+      {
+        "name": "BinPackLongBracedList",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否对较长花括号初始化列表启用紧凑排列。",
+        "originalDescription": "If BinPackLongBracedList is true it overrides BinPackArguments if there are 20 or more items in a braced initializer list."
+      },
+      {
+        "name": "BinPackParameters",
+        "type": "string",
+        "values": "BinPack / OnePerLine / AlwaysOnePerLine",
+        "description": "声明的形参是紧凑排列、逐项换行，还是尽量全部留在下一行。",
+        "originalDescription": "The bin pack parameters style to use."
+      },
+      {
+        "name": "BitFieldColonSpacing",
+        "type": "string",
+        "values": "Both / None / Before / After",
+        "description": "位字段声明冒号两侧的空格规则。",
+        "originalDescription": "The BitFieldColonSpacingStyle to use for bitfields."
+      },
+      {
+        "name": "BracedInitializerIndentWidth",
+        "type": "number",
+        "values": "",
+        "description": "花括号初始化列表的缩进宽度。",
+        "originalDescription": "The number of columns to use to indent the contents of braced init lists. If unset or negative, ContinuationIndentWidth is used."
+      },
+      {
+        "name": "BreakAdjacentStringLiterals",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否将相邻字符串字面量分行。",
+        "originalDescription": "Break between adjacent string literals."
+      },
+      {
+        "name": "BreakAfterAttributes",
+        "type": "string",
+        "values": "Always / Leave / Never",
+        "description": "控制在属性之后换行。",
+        "originalDescription": "Break after a group of C++11 attributes before variable or function (including constructor/destructor) declaration/definition names or before control statements, i.e. if, switch (including case and default labels), for, and while statements."
+      },
+      {
+        "name": "BreakAfterJavaFieldAnnotations",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在Java 字段注解之后换行。",
+        "originalDescription": "Break after each annotation on a field in Java files."
+      },
+      {
+        "name": "BreakAfterOpenBracketBracedList",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在花括号初始化列表的左括号之后换行。",
+        "originalDescription": "Force break after the left bracket of a braced initializer list (when Cpp11BracedListStyle is true) when the list exceeds the column limit."
+      },
+      {
+        "name": "BreakAfterOpenBracketFunction",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在函数实参或形参的左圆括号之后换行。",
+        "originalDescription": "Force break after the left parenthesis of a function (declaration, definition, call) when the parameters exceed the column limit."
+      },
+      {
+        "name": "BreakAfterOpenBracketIf",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在if 的左圆括号之后换行。",
+        "originalDescription": "Force break after the left parenthesis of an if control statement when the expression exceeds the column limit."
+      },
+      {
+        "name": "BreakAfterOpenBracketLoop",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在循环的左圆括号之后换行。",
+        "originalDescription": "Force break after the left parenthesis of a loop control statement when the expression exceeds the column limit."
+      },
+      {
+        "name": "BreakAfterOpenBracketSwitch",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在switch 的左圆括号之后换行。",
+        "originalDescription": "Force break after the left parenthesis of a switch control statement when the expression exceeds the column limit."
+      },
+      {
+        "name": "BreakAfterReturnType",
+        "type": "string",
+        "values": "None / Automatic / ExceptShortType / All / TopLevel / AllDefinitions / TopLevelDefinitions",
+        "description": "控制在函数返回类型之后换行。",
+        "originalDescription": "The function declaration return type breaking style to use."
+      },
+      {
+        "name": "BreakArrays",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否展开数组字面量。",
+        "originalDescription": "If true, clang-format will always break after a Json array [ otherwise it will scan until the closing ] to determine if it should add newlines between elements (prettier compatible)."
+      },
+      {
+        "name": "BreakBeforeBinaryOperators",
+        "type": "string",
+        "values": "None / NonAssignment / All",
+        "description": "控制在二元运算符之前换行。",
+        "originalDescription": "The way to wrap binary operators."
+      },
+      {
+        "name": "BreakBeforeBraces",
+        "type": "string",
+        "values": "Attach / Linux / Mozilla / Stroustrup / Allman / Whitesmiths / GNU / WebKit / Custom",
+        "description": "控制在花括号之前换行。",
+        "originalDescription": "The brace breaking style to use."
+      },
+      {
+        "name": "BreakBeforeCloseBracketBracedList",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在花括号初始化列表的右括号之前换行。",
+        "originalDescription": "Force break before the right bracket of a braced initializer list (when Cpp11BracedListStyle is true) when the list exceeds the column limit. The break before the right bracket is only made if there is a break after the opening bracket."
+      },
+      {
+        "name": "BreakBeforeCloseBracketFunction",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在函数实参或形参的右圆括号之前换行。",
+        "originalDescription": "Force break before the right parenthesis of a function (declaration, definition, call) when the parameters exceed the column limit."
+      },
+      {
+        "name": "BreakBeforeCloseBracketIf",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在if 的右圆括号之前换行。",
+        "originalDescription": "Force break before the right parenthesis of an if control statement when the expression exceeds the column limit. The break before the closing parenthesis is only made if there is a break after the opening parenthesis."
+      },
+      {
+        "name": "BreakBeforeCloseBracketLoop",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在循环的右圆括号之前换行。",
+        "originalDescription": "Force break before the right parenthesis of a loop control statement when the expression exceeds the column limit. The break before the closing parenthesis is only made if there is a break after the opening parenthesis."
+      },
+      {
+        "name": "BreakBeforeCloseBracketSwitch",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在switch 的右圆括号之前换行。",
+        "originalDescription": "Force break before the right parenthesis of a switch control statement when the expression exceeds the column limit. The break before the closing parenthesis is only made if there is a break after the opening parenthesis."
+      },
+      {
+        "name": "BreakBeforeConceptDeclarations",
+        "type": "string",
+        "values": "Never / Allowed / Always",
+        "description": "控制在concept 声明之前换行。",
+        "originalDescription": "The concept declaration style to use."
+      },
+      {
+        "name": "BreakBeforeInlineASMColon",
+        "type": "string",
+        "values": "Never / OnlyMultiline / Always",
+        "description": "控制在内联汇编冒号之前换行。",
+        "originalDescription": "The inline ASM colon style to use."
+      },
+      {
+        "name": "BreakBeforeTemplateCloser",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在模板结束的尖括号之前换行。",
+        "originalDescription": "If true, break before a template closing bracket (>) when there is a line break after the matching opening bracket (<)."
+      },
+      {
+        "name": "BreakBeforeTernaryOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制在三元条件运算符之前换行。",
+        "originalDescription": "If true, ternary operators will be placed after line breaks."
+      },
+      {
+        "name": "BreakBinaryOperations",
+        "type": "string",
+        "values": "Never / OnePerLine / RespectPrecedence",
+        "description": "二元运算表达式的换行策略。",
+        "originalDescription": "The break binary operations style to use."
+      },
+      {
+        "name": "BreakConstructorInitializers",
+        "type": "string",
+        "values": "BeforeColon / BeforeComma / AfterColon",
+        "description": "构造初始化列表的换行位置。",
+        "originalDescription": "The break constructor initializers style to use."
+      },
+      {
+        "name": "BreakFunctionDefinitionParameters",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否强制将函数定义的形参换行。",
+        "originalDescription": "If true, clang-format will always break before function definition parameters."
+      },
+      {
+        "name": "BreakStringLiterals",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否拆分超过行宽的字符串字面量。",
+        "originalDescription": "Allow breaking string literals when formatting."
+      },
+      {
+        "name": "BreakTemplateDeclarations",
+        "type": "string",
+        "values": "Leave / No / MultiLine / Yes",
+        "description": "模板声明与后续声明之间的换行规则。",
+        "originalDescription": "The template declaration breaking style to use."
+      },
+      {
+        "name": "ColumnLimit",
+        "type": "number",
+        "values": "",
+        "description": "最大列宽；0 表示不限制列宽。",
+        "originalDescription": "The column limit."
+      },
+      {
+        "name": "CommentPragmas",
+        "type": "string",
+        "values": "",
+        "description": "匹配不应被重排或拆分的特殊注释的正则表达式。",
+        "originalDescription": "A regular expression that describes comments with special meaning, which should not be split into lines or otherwise changed."
+      },
+      {
+        "name": "CompactNamespaces",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否将连续嵌套的命名空间声明紧凑排列。",
+        "originalDescription": "If true, consecutive namespace declarations will be on the same line. If false, each namespace is declared on a new line."
+      },
+      {
+        "name": "ConstructorInitializerAllOnOneLineOrOnePerLine",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "构造初始化项全部一行或逐项分行；旧版兼容选项。",
+        "originalDescription": "This option is **deprecated**. See CurrentLine of PackConstructorInitializers."
+      },
+      {
+        "name": "ConstructorInitializerIndentWidth",
+        "type": "number",
+        "values": "",
+        "description": "构造初始化列表的缩进宽度。",
+        "originalDescription": "The number of characters to use for indentation of constructor initializer lists as well as inheritance lists."
+      },
+      {
+        "name": "ContinuationIndentWidth",
+        "type": "number",
+        "values": "",
+        "description": "续行缩进宽度。",
+        "originalDescription": "Indent width for line continuations."
+      },
+      {
+        "name": "DeriveLineEnding",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否从输入推断行尾；旧版兼容选项。",
+        "originalDescription": "This option is **deprecated**. See DeriveLF and DeriveCRLF of LineEnding."
+      },
+      {
+        "name": "DerivePointerAlignment",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否从输入推断指针和引用符号的对齐风格。",
+        "originalDescription": "If true, analyze the formatted file for the most common alignment of & and *. Pointer and reference alignment styles are going to be updated according to the preferences found in the file. PointerAlignment is then used only as fallback."
+      },
+      {
+        "name": "DisableFormat",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否完全跳过格式化。",
+        "originalDescription": "Disables formatting completely."
+      },
+      {
+        "name": "EmptyLineAfterAccessModifier",
+        "type": "string",
+        "values": "Never / Leave / Always",
+        "description": "访问标签之后的空行规则。",
+        "originalDescription": "Defines when to put an empty line after access modifiers. EmptyLineBeforeAccessModifier configuration handles the number of empty lines between two access modifiers."
+      },
+      {
+        "name": "EmptyLineBeforeAccessModifier",
+        "type": "string",
+        "values": "Never / Leave / LogicalBlock / Always",
+        "description": "访问标签之前的空行规则。",
+        "originalDescription": "Defines in which cases to put empty line before access modifiers."
+      },
+      {
+        "name": "EnumTrailingComma",
+        "type": "string",
+        "values": "Leave / Insert / Remove",
+        "description": "枚举声明的尾随逗号规则。",
+        "originalDescription": "Insert a comma (if missing) or remove the comma at the end of an enum enumerator list."
+      },
+      {
+        "name": "ExperimentalAutoDetectBinPacking",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "从输入推断参数是否采用紧凑布局；实验选项。",
+        "originalDescription": "If true, clang-format detects whether function calls and definitions are formatted with one parameter per line."
+      },
+      {
+        "name": "FixNamespaceComments",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "补充或修正命名空间末尾注释。",
+        "originalDescription": "If true, clang-format adds missing namespace end comments for namespaces and fixes invalid existing ones. This doesn't affect short namespaces, which are controlled by ShortNamespaceLines."
+      },
+      {
+        "name": "ForEachMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应按循环结构处理的宏名称数组。",
+        "originalDescription": "A vector of macros that should be interpreted as foreach loops instead of as function calls."
+      },
+      {
+        "name": "IfMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应按 if 结构处理的宏名称数组。",
+        "originalDescription": "A vector of macros that should be interpreted as conditionals instead of as function calls."
+      },
+      {
+        "name": "IncludeBlocks",
+        "type": "string",
+        "values": "Preserve / Merge / Regroup",
+        "description": "连续 include 块是否保持分离、合并或按类别重分组。",
+        "originalDescription": "Dependent on the value, multiple #include blocks can be sorted as one and divided based on category."
+      },
+      {
+        "name": "IncludeCategories",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "include 分类规则数组，按正则匹配并设置排序优先级。",
+        "originalDescription": "Regular expressions denoting the different #include categories used for ordering #includes."
+      },
+      {
+        "name": "IncludeIsMainRegex",
+        "type": "string",
+        "values": "",
+        "description": "识别主头文件时允许的文件名后缀正则。",
+        "originalDescription": "Specify a regular expression of suffixes that are allowed in the file-to-main-include mapping."
+      },
+      {
+        "name": "IncludeIsMainSourceRegex",
+        "type": "string",
+        "values": "",
+        "description": "哪些源文件名参与主头文件识别的正则。",
+        "originalDescription": "Specify a regular expression for files being formatted that are allowed to be considered \"main\" in the file-to-main-include mapping."
+      },
+      {
+        "name": "IndentAccessModifiers",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制访问标签的缩进。",
+        "originalDescription": "Specify whether access modifiers should have their own indentation level."
+      },
+      {
+        "name": "IndentCaseBlocks",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制case 代码块的缩进。",
+        "originalDescription": "Indent case label blocks one level from the case label."
+      },
+      {
+        "name": "IndentCaseLabels",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制case 标签的缩进。",
+        "originalDescription": "Indent case labels one level from the switch statement."
+      },
+      {
+        "name": "IndentExportBlock",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制export 代码块的缩进。",
+        "originalDescription": "If true, clang-format will indent the body of an export { ... } block. This doesn't affect the formatting of anything else related to exported declarations."
+      },
+      {
+        "name": "IndentExternBlock",
+        "type": "string",
+        "values": "AfterExternBlock / NoIndent / Indent",
+        "description": "控制extern 块的缩进。",
+        "originalDescription": "IndentExternBlockStyle is the type of indenting of extern blocks."
+      },
+      {
+        "name": "IndentGotoLabels",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制goto 标签的缩进。",
+        "originalDescription": "Indent goto labels."
+      },
+      {
+        "name": "IndentPPDirectives",
+        "type": "string",
+        "values": "None / AfterHash / BeforeHash / Leave",
+        "description": "控制预处理指令的缩进。",
+        "originalDescription": "The preprocessor directive indenting style to use."
+      },
+      {
+        "name": "IndentRequiresClause",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制requires 子句的缩进。",
+        "originalDescription": "Indent the requires clause in a template. This only applies when RequiresClausePosition is OwnLine, OwnLineWithBrace, or WithFollowing."
+      },
+      {
+        "name": "IndentWidth",
+        "type": "number",
+        "values": "",
+        "description": "每级缩进宽度。",
+        "originalDescription": "The number of columns to use for indentation."
+      },
+      {
+        "name": "IndentWrappedFunctionNames",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制换行后的函数名的缩进。",
+        "originalDescription": "Indent if a function definition or declaration is wrapped after the type."
+      },
+      {
+        "name": "InsertBraces",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "为控制语句插入花括号；该转换不进行完整语义分析。",
+        "originalDescription": "Insert braces after control statements (if, else, for, do, and while) in C++ unless the control statements are inside macro definitions or the braces would enclose preprocessor directives."
+      },
+      {
+        "name": "InsertNewlineAtEOF",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否保证文件末尾存在换行符。",
+        "originalDescription": "Insert a newline at end of file if missing."
+      },
+      {
+        "name": "InsertTrailingCommas",
+        "type": "string",
+        "values": "None / Wrapped",
+        "description": "尾随逗号的插入规则。",
+        "originalDescription": "If set to TCS_Wrapped will insert trailing commas in container literals (arrays and objects) that wrap across multiple lines. It is currently only available for JavaScript and disabled by default TCS_None. InsertTrailingCommas cannot be used together with BinPackArguments as inserting the comma disables bin-packing."
+      },
+      {
+        "name": "JavaImportGroups",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "Java 导入分组规则。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "A vector of prefixes ordered by the desired groups for Java imports."
+      },
+      {
+        "name": "JavaScriptQuotes",
+        "type": "string",
+        "values": "Leave / Single / Double",
+        "description": "JavaScript 引号风格。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "The JavaScriptQuoteStyle to use for JavaScript strings."
+      },
+      {
+        "name": "JavaScriptWrapImports",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "JavaScript 导入是否换行。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "Whether to wrap JavaScript import/export statements."
+      },
+      {
+        "name": "KeepEmptyLines",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "控制文件开头、块开头和文件末尾等位置的空行保留。",
+        "originalDescription": "Which empty lines are kept. See MaxEmptyLinesToKeep for how many consecutive empty lines are kept."
+      },
+      {
+        "name": "KeepEmptyLines.AtEndOfFile",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "保留文件末尾空行。",
+        "originalDescription": "保留文件末尾空行。"
+      },
+      {
+        "name": "KeepEmptyLines.AtStartOfBlock",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "保留代码块开头空行。",
+        "originalDescription": "保留代码块开头空行。"
+      },
+      {
+        "name": "KeepEmptyLines.AtStartOfFile",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "保留文件开头空行。",
+        "originalDescription": "保留文件开头空行。"
+      },
+      {
+        "name": "KeepEmptyLinesAtEOF",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否保留文件末尾空行；旧版兼容选项。",
+        "originalDescription": "This option is **deprecated**. See AtEndOfFile of KeepEmptyLines."
+      },
+      {
+        "name": "KeepEmptyLinesAtTheStartOfBlocks",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否保留代码块开头空行；旧版兼容选项。",
+        "originalDescription": "This option is **deprecated**. See AtStartOfBlock of KeepEmptyLines."
+      },
+      {
+        "name": "KeepFormFeed",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否保留换页符。",
+        "originalDescription": "Keep the form feed character if it's immediately preceded and followed by a newline. Multiple form feeds and newlines within a whitespace range are replaced with a single newline and form feed followed by the remaining newlines."
+      },
+      {
+        "name": "LambdaBodyIndentation",
+        "type": "string",
+        "values": "Signature / OuterScope",
+        "description": "Lambda 函数体相对 Lambda 签名还是外层作用域缩进。",
+        "originalDescription": "The indentation style of lambda bodies. Signature (the default) causes the lambda body to be indented one additional level relative to the indentation level of the signature. OuterScope forces the lambda body to be indented one additional level relative to the parent scope containing the lambda signature."
+      },
+      {
+        "name": "LineEnding",
+        "type": "string",
+        "values": "LF / CRLF / DeriveLF / DeriveCRLF",
+        "description": "换行符使用 LF、CRLF，或从输入推断。",
+        "originalDescription": "Line ending style (\\n or \\r\\n) to use."
+      },
+      {
+        "name": "MacroBlockBegin",
+        "type": "string",
+        "values": "",
+        "description": "识别宏代码块开始的正则表达式。",
+        "originalDescription": "A regular expression matching macros that start a block."
+      },
+      {
+        "name": "MacroBlockEnd",
+        "type": "string",
+        "values": "",
+        "description": "识别宏代码块结束的正则表达式。",
+        "originalDescription": "A regular expression matching macros that end a block."
+      },
+      {
+        "name": "Macros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "宏定义字符串数组，供格式化器识别宏展开形态。",
+        "originalDescription": "A list of macros of the form <definition>=<expansion> ."
+      },
+      {
+        "name": "MacrosSkippedByRemoveParentheses",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "移除冗余括号时应跳过的宏名称数组。",
+        "originalDescription": "A vector of function-like macros whose invocations should be skipped by RemoveParentheses."
+      },
+      {
+        "name": "MainIncludeChar",
+        "type": "string",
+        "values": "Quote / AngleBracket / Any",
+        "description": "主头文件采用双引号还是尖括号匹配。",
+        "originalDescription": "When guessing whether a #include is the \"main\" include, only the include directives that use the specified character are considered."
+      },
+      {
+        "name": "MaxEmptyLinesToKeep",
+        "type": "number",
+        "values": "",
+        "description": "连续空行最多保留的数量。",
+        "originalDescription": "The maximum number of consecutive empty lines to keep."
+      },
+      {
+        "name": "NamespaceIndentation",
+        "type": "string",
+        "values": "None / Inner / All",
+        "description": "命名空间内容的缩进规则。",
+        "originalDescription": "The indentation used for namespaces."
+      },
+      {
+        "name": "NamespaceMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应按命名空间结构处理的宏名称数组。",
+        "originalDescription": "A vector of macros which are used to open namespace blocks."
+      },
+      {
+        "name": "ObjCBinPackProtocolList",
+        "type": "string",
+        "values": "Auto / Always / Never",
+        "description": "Objective-C 协议列表的紧凑排列。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "Controls bin-packing Objective-C protocol conformance list items into as few lines as possible when they go over ColumnLimit."
+      },
+      {
+        "name": "ObjCBlockIndentWidth",
+        "type": "number",
+        "values": "",
+        "description": "Objective-C 块的缩进宽度。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "The number of characters to use for indentation of ObjC blocks."
+      },
+      {
+        "name": "ObjCBreakBeforeNestedBlockParam",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "Objective-C 嵌套块参数前是否换行。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "Break parameters list into lines when there is nested block parameters in a function call."
+      },
+      {
+        "name": "ObjCPropertyAttributeOrder",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "Objective-C 属性特性的排序。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "The order in which ObjC property attributes should appear."
+      },
+      {
+        "name": "ObjCSpaceAfterProperty",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "Objective-C @property 后是否加入空格。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "Add a space after @property in Objective-C, i.e. use @property (readonly) instead of @property(readonly)."
+      },
+      {
+        "name": "ObjCSpaceBeforeProtocolList",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "Objective-C 协议列表前是否加入空格。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "Add a space in front of an Objective-C protocol list, i.e. use Foo <Protocol> instead of Foo<Protocol>."
+      },
+      {
+        "name": "OneLineFormatOffRegex",
+        "type": "string",
+        "values": "",
+        "description": "匹配应跳过格式化的整行的正则表达式。",
+        "originalDescription": "A regular expression that describes markers for turning formatting off for one line. If it matches a comment that is the only token of a line, clang-format skips the comment and the next line. Otherwise, clang-format skips lines containing a matched token."
+      },
+      {
+        "name": "PPIndentWidth",
+        "type": "number",
+        "values": "",
+        "description": "预处理指令的缩进宽度。",
+        "originalDescription": "The number of columns to use for indentation of preprocessor statements. When set to -1 (default) IndentWidth is used also for preprocessor statements."
+      },
+      {
+        "name": "PackConstructorInitializers",
+        "type": "string",
+        "values": "Never / BinPack / CurrentLine / NextLine / NextLineOnly",
+        "description": "构造初始化项的紧凑排列策略。",
+        "originalDescription": "The pack constructor initializers style to use."
+      },
+      {
+        "name": "PenaltyBreakAssignment",
+        "type": "number",
+        "values": "",
+        "description": "赋值运算符的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking around an assignment operator."
+      },
+      {
+        "name": "PenaltyBreakBeforeFirstCallParameter",
+        "type": "number",
+        "values": "",
+        "description": "第一个调用实参之前的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking a function call after call(."
+      },
+      {
+        "name": "PenaltyBreakBeforeMemberAccess",
+        "type": "number",
+        "values": "",
+        "description": "成员访问之前的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking before a member access operator (., ->)."
+      },
+      {
+        "name": "PenaltyBreakComment",
+        "type": "number",
+        "values": "",
+        "description": "注释的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for each line break introduced inside a comment."
+      },
+      {
+        "name": "PenaltyBreakFirstLessLess",
+        "type": "number",
+        "values": "",
+        "description": "第一个 << 运算符的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking before the first <<."
+      },
+      {
+        "name": "PenaltyBreakOpenParenthesis",
+        "type": "number",
+        "values": "",
+        "description": "左圆括号的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking after (."
+      },
+      {
+        "name": "PenaltyBreakScopeResolution",
+        "type": "number",
+        "values": "",
+        "description": "作用域运算符的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking after ::."
+      },
+      {
+        "name": "PenaltyBreakString",
+        "type": "number",
+        "values": "",
+        "description": "字符串的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for each line break introduced inside a string literal."
+      },
+      {
+        "name": "PenaltyBreakTemplateDeclaration",
+        "type": "number",
+        "values": "",
+        "description": "模板声明的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for breaking after template declaration."
+      },
+      {
+        "name": "PenaltyExcessCharacter",
+        "type": "number",
+        "values": "",
+        "description": "超过列宽的字符的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "The penalty for each character outside of the column limit."
+      },
+      {
+        "name": "PenaltyIndentedWhitespace",
+        "type": "number",
+        "values": "",
+        "description": "缩进空格的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "Penalty for each character of whitespace indentation (counted relative to leading non-whitespace column)."
+      },
+      {
+        "name": "PenaltyReturnTypeOnItsOwnLine",
+        "type": "number",
+        "values": "",
+        "description": "返回类型独占一行的惩罚值；数值越大越不倾向采用该布局。",
+        "originalDescription": "Penalty for putting the return type of a function onto its own line."
+      },
+      {
+        "name": "PointerAlignment",
+        "type": "string",
+        "values": "Left / Right / Middle",
+        "description": "指针符号 * 靠近类型、变量名，还是居中。",
+        "originalDescription": "Pointer and reference alignment style."
+      },
+      {
+        "name": "QualifierAlignment",
+        "type": "string",
+        "values": "Leave / Left / Right / Custom",
+        "description": "const 等限定符的位置规则；调整顺序可能影响语义，应谨慎使用。",
+        "originalDescription": "Different ways to arrange specifiers and qualifiers (e.g. const/volatile)."
+      },
+      {
+        "name": "RawStringFormats",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "原始字符串内容的语言、分隔符和格式规则数组。",
+        "originalDescription": "Defines hints for detecting supported languages code blocks in raw strings."
+      },
+      {
+        "name": "ReferenceAlignment",
+        "type": "string",
+        "values": "Pointer / Left / Right / Middle",
+        "description": "引用符号 & 的对齐规则，可跟随指针对齐。",
+        "originalDescription": "Reference alignment style (overrides PointerAlignment for references)."
+      },
+      {
+        "name": "ReflowComments",
+        "type": "string",
+        "values": "Never / IndentOnly / Always",
+        "description": "注释是否重排以符合行宽。",
+        "originalDescription": "Comment reformatting style."
+      },
+      {
+        "name": "RemoveBracesLLVM",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "移除符合 LLVM 风格的多余花括号；可能改变源码结构。",
+        "originalDescription": "Remove optional braces of control statements (if, else, for, and while) in C++ according to the LLVM coding style."
+      },
+      {
+        "name": "RemoveEmptyLinesInUnwrappedLines",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否移除未换行语句内部的空行。",
+        "originalDescription": "Remove empty lines within unwrapped lines."
+      },
+      {
+        "name": "RemoveParentheses",
+        "type": "string",
+        "values": "Leave / MultipleParentheses / ReturnStatement",
+        "description": "冗余圆括号的移除规则。",
+        "originalDescription": "Remove redundant parentheses."
+      },
+      {
+        "name": "RemoveSemicolon",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否移除函数或构造定义后多余的分号。",
+        "originalDescription": "Remove semicolons after the closing braces of functions and constructors/destructors."
+      },
+      {
+        "name": "RequiresClausePosition",
+        "type": "string",
+        "values": "OwnLine / OwnLineWithBrace / WithPreceding / WithFollowing / SingleLine",
+        "description": "requires 子句的排列位置。",
+        "originalDescription": "The position of the requires clause."
+      },
+      {
+        "name": "RequiresExpressionIndentation",
+        "type": "string",
+        "values": "OuterScope / Keyword",
+        "description": "requires 表达式内容相对外层作用域还是关键字缩进。",
+        "originalDescription": "The indentation used for requires expression bodies."
+      },
+      {
+        "name": "SeparateDefinitionBlocks",
+        "type": "string",
+        "values": "Leave / Always / Never",
+        "description": "函数、类等定义之间是否保留、插入或移除空行。",
+        "originalDescription": "Specifies the use of empty lines to separate definition blocks, including classes, structs, enums, and functions."
+      },
+      {
+        "name": "ShortNamespaceLines",
+        "type": "number",
+        "values": "",
+        "description": "命名空间最多多少行时省略末尾命名空间注释。",
+        "originalDescription": "The maximal number of unwrapped lines that a short namespace spans. Defaults to 1."
+      },
+      {
+        "name": "SkipMacroDefinitionBody",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否跳过宏定义内容的格式化。",
+        "originalDescription": "Do not format macro definition body."
+      },
+      {
+        "name": "SortIncludes",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "include 排序及是否区分大小写等规则。",
+        "originalDescription": "Controls if and how clang-format will sort #includes."
+      },
+      {
+        "name": "SortIncludes.Enabled",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "启用此规则。",
+        "originalDescription": "启用此规则。"
+      },
+      {
+        "name": "SortIncludes.IgnoreCase",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "排序时忽略大小写。",
+        "originalDescription": "排序时忽略大小写。"
+      },
+      {
+        "name": "SortIncludes.IgnoreExtension",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "排序时忽略文件扩展名。",
+        "originalDescription": "排序时忽略文件扩展名。"
+      },
+      {
+        "name": "SortJavaStaticImport",
+        "type": "string",
+        "values": "Before / After",
+        "description": "Java 静态导入位于普通导入之前还是之后。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "When sorting Java imports, by default static imports are placed before non-static imports. If JavaStaticImportAfterImport is After, static imports are placed after non-static imports."
+      },
+      {
+        "name": "SortUsingDeclarations",
+        "type": "string",
+        "values": "Never / Lexicographic / LexicographicNumeric",
+        "description": "using 声明的排序规则。",
+        "originalDescription": "Controls if and how clang-format will sort using declarations."
+      },
+      {
+        "name": "SpaceAfterCStyleCast",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在C 风格类型转换之后添加空格。",
+        "originalDescription": "If true, a space is inserted after C style casts."
+      },
+      {
+        "name": "SpaceAfterLogicalNot",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在逻辑非运算符 !之后添加空格。",
+        "originalDescription": "If true, a space is inserted after the logical not operator (!)."
+      },
+      {
+        "name": "SpaceAfterOperatorKeyword",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在operator 关键字之后添加空格。",
+        "originalDescription": "If true, a space will be inserted after the operator keyword."
+      },
+      {
+        "name": "SpaceAfterTemplateKeyword",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在template 关键字之后添加空格。",
+        "originalDescription": "If true, a space will be inserted after the template keyword."
+      },
+      {
+        "name": "SpaceAroundPointerQualifiers",
+        "type": "string",
+        "values": "Default / Before / After / Both",
+        "description": "指针限定符前后的空格规则。",
+        "originalDescription": "Defines in which cases to put a space before or after pointer qualifiers"
+      },
+      {
+        "name": "SpaceBeforeAssignmentOperators",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在赋值运算符之前添加空格。",
+        "originalDescription": "If false, spaces will be removed before assignment operators."
+      },
+      {
+        "name": "SpaceBeforeCaseColon",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在case 冒号之前添加空格。",
+        "originalDescription": "If false, spaces will be removed before case colon."
+      },
+      {
+        "name": "SpaceBeforeCpp11BracedList",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在C++11 花括号初始化列表之前添加空格。",
+        "originalDescription": "If true, a space will be inserted before a C++11 braced list used to initialize an object (after the preceding identifier or type)."
+      },
+      {
+        "name": "SpaceBeforeCtorInitializerColon",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在构造初始化冒号之前添加空格。",
+        "originalDescription": "If false, spaces will be removed before constructor initializer colon."
+      },
+      {
+        "name": "SpaceBeforeInheritanceColon",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在继承冒号之前添加空格。",
+        "originalDescription": "If false, spaces will be removed before inheritance colon."
+      },
+      {
+        "name": "SpaceBeforeJsonColon",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在JSON 冒号之前添加空格。",
+        "originalDescription": "If true, a space will be added before a JSON colon. For other languages, e.g. JavaScript, use SpacesInContainerLiterals instead."
+      },
+      {
+        "name": "SpaceBeforeParens",
+        "type": "string",
+        "values": "Never / ControlStatements / ControlStatementsExceptControlMacros / NonEmptyParentheses / Always / Custom",
+        "description": "左圆括号前的空格规则。",
+        "originalDescription": "Defines in which cases to put a space before opening parentheses."
+      },
+      {
+        "name": "SpaceBeforeParensOptions",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "SpaceBeforeParens=Custom 时的具体空格规则。",
+        "originalDescription": "Control of individual space before parentheses."
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterControlStatements",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制流关键字之后、左圆括号之前加入空格。",
+        "originalDescription": "控制流关键字之后、左圆括号之前加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterForeachMacros",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "循环宏之后加入空格。",
+        "originalDescription": "循环宏之后加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterFunctionDeclarationName",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "函数声明名与左圆括号之间加入空格。",
+        "originalDescription": "函数声明名与左圆括号之间加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterFunctionDefinitionName",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "函数定义名与左圆括号之间加入空格。",
+        "originalDescription": "函数定义名与左圆括号之间加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterIfMacros",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "if 宏之后加入空格。",
+        "originalDescription": "if 宏之后加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterNot",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "not 关键字之后、左圆括号之前加入空格。",
+        "originalDescription": "not 关键字之后、左圆括号之前加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterOverloadedOperator",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "重载运算符与左圆括号之间加入空格。",
+        "originalDescription": "重载运算符与左圆括号之间加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterPlacementOperator",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "placement new/delete 与左圆括号之间加入空格。",
+        "originalDescription": "placement new/delete 与左圆括号之间加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterRequiresInClause",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "requires 子句关键字与左圆括号之间加入空格。",
+        "originalDescription": "requires 子句关键字与左圆括号之间加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.AfterRequiresInExpression",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "requires 表达式关键字与左圆括号之间加入空格。",
+        "originalDescription": "requires 表达式关键字与左圆括号之间加入空格。"
+      },
+      {
+        "name": "SpaceBeforeParensOptions.BeforeNonEmptyParentheses",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "非空圆括号之前加入空格。",
+        "originalDescription": "非空圆括号之前加入空格。"
+      },
+      {
+        "name": "SpaceBeforeRangeBasedForLoopColon",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在范围 for 的冒号之前添加空格。",
+        "originalDescription": "If false, spaces will be removed before range-based for loop colon."
+      },
+      {
+        "name": "SpaceBeforeSquareBrackets",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在方括号之前添加空格。",
+        "originalDescription": "If true, spaces will be before [. Lambdas will not be affected. Only the first [ will get a space added."
+      },
+      {
+        "name": "SpaceInEmptyBlock",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在空代码块花括号内保留空格。",
+        "originalDescription": "This option is **deprecated**. See Block of SpaceInEmptyBraces."
+      },
+      {
+        "name": "SpaceInEmptyBraces",
+        "type": "string",
+        "values": "Always / Block / Never",
+        "description": "空花括号内部的空格规则。",
+        "originalDescription": "Specifies when to insert a space in empty braces."
+      },
+      {
+        "name": "SpaceInEmptyParentheses",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否在空圆括号内部添加空格。",
+        "originalDescription": "If true, spaces may be inserted into (). This option is **deprecated**. See InEmptyParentheses of SpacesInParensOptions."
+      },
+      {
+        "name": "SpacesBeforeTrailingComments",
+        "type": "number",
+        "values": "",
+        "description": "代码与行尾注释之间至少保留的空格数。",
+        "originalDescription": "The number of spaces before trailing line comments (// - comments)."
+      },
+      {
+        "name": "SpacesInAngles",
+        "type": "string",
+        "values": "Never / Always / Leave",
+        "description": "尖括号内部的空格规则。",
+        "originalDescription": "The SpacesInAnglesStyle to use for template argument lists."
+      },
+      {
+        "name": "SpacesInCStyleCastParentheses",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制C 风格类型转换圆括号内部的空格。",
+        "originalDescription": "If true, spaces may be inserted into C style casts. This option is **deprecated**. See InCStyleCasts of SpacesInParensOptions."
+      },
+      {
+        "name": "SpacesInConditionalStatement",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制控制条件括号内部的空格。",
+        "originalDescription": "If true, spaces will be inserted around if/for/switch/while conditions. This option is **deprecated**. See InConditionalStatements of SpacesInParensOptions."
+      },
+      {
+        "name": "SpacesInContainerLiterals",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制容器字面量内部的空格。",
+        "originalDescription": "If true, spaces are inserted inside container literals (e.g. ObjC and Javascript array and dict literals). For JSON, use SpaceBeforeJsonColon instead."
+      },
+      {
+        "name": "SpacesInLineCommentPrefix",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "// 之后空格数量的上下限。",
+        "originalDescription": "How many spaces are allowed at the start of a line comment. To disable the maximum set it to -1, apart from that the maximum takes precedence over the minimum."
+      },
+      {
+        "name": "SpacesInLineCommentPrefix.Minimum",
+        "type": "number",
+        "values": "",
+        "description": "最少空格数。",
+        "originalDescription": "最少空格数。"
+      },
+      {
+        "name": "SpacesInLineCommentPrefix.Maximum",
+        "type": "number",
+        "values": "",
+        "description": "最多空格数。",
+        "originalDescription": "最多空格数。"
+      },
+      {
+        "name": "SpacesInParens",
+        "type": "string",
+        "values": "Never / Custom",
+        "description": "圆括号内部的空格规则。",
+        "originalDescription": "Defines in which cases spaces will be inserted after ( and before )."
+      },
+      {
+        "name": "SpacesInParensOptions",
+        "type": "object",
+        "values": "JSON 对象；兼容形式以插件校验为准。",
+        "description": "SpacesInParens=Custom 时的具体空格规则。",
+        "originalDescription": "Control of individual spaces in parentheses."
+      },
+      {
+        "name": "SpacesInParensOptions.ExceptDoubleParentheses",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "双层圆括号内不加入空格。",
+        "originalDescription": "双层圆括号内不加入空格。"
+      },
+      {
+        "name": "SpacesInParensOptions.InConditionalStatements",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制条件的圆括号内部加入空格。",
+        "originalDescription": "控制条件的圆括号内部加入空格。"
+      },
+      {
+        "name": "SpacesInParensOptions.InCStyleCasts",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "C 风格类型转换的圆括号内部加入空格。",
+        "originalDescription": "C 风格类型转换的圆括号内部加入空格。"
+      },
+      {
+        "name": "SpacesInParensOptions.InEmptyParentheses",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "空圆括号内部加入空格。",
+        "originalDescription": "空圆括号内部加入空格。"
+      },
+      {
+        "name": "SpacesInParensOptions.Other",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "其他圆括号内部加入空格。",
+        "originalDescription": "其他圆括号内部加入空格。"
+      },
+      {
+        "name": "SpacesInParentheses",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制圆括号内部的空格。",
+        "originalDescription": "If true, spaces will be inserted after ( and before ). This option is **deprecated**. The previous behavior is preserved by using SpacesInParens with Custom and by setting all SpacesInParensOptions to true except for InCStyleCasts and InEmptyParentheses."
+      },
+      {
+        "name": "SpacesInSquareBrackets",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "控制方括号内部的空格。",
+        "originalDescription": "If true, spaces will be inserted after [ and before ]. Lambdas without arguments or unspecified size array declarations will not be affected."
+      },
+      {
+        "name": "Standard",
+        "type": "string",
+        "values": "c++03 / c++11 / c++14 / c++17 / c++20 / Latest / Auto",
+        "description": "影响格式化语法判断的语言标准。",
+        "originalDescription": "Parse and format C++ constructs compatible with this standard."
+      },
+      {
+        "name": "StatementAttributeLikeMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应视为语句属性的宏名称数组。",
+        "originalDescription": "Macros which are ignored in front of a statement, as if they were an attribute. So that they are not parsed as identifier, for example for Qts emit."
+      },
+      {
+        "name": "StatementMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应视为完整语句的宏名称数组。",
+        "originalDescription": "A vector of macros that should be interpreted as complete statements."
+      },
+      {
+        "name": "TabWidth",
+        "type": "number",
+        "values": "",
+        "description": "一个制表符显示为多少列。",
+        "originalDescription": "The number of columns used for tab stops."
+      },
+      {
+        "name": "TableGenBreakInsideDAGArg",
+        "type": "string",
+        "values": "DontBreak / BreakElements / BreakAll",
+        "description": "TableGen DAG 参数内部的换行规则。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "The styles of the line break inside the DAGArg in TableGen."
+      },
+      {
+        "name": "TableGenBreakingDAGArgOperators",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "TableGen 中需要拆分 DAG 参数的运算符数组。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "Works only when TableGenBreakInsideDAGArg is not DontBreak. The string list needs to consist of identifiers in TableGen. If any identifier is specified, this limits the line breaks by TableGenBreakInsideDAGArg option only on DAGArg values beginning with the specified identifiers."
+      },
+      {
+        "name": "TemplateNames",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应识别为模板名称的标识符数组。",
+        "originalDescription": "A vector of non-keyword identifiers that should be interpreted as template names."
+      },
+      {
+        "name": "TypeNames",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应识别为类型名称的标识符数组。",
+        "originalDescription": "A vector of non-keyword identifiers that should be interpreted as type names."
+      },
+      {
+        "name": "TypenameMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应识别为类型声明的宏名称数组。",
+        "originalDescription": "A vector of macros that should be interpreted as type declarations instead of as function calls."
+      },
+      {
+        "name": "UseCRLF",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "是否使用 CRLF；旧版兼容选项，优先使用 LineEnding。",
+        "originalDescription": "This option is **deprecated**. See LF and CRLF of LineEnding."
+      },
+      {
+        "name": "UseTab",
+        "type": "string",
+        "values": "Never / ForIndentation / ForContinuationAndIndentation / AlignWithSpaces / Always",
+        "description": "在哪些缩进或对齐位置使用制表符。",
+        "originalDescription": "The way to use tab characters in the resulting file."
+      },
+      {
+        "name": "VariableTemplates",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "应识别为变量模板的标识符数组。",
+        "originalDescription": "A vector of non-keyword identifiers that should be interpreted as variable template names."
+      },
+      {
+        "name": "VerilogBreakBetweenInstancePorts",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "Verilog 实例端口之间是否换行。此选项用于其他 LLVM 支持的语言，不影响本软件的 C/C++ 格式化。",
+        "originalDescription": "For Verilog, put each port on its own line in module instantiations."
+      },
+      {
+        "name": "WhitespaceSensitiveMacros",
+        "type": "array",
+        "values": "JSON 数组",
+        "description": "对空格敏感、需要保留内部空格的宏名称数组。",
+        "originalDescription": "A vector of macros which are whitespace-sensitive and should not be touched."
+      },
+      {
+        "name": "WrapNamespaceBodyWithEmptyLines",
+        "type": "string",
+        "values": "Never / Always / Leave",
+        "description": "命名空间内容前后的空行规则。",
+        "originalDescription": "Wrap namespace body with empty lines."
+      },
+      {
+        "name": "IncludeCategories[].Regex",
+        "type": "string",
+        "values": "",
+        "description": "头文件匹配的正则表达式。",
+        "originalDescription": "头文件匹配的正则表达式。"
+      },
+      {
+        "name": "IncludeCategories[].Priority",
+        "type": "number",
+        "values": "",
+        "description": "分组优先级；越小越靠前。",
+        "originalDescription": "分组优先级；越小越靠前。"
+      },
+      {
+        "name": "IncludeCategories[].SortPriority",
+        "type": "number",
+        "values": "",
+        "description": "排序优先级，未指定时跟随 Priority。",
+        "originalDescription": "排序优先级，未指定时跟随 Priority。"
+      },
+      {
+        "name": "IncludeCategories[].CaseSensitive",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "正则匹配是否区分大小写。",
+        "originalDescription": "正则匹配是否区分大小写。"
+      },
+      {
+        "name": "RawStringFormats[].Language",
+        "type": "string",
+        "values": "",
+        "description": "原始字符串内容的语言。",
+        "originalDescription": "原始字符串内容的语言。"
+      },
+      {
+        "name": "RawStringFormats[].Delimiters",
+        "type": "array",
+        "values": "字符串数组",
+        "description": "识别此规则的原始字符串分隔符数组。",
+        "originalDescription": "识别此规则的原始字符串分隔符数组。"
+      },
+      {
+        "name": "RawStringFormats[].EnclosingFunctions",
+        "type": "array",
+        "values": "字符串数组",
+        "description": "可触发此规则的外层函数名数组。",
+        "originalDescription": "可触发此规则的外层函数名数组。"
+      },
+      {
+        "name": "RawStringFormats[].CanonicalDelimiter",
+        "type": "string",
+        "values": "",
+        "description": "格式化后统一采用的分隔符。",
+        "originalDescription": "格式化后统一采用的分隔符。"
+      },
+      {
+        "name": "RawStringFormats[].BasedOnStyle",
+        "type": "string",
+        "values": "",
+        "description": "内容所用的基础风格。",
+        "originalDescription": "内容所用的基础风格。"
+      }
+    ]
+  },
+  "sql": {
+    "name": "lax-sql",
+    "version": "0.3.0",
+    "configKey": "sql",
+    "url": "https://github.com/bartlomieju/lax/tree/main/crates/lax-sql",
+    "rows": [
+      {
+        "name": "lineWidth",
+        "type": "number",
+        "values": "1–1000",
+        "description": "最大行宽",
+        "default": 120
+      },
+      {
+        "name": "indentWidth",
+        "type": "number",
+        "values": "1–16",
+        "description": "缩进空格数",
+        "default": 2
+      },
+      {
+        "name": "useTabs",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "使用 Tab 缩进",
+        "default": false
+      },
+      {
+        "name": "newLineKind",
+        "type": "string",
+        "values": "lf / crlf / auto / system",
+        "description": "换行符",
+        "default": "lf"
+      },
+      {
+        "name": "keywordCase",
+        "type": "string",
+        "values": "preserve / upper / lower",
+        "description": "SQL 关键字大小写",
+        "default": "preserve"
+      },
+      {
+        "name": "clauseStyle",
+        "type": "string",
+        "values": "fill / expanded",
+        "description": "紧凑布局或逐项展开",
+        "default": "fill"
+      },
+      {
+        "name": "ignoreNodeCommentText",
+        "type": "string",
+        "values": "",
+        "description": "跳过下一条语句的注释标记",
+        "default": "dprint-ignore"
+      },
+      {
+        "name": "ignoreFileCommentText",
+        "type": "string",
+        "values": "",
+        "description": "跳过整个文件的注释标记",
+        "default": "dprint-ignore-file"
+      }
+    ]
+  },
+  "stylua": {
+    "name": "dprint-plugin-stylua",
+    "version": "0.2.1",
+    "configKey": "stylua",
+    "url": "https://github.com/RubixDev/dprint-plugin-stylua",
+    "rows": [
+      {
+        "name": "lineWidth",
+        "type": "number",
+        "values": "1–1000",
+        "description": "最大行宽",
+        "default": 120
+      },
+      {
+        "name": "indentWidth",
+        "type": "number",
+        "values": "1–16",
+        "description": "缩进空格数",
+        "default": 2
+      },
+      {
+        "name": "useTabs",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "使用 Tab 缩进",
+        "default": false
+      },
+      {
+        "name": "newLineKind",
+        "type": "string",
+        "values": "lf / crlf / auto / system",
+        "description": "换行符",
+        "default": "lf"
+      },
+      {
+        "name": "verify",
+        "type": "boolean",
+        "values": "true / false",
+        "description": "格式化后验证语法树",
+        "default": false
+      },
+      {
+        "name": "quoteStyle",
+        "type": "string",
+        "values": "AutoPreferDouble / AutoPreferSingle / ForceDouble / ForceSingle",
+        "description": "字符串引号风格",
+        "default": "AutoPreferDouble"
+      },
+      {
+        "name": "callParentheses",
+        "type": "string",
+        "values": "Always / NoSingleString / NoSingleTable / None",
+        "description": "函数调用的括号保留规则",
+        "default": "Always"
+      },
+      {
+        "name": "collapseSimpleStatement",
+        "type": "string",
+        "values": "Never / FunctionOnly / ConditionalOnly / Always",
+        "description": "简单语句压缩为单行",
+        "default": "Never"
+      }
+    ]
+  },
+  "roslyn": {
+    "name": "dprint / Roslyn WASM",
+    "version": "0.23.1",
+    "configKey": "roslyn",
+    "url": "https://github.com/dprint/dprint-plugin-roslyn",
+    "rows": [
+      {
+        "name": "csharp.newLine",
+        "type": "string",
+        "values": "auto / lf / crlf",
+        "description": "C# 输出换行符。",
+        "default": "auto"
+      },
+      {
+        "name": "csharp.tabSize",
+        "type": "number",
+        "values": "正整数",
+        "description": "C# 制表符的显示列宽。",
+        "default": 4
+      },
+      {
+        "name": "csharp.indentationSize",
+        "type": "number",
+        "values": "正整数",
+        "description": "C# 每级缩进的列数。",
+        "default": 4
+      },
+      {
+        "name": "csharp.useTabs",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "使用制表符缩进",
+        "default": false
+      },
+      {
+        "name": "csharp.spacingAfterMethodDeclarationName",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：方法声明名称",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceWithinMethodDeclarationParenthesis",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "内部空格：方法声明括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceBetweenEmptyMethodDeclarationParentheses",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "空括号内部的空格：方法声明括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceAfterMethodCallName",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：方法调用名称",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceWithinMethodCallParentheses",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "内部空格：方法调用括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceBetweenEmptyMethodCallParentheses",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "空括号内部的空格：方法调用括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceAfterControlFlowStatementKeyword",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：控制流关键字",
+        "default": true
+      },
+      {
+        "name": "csharp.spaceWithinExpressionParentheses",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "内部空格：表达式括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceWithinCastParentheses",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "内部空格：类型转换括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceWithinOtherParentheses",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "内部空格：其他括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceAfterCast",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：类型转换",
+        "default": false
+      },
+      {
+        "name": "csharp.spacesIgnoreAroundVariableDeclaration",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "保留变量声明周围的空格",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceBeforeOpenSquareBracket",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置空格：左方括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceBetweenEmptySquareBrackets",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "空括号内部的空格：方括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceWithinSquareBrackets",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "内部空格：方括号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceAfterColonInBaseTypeDeclaration",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：继承声明的冒号",
+        "default": true
+      },
+      {
+        "name": "csharp.spaceAfterComma",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：逗号",
+        "default": true
+      },
+      {
+        "name": "csharp.spaceAfterDot",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：点号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceAfterSemicolonsInForStatement",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "后置空格：for 分号",
+        "default": true
+      },
+      {
+        "name": "csharp.spaceBeforeColonInBaseTypeDeclaration",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置空格：继承声明的冒号",
+        "default": true
+      },
+      {
+        "name": "csharp.spaceBeforeComma",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置空格：逗号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceBeforeDot",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置空格：点号",
+        "default": false
+      },
+      {
+        "name": "csharp.spaceBeforeSemicolonsInForStatement",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置空格：for 分号",
+        "default": false
+      },
+      {
+        "name": "csharp.spacingAroundBinaryOperator",
+        "type": "string",
+        "values": "single | remove | ignore",
+        "description": "二元运算符两侧的空格",
+        "default": "single"
+      },
+      {
+        "name": "csharp.indentBraces",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "缩进花括号",
+        "default": false
+      },
+      {
+        "name": "csharp.indentBlock",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "缩进代码块",
+        "default": true
+      },
+      {
+        "name": "csharp.indentSwitchSection",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "缩进 switch 分支",
+        "default": true
+      },
+      {
+        "name": "csharp.indentSwitchCaseSection",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "缩进 case 内容",
+        "default": true
+      },
+      {
+        "name": "csharp.indentSwitchCaseSectionWhenBlock",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "缩进 case 的代码块",
+        "default": true
+      },
+      {
+        "name": "csharp.labelPositioning",
+        "type": "string",
+        "values": "leftMost | oneLess | noIndent",
+        "description": "标签的缩进位置",
+        "default": "oneLess"
+      },
+      {
+        "name": "csharp.wrappingPreserveSingleLine",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "保留单行代码块",
+        "default": true
+      },
+      {
+        "name": "csharp.wrappingKeepStatementsOnSingleLine",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "保持单行语句",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInTypes",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：类型",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInMethods",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：方法",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInProperties",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：属性",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInAccessors",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：访问器",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInAnonymousMethods",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：匿名方法",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInControlBlocks",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：控制块",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInAnonymousTypes",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：匿名类型",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInObjectCollectionArrayInitializers",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：对象、集合和数组初始化器",
+        "default": true
+      },
+      {
+        "name": "csharp.newLinesForBracesInLambdaExpressionBody",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "花括号换行：Lambda 表达式",
+        "default": true
+      },
+      {
+        "name": "csharp.newLineForElse",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置换行：else",
+        "default": true
+      },
+      {
+        "name": "csharp.newLineForCatch",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置换行：catch",
+        "default": true
+      },
+      {
+        "name": "csharp.newLineForFinally",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置换行：finally",
+        "default": true
+      },
+      {
+        "name": "csharp.newLineForMembersInObjectInit",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置换行：对象初始化的成员",
+        "default": true
+      },
+      {
+        "name": "csharp.newLineForMembersInAnonymousTypes",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置换行：匿名类型的成员",
+        "default": true
+      },
+      {
+        "name": "csharp.newLineForClausesInQuery",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "前置换行：查询子句",
+        "default": true
+      }
+    ],
+    "note": "使用 dprint Roslyn Wasm 插件。共同缩进和行尾设置会映射至 C# 选项，roslyn 对象中的同类选项优先。"
+  },
+  "java": {
+    "name": "Prettier Java",
+    "version": "2.8.1",
+    "configKey": "java",
+    "url": "https://github.com/jhipster/prettier-java",
+    "rows": [
+      {
+        "name": "printWidth",
+        "type": "number",
+        "values": "1–1000",
+        "description": "最大行宽；默认使用共同选项 lineWidth"
+      },
+      {
+        "name": "tabWidth",
+        "type": "number",
+        "values": "1–16",
+        "description": "缩进宽度；默认使用共同选项 indentWidth"
+      },
+      {
+        "name": "useTabs",
+        "type": "boolean",
+        "values": "true | false",
+        "description": "使用制表符缩进"
+      },
+      {
+        "name": "trailingComma",
+        "type": "string",
+        "values": "all | es5 | none",
+        "description": "尾随逗号策略"
+      },
+      {
+        "name": "endOfLine",
+        "type": "string",
+        "values": "lf | crlf | cr | auto",
+        "description": "换行符"
+      },
+      {
+        "name": "entrypoint",
+        "type": "string",
+        "values": "arrayInitializer / variableInitializerList / block / blockStatements / blockStatement / localVariableDeclarationStatement / localVariableDeclaration / localVariableType / statement / statementWithoutTrailingSubstatement / emptyStatement / labeledStatement / expressionStatement / statementExpression / ifStatement / assertStatement / switchStatement / switchBlock / switchBlockStatementGroup / switchLabel / switchRule / caseConstant / casePattern / whileStatement / doStatement / forStatement / basicForStatement / forInit / forUpdate / statementExpressionList / enhancedForStatement / breakStatement / continueStatement / returnStatement / throwStatement / synchronizedStatement / tryStatement / catches / catchClause / catchFormalParameter / catchType / finally / tryWithResourcesStatement / resourceSpecification / resourceList / resource / yieldStatement / variableAccess / classDeclaration / normalClassDeclaration / classModifier / typeParameters / typeParameterList / classExtends / classImplements / interfaceTypeList / classPermits / classBody / classBodyDeclaration / classMemberDeclaration / fieldDeclaration / fieldModifier / variableDeclaratorList / variableDeclarator / variableDeclaratorId / variableInitializer / unannType / unannPrimitiveTypeWithOptionalDimsSuffix / unannPrimitiveType / unannReferenceType / unannClassOrInterfaceType / unannClassType / unannInterfaceType / unannTypeVariable / methodDeclaration / methodModifier / methodHeader / result / methodDeclarator / receiverParameter / formalParameterList / formalParameter / variableParaRegularParameter / variableArityParameter / variableModifier / throws / exceptionTypeList / exceptionType / methodBody / instanceInitializer / staticInitializer / constructorDeclaration / constructorModifier / constructorDeclarator / simpleTypeName / constructorBody / explicitConstructorInvocation / unqualifiedExplicitConstructorInvocation / qualifiedExplicitConstructorInvocation / enumDeclaration / enumBody / enumConstantList / enumConstant / enumConstantModifier / enumBodyDeclarations / recordDeclaration / recordHeader / recordComponentList / recordComponent / variableArityRecordComponent / recordComponentModifier / recordBody / recordBodyDeclaration / compactConstructorDeclaration / isDims / expression / lambdaExpression / lambdaParameters / lambdaParametersWithBraces / lambdaParameterList / conciseLambdaParameterList / normalLambdaParameterList / normalLambdaParameter / regularLambdaParameter / lambdaParameterType / conciseLambdaParameter / lambdaBody / conditionalExpression / binaryExpression / unaryExpression / unaryExpressionNotPlusMinus / primary / primaryPrefix / primarySuffix / fqnOrRefType / fqnOrRefTypePartRest / fqnOrRefTypePartCommon / fqnOrRefTypePartFirst / parenthesisExpression / castExpression / primitiveCastExpression / referenceTypeCastExpression / newExpression / unqualifiedClassInstanceCreationExpression / classOrInterfaceTypeToInstantiate / typeArgumentsOrDiamond / diamond / methodInvocationSuffix / argumentList / arrayCreationExpression / arrayCreationWithInitializerSuffix / dimExprs / dimExpr / classLiteralSuffix / arrayAccessSuffix / methodReferenceSuffix / templateArgument / template / stringTemplate / textBlockTemplate / embeddedExpression / pattern / typePattern / recordPattern / componentPatternList / componentPattern / matchAllPattern / guard / isRefTypeInMethodRef / interfaceDeclaration / normalInterfaceDeclaration / interfaceModifier / interfaceExtends / interfacePermits / interfaceBody / interfaceMemberDeclaration / constantDeclaration / constantModifier / interfaceMethodDeclaration / interfaceMethodModifier / annotationInterfaceDeclaration / annotationInterfaceBody / annotationInterfaceMemberDeclaration / annotationInterfaceElementDeclaration / annotationInterfaceElementModifier / defaultValue / annotation / elementValuePairList / elementValuePair / elementValue / elementValueArrayInitializer / elementValueList / literal / integerLiteral / floatingPointLiteral / booleanLiteral / shiftOperator / moduleName / packageName / typeName / expressionName / methodName / packageOrTypeName / ambiguousName / compilationUnit / ordinaryCompilationUnit / modularCompilationUnit / packageDeclaration / packageModifier / importDeclaration / typeDeclaration / moduleDeclaration / moduleDirective / requiresModuleDirective / exportsModuleDirective / opensModuleDirective / usesModuleDirective / providesModuleDirective / requiresModifier / primitiveType / numericType / integralType / floatingPointType / referenceType / classOrInterfaceType / classType / interfaceType / typeVariable / dims / typeParameter / typeParameterModifier / typeBound / additionalBound / typeArguments / typeArgumentList / typeArgument / wildcard / wildcardBounds / always / avoid / all / es5 / none",
+        "description": "Java 解析的起始语法规则。完整源码使用 compilationUnit；代码片段可选择 blockStatements、expression 等。",
+        "default": "compilationUnit"
+      },
+      {
+        "name": "experimentalOperatorPosition",
+        "type": "string",
+        "values": "start / end",
+        "description": "二元表达式换行时，运算符位于下一行开头还是上一行末尾。",
+        "default": "end"
+      }
+    ],
+    "note": "使用 Prettier 3.6.2 与 prettier-plugin-java 2.8.1，Java 不经过 dprint。顶层 lineWidth、indentWidth、useTabs、newLineKind 分别映射为 printWidth、tabWidth、useTabs、endOfLine；java 对象中的同类选项优先。"
+  },
+  "ruby": {
+    "name": "暂无格式化插件",
+    "version": "",
+    "configKey": "无",
+    "url": "",
+    "note": "Ruby 支持运行，目前不提供格式化。",
+    "rows": []
+  },
+  "bash": {
+    "name": "暂无格式化插件",
+    "version": "",
+    "configKey": "无",
+    "url": "",
+    "note": "Bash 支持运行，目前不提供格式化。",
+    "rows": []
+  }
+}

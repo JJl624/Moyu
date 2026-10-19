@@ -1,0 +1,13 @@
+.preferences{height:min(70vh,640px);grid-template-rows:minmax(0,1fr) auto;min-height:0;overflow:hidden}
+.preferences>.pref-tabs{min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;flex-wrap:nowrap;scrollbar-gutter:stable}
+.preferences>.pref-tabs button{flex-shrink:0}
+.preferences>.pref-content{height:auto;min-height:0;min-width:0;max-height:none;overflow-y:auto;box-sizing:border-box;scrollbar-gutter:stable}
+.preferences>.pref-bottom{min-width:0;box-sizing:border-box}
+.runtime-header-input textarea{min-width:0;width:100%;box-sizing:border-box;min-height:72px;resize:vertical;border:1px solid var(--border-strong);border-radius:5px;padding:8px 10px;background:var(--surface);color:var(--text);font:inherit}
+.runtime-header-filter{display:block;margin-top:12px}.runtime-header-filter input{display:block;width:100%;box-sizing:border-box}.runtime-header-list{align-items:start;grid-auto-rows:minmax(26px,auto)}
+.terminal-profile-settings .startup-program{display:flex;gap:8px}.terminal-profile-settings .startup-program input{flex:1}
+
+.preferences .pref-row{min-height:42px;gap:14px}.preferences .pref-section{margin-top:18px;padding-top:16px}.preferences .pref-section-heading{align-items:center;gap:8px}
+
+
+.preferences .pref-update-button{border:0;background:transparent;color:var(--muted);font:inherit;padding:0;cursor:pointer}.preferences .pref-update-button:hover{color:var(--accent)}.preferences .pref-update-button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}

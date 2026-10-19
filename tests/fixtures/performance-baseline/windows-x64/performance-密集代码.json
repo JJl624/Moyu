@@ -1,0 +1,13 @@
+{
+  "name": "密集代码",
+  "version": "0.18.19",
+  "deviceScale": 1,
+  "openMs": 1519,
+  "medianKeyMs": 13,
+  "p95KeyMs": 15,
+  "editP95Ms": 257,
+  "idleCPUSeconds": 0.0012639999999999874,
+  "idleLayouts": 0,
+  "retainedHeapMB": 22.03436279296875,
+  "memoryGrowthMB": 6.495815277099609
+}

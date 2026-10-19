@@ -1,0 +1,9 @@
+import fs from 'node:fs/promises';import path from 'node:path';
+import {createRequire} from 'node:module';
+export async function seedRuntimeCache(data:string){
+ const project=path.resolve(import.meta.dirname,'../..');let root=process.env.MOYU_TEST_RUNTIME_CACHE||path.resolve(project,'../../work/runtime-v18');
+ if(!(await fs.stat(root).catch(()=>null))){root=path.join(project,'test-results/runtime-cache');const require=createRequire(import.meta.url),{ManagedRuntimes}=require('../../electron/managed-runtimes.cjs'),{JavaScriptPackages}=require('../../electron/javascript-packages.cjs'),manager=new ManagedRuntimes(root);for(const [language,version] of [['clang','0.3.0'],['sql','1.14.2'],['lua','1.16.0']])await manager.install({language,version});await new JavaScriptPackages(root).install({name:'lodash-es',version:'4.18.1'});}
+ const managedRoot=path.resolve(project,'../../work/runtime-v183'),managed=path.join(managedRoot,'runtimes');if(!await fs.stat(managed).catch(()=>null)){const require=createRequire(import.meta.url),{ManagedRuntimes}=require('../../electron/managed-runtimes.cjs'),manager=new ManagedRuntimes(managedRoot);for(const [language,version]of [['csharp','10.0.0'],['java','2026.10.12']])await manager.install({language,version});}await fs.cp(managed,path.join(data,'runtimes'),{recursive:true});
+ const scriptRoot=path.resolve(project,'../../work/runtime-v184');if(!await fs.stat(path.join(scriptRoot,'runtimes')).catch(()=>null)){const require=createRequire(import.meta.url),{ManagedRuntimes}=require('../../electron/managed-runtimes.cjs'),manager=new ManagedRuntimes(scriptRoot);for(const [language,version]of [['ruby','2.10.1'],['bash','0.18.2']])await manager.install({language,version});}await fs.cp(path.join(scriptRoot,'runtimes'),path.join(data,'runtimes'),{recursive:true});
+ for(const name of ['运行环境','JavaScript'])await fs.cp(path.join(root,name),path.join(data,name),{recursive:true});
+}

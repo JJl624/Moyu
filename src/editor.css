@@ -1,0 +1,330 @@
+.editor-host .milkdown {
+  --crepe-color-background: var(--bg);
+  --crepe-color-on-background: var(--text);
+  --crepe-color-surface: var(--elevated);
+  --crepe-color-surface-low: var(--surface);
+  --crepe-color-on-surface: var(--text);
+  --crepe-color-on-surface-variant: var(--secondary);
+  --crepe-color-outline: var(--border-strong);
+  --crepe-color-primary: var(--accent);
+  --crepe-color-secondary: var(--accent-dim);
+  --crepe-color-on-secondary: var(--accent);
+  --crepe-color-inverse: var(--heading);
+  --crepe-color-on-inverse: var(--bg);
+  --crepe-color-inline-code: #c9abc5;
+  --crepe-color-error: var(--danger);
+  --crepe-color-hover: var(--hover);
+  --crepe-color-selected: var(--selected);
+  --crepe-color-inline-area: var(--surface);
+  --crepe-base-font-size: var(--editor-font-size, 16px);
+  --crepe-font-title: var(--heading-font);
+  --crepe-font-default: var(--body-font);
+  --crepe-font-code: var(--font-mono);
+  --crepe-shadow-1: 0 3px 12px #00000025;
+  --crepe-shadow-2: 0 8px 25px #00000035;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-ui);
+  position: relative;
+}
+.editor-host .milkdown .ProseMirror {
+  width: calc(100% - 110px);
+  max-width: var(--document-width);
+  padding: 0 0 25px;
+  margin: 38px auto 64px;
+  font-family: var(--font-ui);
+  font-size: var(--editor-font-size, 16px);
+  line-height: var(--editor-line-height, 1.75);
+  outline: none;
+  min-height: 250px;
+  color: var(--text);
+}
+.editor-host .milkdown .ProseMirror > * {
+  scroll-margin-top: 25px;
+}
+.editor-host .milkdown .ProseMirror h1 {
+  font: 650 32px/1.5 var(--font-ui);
+  color: var(--heading);
+  margin: 0 0 20px;
+  letter-spacing: -0.6px;
+}
+.editor-host .milkdown .ProseMirror h2 {
+  font: 600 22px/1.6 var(--font-ui);
+  color: var(--heading);
+  margin: 36px 0 16px;
+  letter-spacing: -0.4px;
+}
+.editor-host .milkdown .ProseMirror h3 {
+  font: 600 18px/1.6 var(--font-ui);
+  color: var(--heading);
+  margin: 28px 0 12px;
+}
+.editor-host .milkdown .ProseMirror h4,
+.editor-host .milkdown .ProseMirror h5,
+.editor-host .milkdown .ProseMirror h6 {
+  font-family: var(--font-ui);
+  color: var(--heading);
+}
+.editor-host .milkdown .ProseMirror p {
+  margin: 14px 0;
+  padding: 0;
+  line-height: var(--editor-line-height, 1.75);
+}
+.editor-host .milkdown .ProseMirror > h1 + p {
+  color: var(--secondary);
+  font-size: var(--editor-font-size, 16px);
+  margin-bottom: 25px;
+  line-height: var(--editor-line-height, 1.75);
+}
+.editor-host .milkdown .ProseMirror strong {
+  font-weight: 650;
+  color: var(--heading);
+}
+.editor-host .milkdown .ProseMirror a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-dim);
+  cursor: pointer;
+}
+.editor-host .milkdown .ProseMirror a:hover {
+  border-bottom-color: var(--accent);
+}
+.editor-host .milkdown .ProseMirror blockquote {
+  background: var(--surface);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 12px 23px;
+  margin: 27px 0 31px;
+  color: var(--secondary);
+}
+.editor-host .milkdown .ProseMirror blockquote p {
+  margin: 4px 0;
+  font-size: calc(var(--editor-font-size, 16px) - 1px);
+  line-height: var(--editor-line-height, 1.75);
+}
+.editor-host .milkdown .ProseMirror ul,
+.editor-host .milkdown .ProseMirror ol {
+  /* Share the marker column across siblings, including wider list numbers. */
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: var(--list-gap, 8px);
+  padding-left: 0;
+  margin: 14px 0;
+}
+.editor-host .milkdown .ProseMirror .milkdown-list-item-block {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  margin: 0;
+}
+.editor-host .milkdown .ProseMirror .milkdown-list-item-block > .list-item {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: first baseline;
+}
+.editor-host
+  .milkdown
+  .ProseMirror
+  .milkdown-list-item-block
+  > .list-item
+  > .children
+  > .content-dom
+  > p {
+  margin: 0;
+}
+.editor-host .milkdown .ProseMirror .milkdown-list-item-block > .list-item > .label-wrapper {
+  display: block;
+  width: auto;
+  min-width: 1.5em;
+  height: auto;
+  margin: 0;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--accent);
+}
+.editor-host .milkdown .ProseMirror .milkdown-list-item-block > .list-item > .label-wrapper > .label {
+  /* Crepe's fixed 32px height and 4px padding offset the text baseline. */
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0;
+  font: inherit;
+  font-variant-numeric: inherit;
+  text-align: right;
+  white-space: nowrap;
+}
+.editor-host .milkdown .ProseMirror code {
+  font-family: var(--font-mono);
+  font-size: 0.87em;
+  padding: 3px 5px;
+  background: var(--surface);
+  color: #c9abc5;
+  border-radius: 4px;
+}
+.editor-host .milkdown .ProseMirror hr {
+  background: var(--border);
+  padding: 0;
+  min-height: 0;
+  background-clip: border-box;
+  height: 1px;
+  border: 0;
+  margin: 33px 0;
+}
+.editor-host .milkdown .ProseMirror .milkdown-code-block {
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  margin: 22px 0;
+}
+.editor-host .milkdown .ProseMirror .milkdown-code-block .cm-editor {
+  background: transparent;
+}
+.editor-host .milkdown .ProseMirror .milkdown-code-block .cm-scroller {
+  font: var(--code-size, 13px)/1.8 var(--font-mono);
+}
+.editor-host .milkdown .ProseMirror .milkdown-table-block {
+  margin: 23px 0;
+  font-size: calc(var(--editor-font-size, 16px) - 2px);
+}
+.editor-host .milkdown .ProseMirror table {
+  border-color: var(--border-strong);
+}
+.editor-host .milkdown .ProseMirror table th {
+  background: var(--surface);
+  font-weight: 550;
+}
+.editor-host .milkdown .ProseMirror table td,
+.editor-host .milkdown .ProseMirror table th {
+  border-color: var(--border-strong);
+  padding: 10px 16px;
+}
+.editor-host .milkdown .ProseMirror table p {
+  margin: 0;
+  line-height: 1.7;
+}
+.editor-host .milkdown .ProseMirror img {
+  max-width: 100%;
+}
+.editor-host .milkdown .ProseMirror .katex {
+  font-size: 1.1em;
+}
+.editor-host .milkdown .milkdown-slash-menu,
+.editor-host .milkdown .milkdown-toolbar,
+.editor-host .milkdown .milkdown-link-preview {
+  font-family: var(--font-ui);
+}
+.app .editor-host .milkdown .milkdown-slash-menu { font-family:var(--font-menu);font-size:var(--size-menu);border-radius:6px;max-width:calc(100vw - 32px); }
+.app .editor-host .milkdown .milkdown-slash-menu .tab-group { padding:4px 4px 0; }
+.app .editor-host .milkdown .milkdown-slash-menu .tab-group ul { padding:3px 4px;gap:4px; }
+.app .editor-host .milkdown .milkdown-slash-menu .tab-group ul li { padding:3px 7px;font-size:inherit;line-height:1.5;border-radius:3px; }
+.app .editor-host .milkdown .milkdown-slash-menu .menu-groups { padding:0 4px 4px;max-height:min(360px,calc(100vh - 80px));scroll-behavior:auto; }
+.app .editor-host .milkdown .milkdown-slash-menu .menu-groups .menu-group h6 { margin:0;padding:6px 8px;font-size:inherit;line-height:1.5;font-weight:500; }
+.app .editor-host .milkdown .milkdown-slash-menu .menu-groups .menu-group li { min-width:184px;padding:4px 8px;gap:8px;border-radius:3px; }
+.app .editor-host .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg { width:16px;height:16px; }
+.app .editor-host .milkdown .milkdown-slash-menu .menu-groups .menu-group li > span { font-size:inherit;line-height:1.5;font-weight:400; }
+.source-editor {
+  height: 100%;
+  min-height: 450px;
+  width: 100%;
+}
+.source-editor .cm-editor {
+  height: 100%;
+  outline: none;
+}
+.source-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.source-editor .cm-search {
+  background: var(--surface);
+  color: var(--text);
+}
+.source-editor .cm-panels {
+  border-color: var(--border-strong);
+}
+.source-editor .cm-textfield {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.source-editor .cm-button {
+  background: var(--elevated);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+:root[data-theme="light"] .editor-host .milkdown .ProseMirror code {
+  color: #996d8a;
+}
+@media (max-width: 1190px) {
+  .editor-host .milkdown .ProseMirror {
+    width: calc(100% - 76px);
+  }
+  .editor-host .milkdown .ProseMirror h1 {
+    font-size: 32px;
+  }
+}
+@media (max-width: 700px) {
+  .editor-host .milkdown .ProseMirror {
+    width: calc(100% - 50px);
+  }
+  .editor-host .milkdown .ProseMirror h1 {
+    font-size: 27px;
+  }
+  .editor-host .milkdown .ProseMirror h2 {
+    font-size: 20px;
+  }
+}
+
+/* A list marker belongs to the whole item, including its heading and blocks. */
+.editor-host
+  .milkdown
+  .ProseMirror
+  .milkdown-list-item-block
+  > .list-item
+  > .children
+  > .content-dom
+  > :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+  margin-bottom: 8px;
+  line-height: 1.55;
+}
+.editor-host
+  .milkdown
+  .ProseMirror
+  .milkdown-list-item-block
+  > .list-item
+  > .children
+  > .content-dom
+  > h1:first-child {
+  font-size: 26px;
+}
+.editor-host
+  .milkdown
+  .ProseMirror
+  .milkdown-list-item-block
+  > .list-item
+  > .children
+  > .content-dom
+  > h2:first-child {
+  font-size: 21px;
+}
+@media print {
+  .editor-host .milkdown .ProseMirror {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+.editor-host .ProseMirror .markdown-comment,
+.editor-host .inline-syntax[data-syntax='html'] .syntax-raw {
+  color: var(--muted);
+  font-family: var(--font-code, var(--font-mono));
+  font-size: .9em;
+}
+.editor-host .ProseMirror .comment-block {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: .75em 0;
+  padding: .25em 0;
+}

@@ -1,0 +1,71 @@
+import {test,expect,_electron as electron,type Page} from './helpers/test';
+import fs from 'node:fs/promises';import path from 'node:path';
+const project=path.resolve(import.meta.dirname,'..'),base=path.resolve(project,'../../work/e2e');
+async function fixture(name:string){await fs.mkdir(base,{recursive:true});const data=await fs.mkdtemp(path.join(base,name+'-')),env={...process.env,MOYU_USER_DATA:data,MOYU_TEST:'1',MOYU_DEMO:'1'};delete env.ELECTRON_RUN_AS_NODE;const app=await electron.launch({...(process.env.MOYU_E2E_EXECUTABLE?{executablePath:process.env.MOYU_E2E_EXECUTABLE,args:['--disable-backgrounding-occluded-windows']}:{args:[project,'--disable-backgrounding-occluded-windows']}),env});const page=await app.firstWindow(),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('.ProseMirror h1')).toBeVisible();return{app,page,data,root:path.join(data,'示例知识库'),errors};}
+async function open(page:Page,name:string,content:string){await page.evaluate(async({name,content})=>{await window.moyu!.create(name+'.md','file',content);},{name,content});await page.locator('.tree-item[title="'+name+'.md"]').click();await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title',name+'.md');await expect(page.locator('.ProseMirror')).toBeVisible();}
+async function menu(page:Page,target:string,action:string){await page.locator(target).click({button:'right'});await page.locator('.element-menu').getByRole('menuitem',{name:action,exact:true}).click();}
+async function depth(page:Page){return page.evaluate(()=>{let node=window.getSelection()?.anchorNode,element=node instanceof Element?node:node?.parentElement,depth=0;while(element){if(element.matches('li'))depth++;element=element.parentElement;}return depth;});}
+async function snapshot(page:Page,file:string){if(!process.env.MOYU_E2E_EXECUTABLE){await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(project,file),animations:'disabled'});}}
+
+test('Results exist only for open tabs, are absent from source and exported documents, and closing a running document clears them',async()=>{
+  test.setTimeout(150000);const {app,page,root,errors}=await fixture('v07-runtime');
+  const original='# 运行验证\n\n```js\nconsole.log(42)\n```\n';
+  try{
+    await open(page,'运行验证',original);await page.getByRole('button',{name:'运行代码块',exact:true}).click();await expect(page.locator('.code-output')).toHaveText('42\n');await expect(page.locator('.code-result header button')).toHaveCount(1);
+    await page.evaluate(()=>{const node=document.querySelector('.ProseMirror h1')!.firstChild!,range=document.createRange();range.selectNodeContents(node);const selected=window.getSelection()!;selected.removeAllRanges();selected.addRange(range);});await menu(page,'.code-output','复制运行结果');expect(await app.evaluate(({clipboard})=>clipboard.readText())).toBe('42\n');
+    await page.getByRole('button',{name:'源码',exact:true}).click();await expect(page.locator('.code-result,.code-ui')).toHaveCount(0);await expect(page.locator('.source-editor')).not.toContainText('总耗时');await expect(page.getByRole('button',{name:'运行代码块',exact:true})).toHaveCount(0);
+    await page.getByRole('button',{name:'阅读',exact:true}).click();await expect(page.locator('.code-output')).toHaveText('42\n');
+    const output=path.join(root,'运行验证导出.html');await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},output);await page.getByRole('button',{name:'更多文档操作',exact:true}).click();await page.getByRole('button',{name:'导出 HTML',exact:true}).click();await expect.poll(()=>fs.readFile(output,'utf8').catch(()=>'' )).toContain('language-js');const html=await fs.readFile(output,'utf8');expect(html.replace(/<[^>]+>/g,'')).toContain('console.log(42)');expect(html).not.toContain('code-result');expect(html).not.toContain('总耗时');await page.emulateMedia({media:'print'});await expect(page.locator('.code-result')).toBeHidden();await page.emulateMedia({media:null});
+    await page.getByRole('button',{name:'预览编辑',exact:true}).click();await expect(page.locator('.code-output')).toHaveText('42\n');
+    await open(page,'另一文档','# 另一文档\n');await page.locator('.tab-name[title="运行验证.md"]').click();await expect(page.locator('.code-output')).toHaveText('42\n');
+    await page.locator('.tab.active .tab-close').click();await page.locator('.tree-item[title="运行验证.md"]').click();await expect(page.locator('.milkdown-code-block')).toBeVisible();await expect(page.locator('.code-result')).toHaveCount(0);
+    expect(await fs.readFile(path.join(root,'运行验证.md'),'utf8')).toBe(original);expect(await fs.readdir(path.join(root,'.data/results')).catch(()=>[])).toEqual([]);
+    await open(page,'运行中关闭','# 等待\n\n```js\nwhile(true){}\n```\n');await page.getByRole('button',{name:'运行代码块',exact:true}).click();await expect(page.getByRole('button',{name:'停止运行',exact:true})).toBeVisible();await page.locator('.tab.active .tab-close').click();
+    await page.locator('.tree-item[title="运行中关闭.md"]').click();await expect(page.locator('.milkdown-code-block')).toBeVisible();await expect(page.locator('.code-result')).toHaveCount(0);await expect(page.getByRole('button',{name:'运行代码块',exact:true})).toBeEnabled();await expect(page.locator('.code-result')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+});
+
+test('Right attachments follow the current unsaved note; tab menus close left, right and other files consistently',async()=>{
+  test.setTimeout(150000);const{app,page,root,errors}=await fixture('v07-files');
+  try{
+    await page.evaluate(async()=>{await window.moyu!.feature('attachment.upload',{name:'被引用.svg',bytes:new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"/>')});await window.moyu!.feature('attachment.upload',{name:'其他.txt',bytes:new TextEncoder().encode('other')});});
+    await open(page,'附件甲','# 甲\n\n![图片](attachments/被引用.svg)\n');await expect(page.locator('.activity-bar').getByRole('button',{name:'附件管理',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'本文件附件',exact:true}).click();const panel=page.getByRole('region',{name:'本文件附件',exact:true});await expect(panel.locator('.attachment-item')).toHaveCount(1);await expect(panel.locator('.attachment-name')).toHaveAttribute('title','attachments/被引用.svg');
+    await open(page,'附件乙','# 乙\n\n[文件](attachments/其他.txt)\n');await expect(panel.locator('.attachment-item')).toHaveCount(1);await expect(panel.locator('.attachment-name')).toHaveAttribute('title','attachments/其他.txt');
+    await page.getByRole('button',{name:'源码',exact:true}).click();const source=page.locator('.source-editor .cm-content');await source.click();await page.keyboard.press('Control+A');await page.keyboard.insertText('# 无附件\n');await expect(panel.locator('.attachment-item')).toHaveCount(0);
+    await panel.locator('.attachment-upload input').setInputFiles({name:'新附件.txt',mimeType:'text/plain',buffer:Buffer.from('new file')});await expect(panel.locator('.attachment-name')).toHaveAttribute('title','attachments/新附件.txt');await expect(source).toContainText('[新附件.txt]');expect(await fs.readFile(path.join(root,'attachments/新附件.txt'),'utf8')).toBe('new file');
+    await page.evaluate(async()=>{await window.moyu!.feature('attachment.upload',{document:'附件乙.md',name:'附件文件名很长时保持单行显示.txt',bytes:new TextEncoder().encode('long name')});});await source.click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n\n[长文件名](attachments/附件文件名很长时保持单行显示.txt)\n');await expect(panel.locator('.attachment-item')).toHaveCount(2);await snapshot(page,'preview-v07-files.png');
+    await page.getByRole('button',{name:'预览编辑',exact:true}).click();await open(page,'标签丙','# 丙\n');await open(page,'标签丁','# 丁\n');
+    await page.locator('.tab-name[title="附件乙.md"]').click({button:'right'});await expect(page.locator('.element-menu').getByRole('menuitem',{name:'关闭文档',exact:true})).toHaveCount(0);await page.locator('.element-menu').getByRole('menuitem',{name:'关闭左侧',exact:true}).click();await expect(page.locator('.tab-name')).toHaveCount(3);await expect(page.locator('.tab-name[title="附件乙.md"]')).toBeVisible();
+    await menu(page,'.tab-name[title="附件乙.md"]','关闭右侧');await expect(page.locator('.tab-name')).toHaveCount(1);await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title','附件乙.md');expect(await fs.readFile(path.join(root,'附件乙.md'),'utf8')).toContain('[新附件.txt]');
+    await open(page,'标签戊','# 戊\n');await open(page,'标签己','# 己\n');await page.getByRole('button',{name:'Excalidraw 绘图',exact:true}).click();await page.getByRole('button',{name:'新建绘图',exact:true}).click();await expect(page.locator('.excalidraw')).toBeVisible();await menu(page,'.tab-name[title="标签戊.md"]','关闭其他');await expect(page.locator('.tab-name')).toHaveCount(1);await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title','标签戊.md');await expect(page.locator('.ProseMirror')).toBeVisible();expect(errors).toEqual([]);
+  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+});
+
+test('Quote has one line; tables can be explicitly deleted and undone; block blank lines can be clicked from elsewhere',async()=>{
+  test.setTimeout(150000);const{app,page,errors}=await fixture('v07-blocks');
+  try{
+    await open(page,'块验证','前文\n\n> 引用内容\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n中间\n\n| C | D |\n|---|---|\n| 3 | 4 |\n\n```js\nconsole.log(42)\n```\n');
+    const quote=page.locator('.ProseMirror blockquote');expect(await quote.evaluate(el=>({border:getComputedStyle(el).borderLeftWidth,before:getComputedStyle(el,'::before').display}))).toEqual({border:'2px',before:'none'});
+    const tables=page.locator('.ProseMirror table.children');await expect(tables).toHaveCount(2);await tables.first().locator('th p').first().click({button:'right'});await page.locator('.element-menu').getByRole('menuitem',{name:'删除表格',exact:true}).click();await expect(tables).toHaveCount(1);await expect(tables).toContainText('C');await page.locator('.ProseMirror').focus();await page.keyboard.press('Control+z');await expect(tables).toHaveCount(2);
+    await tables.nth(1).locator('th p').first().click({button:'right'});await page.locator('.element-menu').getByRole('menuitem',{name:'选中表格',exact:true}).click();await page.locator('.ProseMirror').focus();await page.keyboard.press('Delete');await expect(tables).toHaveCount(1);await expect(tables).toContainText('A');await page.keyboard.press('Control+z');await expect(tables).toHaveCount(2);
+    const code=page.locator('.milkdown-code-block .cm-content');await code.click();await page.keyboard.press('Control+End');await page.keyboard.press('ArrowDown');const blank=page.locator('.ProseMirror > p').last();await expect(blank).toHaveText('');
+    await page.locator('.ProseMirror > p').first().click();await blank.click();await page.keyboard.insertText('末尾空行可点击');await expect(blank).toHaveText('末尾空行可点击');
+    await page.keyboard.press('Shift+Home');await page.keyboard.press('Backspace');await expect(blank).toHaveText('');await page.locator('.ProseMirror > p').first().click();const rect=await blank.boundingBox();await page.mouse.click(rect!.x+120,rect!.y+rect!.height/2);await page.keyboard.insertText('再次选中');await expect(blank).toHaveText('再次选中');
+    await snapshot(page,'preview-v07-blocks.png');expect(errors).toEqual([]);
+  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+});
+
+test('Code exits to the same item, then a sibling, then one level per Enter; both insert menus open Excalidraw',async()=>{
+  test.setTimeout(180000);const{app,page,root,errors}=await fixture('v07-lists');
+  try{
+    for(const [name,md,levels]of [['无序','- 当前项\n\n  ```js\n  console.log(1)\n  ```\n',1],['任务','- [x] 当前项\n\n  ```js\n  console.log(1)\n  ```\n',1],['嵌套','1. 外层\n   - 二层\n     - 三层\n\n       ```js\n       console.log(1)\n       ```\n',3]]as const){
+      await open(page,name,md);await page.locator('.milkdown-code-block .cm-content').click();await page.keyboard.press('Control+End');await page.keyboard.press(name==='无序'?'ArrowDown':name==='任务'?'ArrowRight':'Control+Enter');await expect.poll(()=>depth(page)).toBe(levels);const blank=page.locator('.milkdown-code-block + p');await expect(blank).toHaveCount(1);await expect(blank).toHaveText('');
+      await page.keyboard.insertText('同项正文');await expect(blank).toHaveText('同项正文');await page.keyboard.press('Shift+Home');await page.keyboard.press('Backspace');await expect(blank).toHaveText('');const before=await page.locator('.ProseMirror li').count();await page.keyboard.press('Enter');await expect.poll(()=>depth(page)).toBe(levels);await expect(page.locator('.ProseMirror li')).toHaveCount(before+1);
+      for(let target=levels-1;target>=0;target--){await page.keyboard.press('Enter');await expect.poll(()=>depth(page)).toBe(target);}
+      await page.keyboard.insertText('列表外正文');await expect(page.locator('.ProseMirror > p').last()).toHaveText('列表外正文');await expect.poll(async()=>fs.readFile(path.join(root,name+'.md'),'utf8')).toContain('列表外正文');
+    }
+    await page.getByRole('button',{name:'显示格式工具栏',exact:true}).click();await page.locator('.formatbar .insert-button').click();await page.locator('.popover-menu').getByRole('button',{name:'Excalidraw 绘图',exact:true}).click();await expect(page.locator('.excalidraw')).toBeVisible();await page.getByRole('button',{name:'关闭画布',exact:true}).click();await expect(page.locator('.ProseMirror')).toBeVisible();
+    await open(page,'斜杠绘图','');await page.locator('.ProseMirror').click();await page.keyboard.insertText('/');const slash=page.locator('.milkdown-slash-menu');await expect(slash).toBeVisible();await expect(slash).toContainText('Excalidraw 绘图');await expect(slash).toContainText('更多内容');await slash.getByText('Excalidraw 绘图',{exact:true}).click();await expect(page.locator('.excalidraw')).toBeVisible();await page.getByRole('button',{name:'关闭画布',exact:true}).click();await expect(page.locator('.ProseMirror')).toBeVisible();await expect(page.locator('.ProseMirror')).not.toContainText('/');expect(errors).toEqual([]);
+  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+});

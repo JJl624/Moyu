@@ -1,0 +1,21 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+test('SQL memory runs discard databases immediately, ignore file databases and retain independent query results', async t => {
+  const previousSelf = global.self, previousFetch = global.fetch, messages = [];
+  global.self = { postMessage: value => messages.push(value) };
+  global.fetch = async () => {const bytes=await fs.readFile(require.resolve('sql.js/dist/sql-wasm.wasm'));return {arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};};
+  t.after(()=>{global.self=previousSelf;global.fetch=previousFetch;});
+  await import('../electron/runner/sql-worker.mjs');
+  const send = async data => {await global.self.onmessage({data});return messages.at(-1);};
+  await send({type:'init'});await send({type:'packages',runtimeSettings:{databaseFile:'database.sqlite',foreignKeys:true,maxRows:1000}});
+  const create='CREATE TABLE t(v);INSERT INTO t VALUES (42);SELECT v FROM t;';
+  const persistent=await send({type:'run',code:create,files:[]});assert.equal(persistent.error,undefined);assert.equal(persistent.dataFiles.length,1);
+  const existing=persistent.dataFiles;
+  const fresh=await send({type:'run',scope:'memory',code:'SELECT * FROM t;',files:existing});assert.match(fresh.error,/no such table/);
+  const first=await send({type:'run',scope:'memory',code:create,files:existing});assert.deepEqual(first.artifacts[0].rows,[['42']]);assert.deepEqual(first.dataFiles,[]);
+  const second=await send({type:'run',scope:'memory',code:'SELECT * FROM t;',files:[]});assert.match(second.error,/no such table/);
+  const restored=await send({type:'run',scope:'block',code:'SELECT * FROM t;',files:existing});assert.deepEqual(restored.artifacts[0].rows,[['42']]);assert.deepEqual(restored.dataFiles,existing);
+  assert.deepEqual(first.artifacts[0].rows,[['42']]);
+});

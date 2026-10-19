@@ -1,0 +1,22 @@
+.runtime-file-tree { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+.runtime-file-tree .runtime-file-tree { margin-left: 18px; padding-left: 7px; border-left: 1px solid var(--border); }
+.runtime-file-tree > li { margin: 0; padding: 0; }
+.runtime-tree-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; min-height: 32px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.runtime-tree-name { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1 1 150px; color: var(--text); background: none; border: 0; padding: 2px 0; text-align: left; font: inherit; }
+button.runtime-tree-name { cursor: pointer; }
+button.runtime-tree-name:hover { color: var(--accent); }
+.runtime-tree-name > span { overflow-wrap: anywhere; }
+.runtime-tree-name > span > small { display: block; color: var(--secondary); font-size: 10px; margin-top: 2px; }
+.runtime-tree-name > svg { flex-shrink: 0; color: var(--secondary); }
+.runtime-tree-chevron.expanded { transform: rotate(90deg); }
+.runtime-tree-chevron.empty { visibility: hidden; }
+.runtime-tree-meta { color: var(--secondary); font-size: 11px; white-space: nowrap; }
+.runtime-tree-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; font-size: 11px; }
+.runtime-tree-actions > small { color: var(--secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runtime-tree-actions > a { color: var(--accent); text-decoration: none; }
+.runtime-tree-actions > a:hover { text-decoration: underline; }
+.runtime-workspace .runtime-tree-actions .secondary-button { padding: 3px 9px; min-height: 26px; font-size: 11px; }
+.runtime-tree-row .feature-error { flex-basis: 100%; font-size: 11px; }
+.runtime-tree-row .manual-file-valid, .runtime-tree-row .muted-note { font-size: 11px; margin: 0; }
+.runtime-import-preview .runtime-file-tree { max-height: none; overflow: visible; padding-left: 0; }
+.runtime-import-preview .runtime-file-tree .runtime-file-tree { padding-left: 7px; }

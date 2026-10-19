@@ -1,0 +1,13 @@
+{
+  "name": "长文章",
+  "version": "0.18.19",
+  "deviceScale": 1,
+  "openMs": 375,
+  "medianKeyMs": 14,
+  "p95KeyMs": 15,
+  "editP95Ms": 42,
+  "idleCPUSeconds": 0.0014869999999999987,
+  "idleLayouts": 0,
+  "retainedHeapMB": 12.997116088867188,
+  "memoryGrowthMB": 1.693115234375
+}

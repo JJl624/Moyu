@@ -1,0 +1,13 @@
+{
+  "name": "大量图片",
+  "version": "0.18.19",
+  "deviceScale": 1,
+  "openMs": 1078,
+  "medianKeyMs": 7,
+  "p95KeyMs": 15,
+  "editP95Ms": 74,
+  "idleCPUSeconds": 0.0012730000000000033,
+  "idleLayouts": 0,
+  "retainedHeapMB": 13.405014038085938,
+  "memoryGrowthMB": 1.5029525756835938
+}

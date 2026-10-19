@@ -1,0 +1,25 @@
+.sidebar-title:has(>.workspace-picker){padding:0 10px 0 12px;gap:3px}
+.sidebar-title>.workspace-picker{flex:1;min-width:0;margin:0;padding:4px 3px;border:0;background:transparent;gap:6px}
+.sidebar-title>.workspace-picker>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.sidebar-title>.workspace-picker>svg:first-child{display:none}
+.sidebar-title>.workspace-picker>svg{flex-shrink:0}
+.default-font-field>.pref-row{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 0;padding:0;border:0}
+.default-font-field>.pref-row>span{font-size:11px;color:var(--secondary)}
+.default-font-field>.pref-row>div{flex:1;min-width:0;display:flex;gap:5px}
+.default-font-field>.pref-row input[type=range]{width:auto;flex:1;min-width:28px}
+.default-font-field>.pref-row .number-input{width:55px}
+.default-font-field>.pref-row small{width:auto;font-size:11px}
+.reading-view :is(h1,h2,h3,h4,h5,h6){--heading-base:var(--size-reading);--heading-ratio:var(--heading-scale-reading,1)}
+.editor-host .milkdown .ProseMirror :is(h1,h2,h3,h4,h5,h6){--heading-base:var(--editor-font-size,16px);--heading-ratio:var(--heading-scale,1)}
+.reading-view h1,.editor-host .milkdown .ProseMirror h1{font-size:calc(var(--heading-base)*var(--heading-ratio)*2)}
+.reading-view h2,.editor-host .milkdown .ProseMirror h2,.editor-host .milkdown .ProseMirror .milkdown-list-item-block h2{font-size:calc(var(--heading-base)*var(--heading-ratio)*1.375)}
+.reading-view h3,.editor-host .milkdown .ProseMirror h3{font-size:calc(var(--heading-base)*var(--heading-ratio)*1.125)}
+.reading-view h4,.editor-host .milkdown .ProseMirror h4{font-size:calc(var(--heading-base)*var(--heading-ratio))}
+.reading-view h5,.editor-host .milkdown .ProseMirror h5{font-size:calc(var(--heading-base)*var(--heading-ratio)*.9)}
+.reading-view h6,.editor-host .milkdown .ProseMirror h6{font-size:calc(var(--heading-base)*var(--heading-ratio)*.85)}
+.syntax-preview mark,.moyu-source-highlight,.reading-view mark{background:var(--mark-bg);color:inherit;border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.conflict-compare mark{color:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:2px}
+.conflict-compare .diff-left{background:color-mix(in srgb,var(--danger) 24%,transparent);border-bottom:1px solid var(--danger)}
+.conflict-compare .diff-right{background:color-mix(in srgb,var(--green) 24%,transparent);border-bottom:1px solid var(--green)}
+.sync-conflict .conflict-compare{grid-template-columns:minmax(0,1fr);gap:8px}
+.conflict-compare>div{min-width:0}

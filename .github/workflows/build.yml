@@ -1,0 +1,63 @@
+name: Windows release
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Check release version
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and package versions differ' }
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: node scripts/dist-win.mjs
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Hash portable executable
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $exe = "release/v$version/Moyu-$version-x64.exe"
+          $hash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  $(Split-Path -Leaf $exe)" | Set-Content -Encoding utf8NoBOM "release/v$version/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Moyu-windows-x64
+          if-no-files-found: error
+          path: |
+            release/v*/*.exe
+            release/v*/SHA256SUMS.txt
+      - name: Create release draft
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          $existing = gh release view $tag --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (-not ($existing | ConvertFrom-Json).isDraft) { Write-Host 'Published release retained'; exit 0 }
+          } else {
+            gh release create $tag --verify-tag --draft --title "Moyu $version" --notes "Windows x64 便携版。"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create release' }
+          }
+          gh release upload $tag "release/v$version/Moyu-$version-x64.exe" "release/v$version/SHA256SUMS.txt" --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not upload release assets' }

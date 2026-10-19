@@ -1,0 +1,2 @@
+
+.file-name-form{padding:6px 4px;font-size:12px}.file-name-entry{display:flex;align-items:center;gap:4px;min-width:0}.file-name-entry input{width:0;min-width:0;flex:1;border:1px solid var(--accent);border-radius:3px;padding:5px 6px;background:var(--surface);color:var(--text);font:12px var(--font-ui)}.file-name-entry .icon-button{flex:none;width:24px;height:24px}.file-name-form .form-error{margin:5px 0}.tree-new-row{padding-right:8px}.code-data-new-file{border-top:1px solid var(--border);margin-top:8px}

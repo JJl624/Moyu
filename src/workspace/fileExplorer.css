@@ -1,0 +1,25 @@
+.file-sidebar {container:explorer / inline-size}
+.file-sidebar .sidebar-title {min-width:0;box-sizing:border-box}
+.file-sidebar .sidebar-title>.workspace-picker {min-width:0;overflow:hidden;box-sizing:border-box}
+.file-sidebar .sidebar-title>.workspace-picker>span {white-space:nowrap}
+.file-sidebar .sidebar-title>div {flex:none}
+.file-sidebar .file-explorer-controls {align-items:center;min-width:0}
+.file-sidebar .explorer-sort-button {flex:none;white-space:nowrap;min-height:28px;line-height:20px}
+.file-sidebar .explorer-sort-button>span {white-space:nowrap}
+.file-sidebar .explorer-owner {flex:1;line-height:18px}
+.file-sidebar .file-tree {--tree-indent-limit:max(12px,calc(100cqi - 146px))}
+.file-sidebar .tree-row {min-width:0;box-sizing:border-box;gap:4px}
+.file-sidebar .tree-item>svg,.file-sidebar .tree-chevron {flex-shrink:0}
+.file-sidebar .tree-item>span:last-child {min-width:0;flex:1}
+.file-sidebar .tree-more {flex:none}
+.file-sidebar .sync-badge {align-self:center;line-height:1}
+.file-sidebar .empty-side {padding:12px;box-sizing:border-box;min-width:0;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+@container explorer (max-width:240px) {
+  .file-sidebar .sidebar-title:has(>.workspace-picker) {display:grid;grid-template-columns:minmax(0,1fr);height:auto;gap:4px;padding:6px 10px}
+  .file-sidebar .sidebar-title>.workspace-picker {width:100%;min-height:28px}
+  .file-sidebar .sidebar-title>div {justify-self:end;justify-content:flex-end;max-width:100%}
+  .file-sidebar .file-explorer-controls {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px}
+  .file-sidebar .explorer-sort-button {justify-self:start}
+  .file-sidebar .explorer-owner {grid-column:1/-1;margin:0;width:100%}
+  .file-sidebar .file-tree {--tree-indent-step:8px}
+}

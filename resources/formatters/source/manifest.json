@@ -1,0 +1,14 @@
+[
+  {
+    "file": "dprint-plugin-stylua-0.2.1.crate",
+    "source": "https://static.crates.io/crates/dprint-plugin-stylua/dprint-plugin-stylua-0.2.1.crate",
+    "bytes": 15815,
+    "sha256": "28568a5dedab25557f50055105ed02b1593e5dab69aedfe581db257f97fb14b3"
+  },
+  {
+    "file": "stylua-0.15.2.crate",
+    "source": "https://static.crates.io/crates/stylua/stylua-0.15.2.crate",
+    "bytes": 142253,
+    "sha256": "23b277d2c1a3d2c30d02fb413fa483ea1400dedf0d6b61a639eb7cafbf4eabb6"
+  }
+]

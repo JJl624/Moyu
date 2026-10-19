@@ -1,0 +1,6 @@
+.html-file-viewer{display:flex;flex-direction:column;min-height:0;flex:1;height:100%;overflow:hidden}
+.html-file-viewer>iframe{display:block;flex:1;min-height:0;width:100%;border:0;background:white;color-scheme:light}
+.html-file-viewer>.text-file-editor{flex:1;min-height:0}
+.html-file-modes{display:flex;align-items:center;gap:4px}
+.html-file-modes>button{display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:4px;color:var(--secondary)}
+.html-file-modes>button.selected{background:var(--hover);color:var(--text)}

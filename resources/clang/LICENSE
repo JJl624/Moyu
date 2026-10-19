@@ -1,0 +1,35 @@
+MIT License
+
+Copyright (c) 2026 the clang-wasm authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+MIT was chosen after checking it against everything this repository redistributes. It is compatible
+with all of it:
+
+- the bundled runtime is Apache-2.0 with the LLVM exception, Apache-2.0, MIT, BSD-2-Clause,
+  BSD-3-Clause and CC0;
+- `@wasm-idle/llvm-core` is MIT and Apache-2.0 with the LLVM exception.
+
+Nothing here is copyleft, so nothing here restricts what you can do with the programs you compile.
+
+This covers the code written for this repository: the demo page with its worker and server, and the
+package in packages/clang-wasm.
+
+It does not cover the third-party binaries that ship alongside it, which keep their own licenses.
+Those are listed, each with what it is and where it came from, in THIRD-PARTY-NOTICES.md.

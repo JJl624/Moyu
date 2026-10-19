@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>像素鸟 - Flappy Bird</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background-color: #1a1a24;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    #game-container {
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      background: #70c5ce;
+      image-rendering: pixelated;
+    }
+  canvas{width:min(320px,100vw,calc(100vh * 2 / 3));height:auto}
+</style>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    ctx.imageSmoothingEnabled = false;
+
+    // --- 音效系统 (Web Audio API) ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'jump') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'score') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.setValueAtTime(1318.51, now + 0.08);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+    }
+
+    // --- 游戏状态 ---
+    const STATE = {
+      GET_READY: 0,
+      PLAYING: 1,
+      GAME_OVER: 2
+    };
+    let currentState = STATE.GET_READY;
+
+    let frames = 0;
+    let score = 0;
+    
+    // 安全读取本地最高分（防止 iframe 沙箱环境报错）
+    let highScore = 0;
+    try {
+      highScore = parseInt(localStorage.getItem('fb_high_score')) || 0;
+    } catch (e) {
+      highScore = 0;
+    }
+
+    // --- 游戏物理参数（已调柔和并增加限速） ---
+    const GRAVITY = 0.16;             // 重力加速度
+    const JUMP_STRENGTH = -4.2;       // 起跳力度
+    const MAX_FALL_SPEED = 6.2;       // 最大下落速度封顶
+    const PIPE_SPEED = 1.6;           // 水管横移速度
+    const PIPE_SPAWN_INTERVAL = 110;  // 生成间隔（帧数）
+    const PIPE_GAP = 110;             // 水管间隙
+
+    // --- 背景与地面 ---
+    const ground = {
+      h: 80,
+      x: 0,
+      draw() {
+        const y = canvas.height - this.h;
+        ctx.fillStyle = '#73be2e';
+        ctx.fillRect(0, y, canvas.width, 14);
+        ctx.fillStyle = '#568f23';
+        ctx.fillRect(0, y + 10, canvas.width, 4);
+
+        ctx.fillStyle = '#ded895';
+        ctx.fillRect(0, y + 14, canvas.width, this.h - 14);
+
+        ctx.fillStyle = '#cbb968';
+        for (let i = 0; i < canvas.width + 20; i += 16) {
+          ctx.fillRect((i - (this.x % 16)), y + 14, 8, this.h - 14);
+        }
+
+        ctx.fillStyle = '#543847';
+        ctx.fillRect(0, y, canvas.width, 2);
+      },
+      update() {
+        if (currentState !== STATE.GAME_OVER) {
+          this.x += PIPE_SPEED;
+        }
+      }
+    };
+
+    const background = {
+      draw() {
+        ctx.fillStyle = '#83d7a4';
+        for (let i = 0; i < canvas.width; i += 40) {
+          const h = 40 + ((i * 13) % 35);
+          ctx.fillRect(i, canvas.height - ground.h - h, 32, h);
+        }
+
+        ctx.fillStyle = '#f0fbff';
+        this.drawCloud(40, 100, 48);
+        this.drawCloud(180, 70, 60);
+      },
+      drawCloud(x, y, w) {
+        ctx.beginPath();
+        ctx.arc(x, y, 16, 0, Math.PI * 2);
+        ctx.arc(x + w * 0.3, y - 6, 20, 0, Math.PI * 2);
+        ctx.arc(x + w * 0.6, y, 14, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    // --- 像素小鸟 ---
+    const bird = {
+      x: 60,
+      y: 200,
+      w: 24,
+      h: 18,
+      velocity: 0,
+      rotation: 0,
+
+      reset() {
+        this.x = 60;
+        this.y = 200;
+        this.velocity = 0;
+        this.rotation = 0;
+      },
+
+      jump() {
+        this.velocity = JUMP_STRENGTH;
+        playSound('jump');
+      },
+
+      update() {
+        if (currentState === STATE.GET_READY) {
+          this.y = 200 + Math.sin(frames * 0.08) * 5;
+          this.rotation = 0;
+          return;
+        }
+
+        this.velocity += GRAVITY;
+        
+        // 限制最大下落速度，防止俯冲失控
+        if (this.velocity > MAX_FALL_SPEED) {
+          this.velocity = MAX_FALL_SPEED;
+        }
+
+        this.y += this.velocity;
+
+        // 根据垂直速度平滑调整朝向
+        if (this.velocity < 0) {
+          this.rotation = -0.32;
+        } else {
+          this.rotation += 0.035;
+          if (this.rotation > Math.PI / 2) {
+            this.rotation = Math.PI / 2;
+          }
+        }
+
+        // 触地检测
+        if (this.y + this.h / 2 >= canvas.height - ground.h) {
+          this.y = canvas.height - ground.h - this.h / 2;
+          if (currentState === STATE.PLAYING) {
+            gameOver();
+          }
+        }
+
+        // 顶部边界限制
+        if (this.y - this.h / 2 <= 0) {
+          this.y = this.h / 2;
+          this.velocity = 0;
+        }
+      },
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        const x = -this.w / 2;
+        const y = -this.h / 2;
+
+        ctx.fillStyle = '#f7d02c';
+        ctx.fillRect(x, y, this.w - 4, this.h);
+
+        ctx.fillStyle = '#e5ab1f';
+        ctx.fillRect(x + 2, y + this.h - 6, this.w - 8, 6);
+
+        ctx.fillStyle = '#543847';
+        ctx.strokeRect(x, y, this.w - 4, this.h);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + 12, y + 2, 7, 7);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x + 16, y + 4, 3, 4);
+
+        ctx.fillStyle = '#e85b24';
+        ctx.fillRect(x + 15, y + 9, 9, 6);
+        ctx.fillStyle = '#543847';
+        ctx.fillRect(x + 15, y + 12, 9, 1);
+
+        const wingOffset = (currentState === STATE.PLAYING && this.velocity < 0) ? -2 : 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + 2, y + 6 + wingOffset, 8, 6);
+        ctx.fillStyle = '#e5ab1f';
+        ctx.fillRect(x + 2, y + 9 + wingOffset, 8, 3);
+
+        ctx.restore();
+      }
+    };
+
+    // --- 水管系统 ---
+    const pipes = {
+      items: [],
+
+      reset() {
+        this.items = [];
+      },
+
+      update() {
+        if (currentState !== STATE.PLAYING) return;
+
+        if (frames % PIPE_SPAWN_INTERVAL === 0) {
+          const minTop = 40;
+          const maxTop = canvas.height - ground.h - PIPE_GAP - 40;
+          const topHeight = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
+
+          this.items.push({
+            x: canvas.width,
+            top: topHeight,
+            bottom: canvas.height - ground.h - topHeight - PIPE_GAP,
+            w: 48,
+            passed: false
+          });
+        }
+
+        for (let i = 0; i < this.items.length; i++) {
+          const p = this.items[i];
+          p.x -= PIPE_SPEED;
+
+          // 得分判定
+          if (!p.passed && p.x + p.w < bird.x - bird.w / 2) {
+            p.passed = true;
+            score++;
+            playSound('score');
+            if (score > highScore) {
+              highScore = score;
+              try {
+                localStorage.setItem('fb_high_score', highScore);
+              } catch (e) {}
+            }
+          }
+
+          // AABB 碰撞检测
+          const birdBox = {
+            l: bird.x - bird.w / 2 + 2,
+            r: bird.x + bird.w / 2 - 2,
+            t: bird.y - bird.h / 2 + 2,
+            b: bird.y + bird.h / 2 - 2
+          };
+
+          const topPipeBox = { l: p.x, r: p.x + p.w, t: 0, b: p.top };
+          const bottomPipeBox = { l: p.x, r: p.x + p.w, t: canvas.height - ground.h - p.bottom, b: canvas.height - ground.h };
+
+          if (checkCollision(birdBox, topPipeBox) || checkCollision(birdBox, bottomPipeBox)) {
+            gameOver();
+          }
+
+          if (p.x + p.w < 0) {
+            this.items.splice(i, 1);
+            i--;
+          }
+        }
+      },
+
+      draw() {
+        for (let p of this.items) {
+          this.drawPipe(p.x, 0, p.w, p.top, true);
+          const bottomY = canvas.height - ground.h - p.bottom;
+          this.drawPipe(p.x, bottomY, p.w, p.bottom, false);
+        }
+      },
+
+      drawPipe(x, y, w, h, isTop) {
+        ctx.fillStyle = '#73bf2e';
+        ctx.fillRect(x, y, w, h);
+
+        ctx.fillStyle = '#a1e452';
+        ctx.fillRect(x + 3, y, 4, h);
+        ctx.fillStyle = '#528e1c';
+        ctx.fillRect(x + w - 7, y, 5, h);
+
+        const capH = 20;
+        const capY = isTop ? y + h - capH : y;
+        ctx.fillStyle = '#73bf2e';
+        ctx.fillRect(x - 2, capY, w + 4, capH);
+
+        ctx.fillStyle = '#a1e452';
+        ctx.fillRect(x + 1, capY, 4, capH);
+        ctx.fillStyle = '#528e1c';
+        ctx.fillRect(x + w - 5, capY, 5, capH);
+
+        ctx.fillStyle = '#543847';
+        ctx.strokeRect(x - 2, capY, w + 4, capH);
+        ctx.strokeRect(x, isTop ? 0 : capY + capH, w, isTop ? h - capH : h - capH);
+      }
+    };
+
+    function checkCollision(a, b) {
+      return a.r > b.l && a.l < b.r && a.b > b.t && a.t < b.b;
+    }
+
+    function gameOver() {
+      if (currentState === STATE.PLAYING) {
+        playSound('hit');
+        currentState = STATE.GAME_OVER;
+      }
+    }
+
+    // --- UI 渲染系统 ---
+    const ui = {
+      draw() {
+        if (currentState === STATE.GET_READY) {
+          this.drawCenteredText('FLAPPY BIRD', canvas.height * 0.28, 28, '#ffffff');
+          this.drawCenteredText('点击或按空格开始', canvas.height * 0.65, 14, '#ffffff');
+        } else if (currentState === STATE.PLAYING) {
+          this.drawScore(score, canvas.height * 0.15);
+        } else if (currentState === STATE.GAME_OVER) {
+          const panelW = 200;
+          const panelH = 130;
+          const panelX = (canvas.width - panelW) / 2;
+          const panelY = canvas.height * 0.3;
+
+          ctx.fillStyle = '#ded895';
+          ctx.fillRect(panelX, panelY, panelW, panelH);
+          ctx.strokeStyle = '#543847';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+          this.drawCenteredText('GAME OVER', panelY - 18, 24, '#e85b24');
+
+          ctx.fillStyle = '#543847';
+          ctx.font = 'bold 14px "Courier New"';
+          ctx.textAlign = 'left';
+          ctx.fillText(`得分: ${score}`, panelX + 24, panelY + 45);
+          ctx.fillText(`最高: ${highScore}`, panelX + 24, panelY + 75);
+
+          this.drawCenteredText('点击重新开始', panelY + panelH + 30, 13, '#ffffff');
+        }
+      },
+
+      drawCenteredText(text, y, size, color) {
+        ctx.font = `bold ${size}px "Courier New"`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#543847';
+        ctx.fillText(text, canvas.width / 2 + 1.5, y + 1.5);
+        ctx.fillStyle = color;
+        ctx.fillText(text, canvas.width / 2, y);
+      },
+
+      drawScore(num, y) {
+        ctx.font = 'bold 36px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#543847';
+        ctx.fillText(num, canvas.width / 2 + 2, y + 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(num, canvas.width / 2, y);
+      }
+    };
+
+    // --- 输入处理 ---
+    function handleAction() {
+      initAudio();
+
+      if (currentState === STATE.GET_READY) {
+        currentState = STATE.PLAYING;
+        bird.jump();
+      } else if (currentState === STATE.PLAYING) {
+        bird.jump();
+      } else if (currentState === STATE.GAME_OVER) {
+        pipes.reset();
+        bird.reset();
+        score = 0;
+        currentState = STATE.GET_READY;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        handleAction();
+      }
+    });
+
+    canvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      handleAction();
+    });
+
+    // --- 锁定标准 60FPS 物理时钟的主循环 ---
+    let lastTime = 0;
+    const fpsInterval = 1000 / 60; // 严格固定物理更新周期为 1/60 秒
+
+    function loop(timestamp) {
+      requestAnimationFrame(loop);
+
+      if (!lastTime) lastTime = timestamp;
+      const elapsed = timestamp - lastTime;
+
+      // 在高刷屏（90Hz/120Hz/144Hz+）上对逻辑更新进行节流，保持恒定 60FPS 物理速度
+      if (elapsed >= fpsInterval) {
+        lastTime = timestamp - (elapsed % fpsInterval);
+
+        // 1. 物理更新
+        bird.update();
+        pipes.update();
+        ground.update();
+        frames++;
+
+        // 2. 渲染绘制
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        background.draw();
+        pipes.draw();
+        ground.draw();
+        bird.draw();
+        ui.draw();
+      }
+    }
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

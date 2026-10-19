@@ -1,0 +1,62 @@
+import {selectPreference} from './helpers/runtime-ui';
+import {openRuntimeInstaller} from './helpers/runtime-ui';
+import {_electron as electron,expect,test} from './helpers/test';
+import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';
+const project=path.resolve(import.meta.dirname,'..'),work=path.resolve(project,'../../work');
+async function launch(){const data=await fs.mkdtemp(path.join(work,'html-download-e2e-'));const env={...process.env,MOYU_USER_DATA:data,MOYU_TEST:'1',MOYU_DEMO:'1'};delete env.ELECTRON_RUN_AS_NODE;const app=await electron.launch({...process.env.MOYU_E2E_EXECUTABLE?{executablePath:process.env.MOYU_E2E_EXECUTABLE,args:[]}:{args:[project]},env});const page=await app.firstWindow();await expect(page.locator('.ProseMirror h1')).toBeVisible();const win=await app.browserWindow(page);await win.evaluate(win=>{win.show();win.focus();win.webContents.focus();});return {app,page,data};}
+test('HTML reading preserves full-page layout, local resources, interaction and source editing without exposing host APIs',async()=>{
+ const {app,page,data}=await launch();try{
+  const root=path.join(data,'示例知识库');await fs.mkdir(path.join(root,'网页'));
+  await fs.writeFile(path.join(root,'网页','style.css'),'html,body{margin:0;height:100%;overflow:hidden}body{background:rgb(10,20,30)}button{color:white}');
+  await fs.writeFile(path.join(root,'网页','script.js'),'document.querySelector("button").onclick=()=>document.querySelector("button").textContent="成功";');
+  await fs.writeFile(path.join(root,'网页','module.mjs'),'import {value} from \"./value.mjs\";document.body.dataset.module=String(value);');await fs.writeFile(path.join(root,'网页','value.mjs'),'export const value=42;');
+  const html='<!doctype html><html lang="zh"><head><meta charset="utf-8"><link rel="stylesheet" href="style.css"></head><body><button>交互</button><script src="script.js"></script><script type="module" src="module.mjs"></script></body></html>';
+  await fs.writeFile(path.join(root,'网页','页面.html'),html);await page.evaluate(()=>window.moyu!.feature('file.html-open',{path:'网页/页面.html',content:'<p>probe</p>'}));
+  await expect(page.locator('.tree-item[title="网页"]')).toBeVisible();await page.locator('.tree-item[title="网页"]').click();await page.locator('.tree-item[title="网页/页面.html"]').dblclick();await expect(page.locator('.text-file-editor')).toBeVisible();await page.getByRole('button',{name:'阅读',exact:true}).click();
+  const frame=page.frameLocator('iframe[title="HTML 文件"]');await expect(frame.getByRole('button',{name:'交互'})).toBeVisible();await frame.getByRole('button',{name:'交互'}).click();await expect(frame.getByRole('button',{name:'成功'})).toBeVisible();
+  expect(await frame.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(10, 20, 30)');
+  const child=page.frames().find(f=>f.url().startsWith('moyu-preview:'))!;
+  expect(await child.evaluate(()=>{try{return parent.document.title;}catch{return 'isolated';}})).toBe('isolated');expect(await child.evaluate(()=>typeof (window as any).moyu+':'+typeof (window as any).require)).toBe('undefined:undefined');
+  expect(await child.evaluate(()=>document.documentElement.scrollHeight<=innerHeight)).toBe(true);await expect.poll(()=>child.evaluate(()=>document.body.dataset.module)).toBe('42');
+  await page.getByRole('button',{name:'源码',exact:true}).click();await expect(page.locator('.text-file-editor')).toBeVisible();await expect(page.locator('.mode-switch')).toHaveCount(0);await expect(page.locator('.formatbar')).toHaveCount(0);
+  await page.locator('.text-file-editor .cm-content').click();await page.keyboard.press('Control+End');await page.keyboard.insertText('<!--edited-->');await page.keyboard.press('Control+s');await expect.poll(()=>fs.readFile(path.join(root,'网页','页面.html'),'utf8')).toBe(html+'<!--edited-->');
+  await page.getByRole('button',{name:'阅读',exact:true}).click();await expect(frame.getByRole('button',{name:'交互'})).toBeVisible();
+  expect(await page.locator('.html-file-modes button').allTextContents()).toEqual(['','阅读','源码']);await expect(page.locator('.html-file-modes button').first()).toHaveAttribute('title','刷新 HTML');
+  await page.locator('.tree-item[title="开始使用.md"]').dblclick();await page.locator('.tree-item[title="网页/页面.html"]').dblclick();await expect(page.locator('.text-file-editor')).toBeVisible();await expect(page.locator('iframe[title="HTML 文件"]')).toHaveCount(0);
+ }finally{await app.evaluate(({app})=>app.exit(0));}
+});
+test('full HTML results retain document styles and viewport height with no host-added vertical gutter',async()=>{
+ const {app,page}=await launch();try{
+  const markup='<!doctype html><html lang="zh"><head><style>html,body{margin:0;padding:0;height:100%;overflow:hidden}#page{height:100vh;display:flex;align-items:center;justify-content:center;background:#123}</style></head><body class="demo"><div id="page"><button onclick="this.textContent=42">测试</button></div><script>document.body.dataset.loaded="yes"</script></body></html>';
+  await page.evaluate(async markup=>{await window.moyu!.create('页面结果.md','file','```js\ndisplayHTML('+JSON.stringify(markup)+');\n```\n');},markup);await page.locator('.tree-item[title="页面结果.md"]').dblclick();for(const mode of ['worker','dom']){await page.getByLabel('JavaScript 运行模式',{exact:true}).selectOption(mode);await page.getByRole('button',{name:'运行代码块',exact:true}).click();
+  const frame=page.frameLocator('iframe[title="HTML 运行结果"]');await expect(frame.getByRole('button',{name:'测试'})).toBeVisible();await frame.getByRole('button',{name:'测试'}).click();await expect(frame.getByRole('button',{name:'42'})).toBeVisible();
+  await expect(page.locator('.html-result-toolbar')).not.toContainText('可交互');const child=page.frames().find(f=>f.url().startsWith('moyu-html:'))!;
+  expect(await child.evaluate(()=>[document.documentElement.lang,document.body.className,document.body.dataset.loaded])).toEqual(['zh','demo','yes']);
+  for(const height of [200,360,800]){await page.locator('.html-result-canvas').evaluate((el,height)=>{(el as HTMLElement).style.height=height+'px';},height);await expect.poll(()=>child.evaluate(()=>({height:innerHeight,scroll:document.documentElement.scrollHeight,body:document.body.scrollHeight}))).toEqual({height,scroll:height,body:height});}}
+ }finally{await app.evaluate(({app})=>app.exit(0));}
+});
+test('environment and npm settings display streaming progress, cancel downloads and permit another operation',async()=>{
+ const {app,page,data}=await launch();try{
+  await app.evaluate(()=>{const original=globalThis.fetch;let slow=true;(globalThis as any).downloadTestFast=()=>{slow=false;};globalThis.fetch=async(input,options)=>{if(!String(input).startsWith('https://cancel.invalid/'))return original(input,options);const metadata={versions:{'1.14.2':{version:'1.14.2',dist:{tarball:'https://cancel.invalid/archive.tgz',integrity:'sha512-dGVzdA=='}}},'dist-tags':{latest:'1.14.2'}};if(!String(input).endsWith('archive.tgz'))return new Response(JSON.stringify(metadata));if(!slow)return new Response('unused');return new Response(new ReadableStream({start(controller){controller.enqueue(new Uint8Array(1024));options?.signal?.addEventListener('abort',()=>controller.error(options.signal!.reason),{once:true});}}),{headers:{'content-length':'1048576'}});};});
+  await page.evaluate(()=>window.moyu!.feature('runtime.configure',{language:'sql',registry:'https://cancel.invalid/'}));
+  await page.getByRole('button',{name:'偏好设置',exact:true}).click();await selectPreference(page,'SQL');await page.getByRole('tab',{name:'环境',exact:true}).click();await openRuntimeInstaller(page);await page.getByRole('button',{name:'安装',exact:true}).click();
+  await expect(page.locator('.download-progress progress')).toHaveAttribute('value','1024');await expect(page.locator('.download-progress progress')).toHaveAttribute('max','1048576');await page.getByRole('tab',{name:'运行设置',exact:true}).click();await expect(page.locator('.download-progress progress')).toBeVisible();await page.locator('.download-progress').getByRole('button',{name:'取消',exact:true}).click();await page.getByRole('tab',{name:await page.locator('.pref-tabs .active').innerText()==='JavaScript'?'依赖':'环境',exact:true}).click();await expect(page.getByText('已取消下载',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'安装',exact:true})).toBeEnabled();await expect(page.locator('.runtime-installed')).toHaveCount(0);
+  expect(await fs.readdir(path.join(data,'runtimes','sql','staging'))).toEqual([]);await page.getByRole('button',{name:'刷新版本',exact:true}).click();await expect(page.getByRole('button',{name:'刷新版本',exact:true})).toBeEnabled();
+  await page.evaluate(()=>window.moyu!.feature('javascript.configure',{registry:'https://cancel.invalid/'}));await selectPreference(page,'JavaScript');await page.getByRole('tab',{name:'依赖',exact:true}).click();await page.getByLabel('npm 包名',{exact:true}).fill('example');await page.getByRole('button',{name:'查询版本',exact:true}).click();await expect(page.getByLabel('npm 包版本')).toBeVisible();await page.getByRole('button',{name:'安装',exact:true}).click();await expect(page.locator('.download-progress progress')).toHaveAttribute('value','1024');await page.locator('.download-progress').getByRole('button',{name:'取消',exact:true}).click();await expect(page.getByText('已取消下载',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'安装',exact:true})).toBeEnabled();expect(await fs.readdir(path.join(data,'JavaScript','staging')).catch(e=>{if(e.code==='ENOENT')return [];throw e;})).toEqual([]);
+ }finally{await app.evaluate(({app})=>app.exit(0));}
+});
+test('Python directory downloads show indeterminate progress and can be cancelled without saving a partial catalog',async()=>{
+ const server=http.createServer((_req,res)=>{res.writeHead(200,{'Content-Type':'text/html'});res.write('<a href="1.0.0/">version</a>');});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const port=(server.address() as {port:number}).port;
+ const {app,page,data}=await launch();try{
+  await page.evaluate(port=>window.moyu!.feature('python.configure',{mirror:0,mirrors:[{name:'test',index:'http://127.0.0.1:'+port+'/',base:'http://127.0.0.1:'+port+'/',layout:'version'}]}),port);
+  await page.getByRole('button',{name:'偏好设置',exact:true}).click();await selectPreference(page,'Python');await page.getByRole('tab',{name:'环境',exact:true}).click();await openRuntimeInstaller(page);await page.getByRole('button',{name:'刷新可用版本',exact:true}).click();await expect(page.locator('.download-progress progress')).toBeVisible();await expect(page.locator('.download-progress progress')).not.toHaveAttribute('value');await page.locator('.download-progress').getByRole('button',{name:'取消',exact:true}).click();await expect(page.getByText('已取消',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'刷新可用版本',exact:true})).toBeEnabled();expect(await fs.stat(path.join(data,'Python','versions.json')).catch(()=>null)).toBeNull();
+ }finally{await app.evaluate(({app})=>app.exit(0));server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
+});
+test('WebDAV connection testing leaves the progress cancel control usable while its fields are disabled',async()=>{
+ const server=http.createServer((_req,res)=>{res.writeHead(200);res.flushHeaders();});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const port=(server.address() as {port:number}).port;
+ const {app,page}=await launch();try{
+  await page.evaluate(port=>window.moyu!.feature('connections.save',{kind:'webdav',url:'http://127.0.0.1:'+port,directory:'/Moyu',username:'test',password:'test'}),port);
+  await page.getByRole('button',{name:'偏好设置',exact:true}).click();await selectPreference(page,'WebDAV');await page.getByRole('button',{name:'测试连接',exact:true}).click();
+  await expect(page.locator('.download-progress progress')).toBeVisible();await expect(page.getByRole('button',{name:'测试连接',exact:true})).toBeDisabled();await expect(page.locator('.download-progress').getByRole('button',{name:'取消',exact:true})).toBeEnabled();await page.locator('.download-progress').getByRole('button',{name:'取消',exact:true}).click();await expect(page.getByText('已取消',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'测试连接',exact:true})).toBeEnabled();
+ }finally{await app.evaluate(({app})=>app.exit(0));server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
+});
