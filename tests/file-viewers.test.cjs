@@ -6,7 +6,7 @@ const test = require('node:test'),
 const { Vault } = require('../electron/vault.cjs');
 const { binaryRead } = require('../electron/file-viewers.cjs');
 test('all CM text filenames use safe UTF-8 reads and conflict-aware saves; BOM/CRLF survive', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'moyu-files-')), vault = new Vault(root);
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'moyu-files-')), vault = await new Vault(root).init();
   try {
     for (
       const name of [
@@ -58,7 +58,7 @@ test('native images and binary viewers share final-extension classification and 
       'cur',
     ]
   ) assert.equal(fileKind('图.excalidraw.' + extension), 'image');
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'moyu-binary-')), vault = new Vault(root);
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'moyu-binary-')), vault = await new Vault(root).init();
   try {
     await fs.writeFile(path.join(root, 'bad.db'), 'wrong');
     await assert.rejects(binaryRead(vault, 'bad.db', true), /SQLite/);

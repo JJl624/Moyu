@@ -1,7 +1,7 @@
 const { test } = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs/promises'), path = require('node:path'), os = require('node:os');
 const { Vault } = require('../electron/vault.cjs'), { DrawingLibrary, parseLibrary, readLibraryFile } = require('../electron/drawing-library.cjs');
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'moyu-library-')), vault = await new Vault(root).init();
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'moyu-library-'))), vault = await new Vault(root).init();
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   return { root, vault, library: new DrawingLibrary(vault) };
 }
