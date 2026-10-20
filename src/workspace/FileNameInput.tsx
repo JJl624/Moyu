@@ -67,7 +67,7 @@ export function FileNameInput({ folder = false, document = false, create, cancel
           aria-label={folder ? "新文件夹名称" : "新文件名称"}
           value={name}
           disabled={busy}
-          placeholder={folder ? "文件夹名" : document ? "文档名.md" : "例如：input.txt"}
+          placeholder={folder ? "文件夹名" : document ? "文件名（默认 .md）" : "例如：input.txt"}
           onChange={event => {
             setName(event.target.value);
             setError("");

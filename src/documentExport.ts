@@ -46,8 +46,9 @@ body.app {padding:0;}
 .app .reading-view .tabs-export-title {break-after:avoid;}
 `;
 
-export async function documentHTML(value: string, path: string, title: string) {
+export async function documentHTML(value: string, path: string, title: string, options: { expandFolds?: boolean } = {}) {
   const content = await renderMarkdown(value, path, { limitCodeHeight: false });
+  if (options.expandFolds) content.querySelectorAll('details.folding-quote').forEach(node => node.setAttribute('open', ''));
   // Convert vault images to self-contained data URLs. Drawing/Mermaid SVG stays
   // vector and KaTeX stays selectable text in Chromium's PDF output.
   // Decode one image at a time rather than starting all large attachments at

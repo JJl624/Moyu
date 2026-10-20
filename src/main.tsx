@@ -9,6 +9,9 @@ import './codeTabs.css';
 import './polish.css';
 import './dataPreferences.css';
 import './formattingPreview.css';
+import './documentChrome.css';
+import './drawingPreview.css';
+import './foldingQuotes.css';
 
 await hydrateSettings();
 createRoot(document.getElementById('root')!).render(<App />);

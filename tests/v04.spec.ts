@@ -41,7 +41,7 @@ test('Inline code results, session lifetime, syntax colors, specific menus and l
     await expect(page.getByRole('menuitem',{name:'复制标题',exact:true})).toBeVisible();
     await expect(page.getByRole('menuitem',{name:'插入表格',exact:true})).toHaveCount(0);await page.keyboard.press('Escape');
     await page.locator('.ProseMirror table td').first().click({button:'right'});
-    await expect(page.getByRole('menuitem',{name:'在下方插入行',exact:true})).toBeVisible();
+    await page.getByRole('menuitem',{name:'插入',exact:true}).hover();await expect(page.getByRole('menuitem',{name:'在下方插入行',exact:true})).toBeVisible();
     await expect(page.getByRole('menuitem',{name:'设为一级标题',exact:true})).toHaveCount(0);await page.keyboard.press('Escape');
     await page.locator('.ProseMirror a').click({button:'right'});
     await expect(page.getByRole('menuitem',{name:'打开链接',exact:true})).toBeVisible();

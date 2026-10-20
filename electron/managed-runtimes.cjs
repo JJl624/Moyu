@@ -10,7 +10,7 @@ for(const [kind,receipt] of Object.entries(require('./browser-runtimes.cjs').cat
 const semver=require('semver');
 const {DownloadTasks}=require('./download-tasks.cjs');
 class ManagedRuntimes {
-  constructor(root,downloads=new DownloadTasks()){this.downloads=downloads;this.root=path.resolve(root,'runtimes');this.npm=new NpmStore(this.root,{overrides:{'@wasm-idle/llvm-core':'1.0.10'}});this.job=null;const binary=path.join(__dirname,'../resources/tools/esbuild.exe').replace(/app\.asar([\\/])/,'app.asar.unpacked$1');if(require('node:fs').existsSync(binary))process.env.ESBUILD_BINARY_PATH=binary;}
+  constructor(root,downloads=new DownloadTasks()){this.downloads=downloads;this.root=path.resolve(root,'runtimes');this.npm=new NpmStore(this.root,{overrides:{'@wasm-idle/llvm-core':'1.0.10'}});this.job=null;const binary=path.join(__dirname,'../resources/tools',require('../shared/native-esbuild.cjs').esbuildName()).replace(/app\.asar([\\/])/,'app.asar.unpacked$1');if(require('node:fs').existsSync(binary))process.env.ESBUILD_BINARY_PATH=binary;}
   directory(kind,version){if(!Object.hasOwn(definitions,kind)||!versionName(version))throw Error('运行环境无效。');return path.join(this.root,kind,'Runtime',version);}
   definition(kind){return definitions[kind];}
   async config(kind){if(!Object.hasOwn(definitions,kind))throw Error('运行环境无效。');try{const config=JSON.parse(await fs.readFile(path.join(this.root,kind,'versions.json'),'utf8'));delete config.refreshMessage;return config;}catch(e){if(e.code!=='ENOENT')throw e;return {selected:'',versions:[definitions[kind].recommended]};}}

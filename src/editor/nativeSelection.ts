@@ -13,7 +13,10 @@ export function readNativeSelection(view: EditorView) {
   const anchor = native.anchorNode instanceof Element
     ? native.anchorNode
     : native.anchorNode.parentElement;
-  if (anchor?.closest('.cm-editor')) return;
+  const focus = native.focusNode instanceof Element ? native.focusNode : native.focusNode.parentElement;
+  // Preview text lives outside the node view's editable contentDOM. Mapping
+  // it with posAtDOM can turn a valid document selection into a single caret.
+  if (anchor?.closest('.cm-editor,.syntax-preview') || focus?.closest('.cm-editor,.syntax-preview')) return;
   try {
     const selected = TextSelection.create(
       view.state.doc,

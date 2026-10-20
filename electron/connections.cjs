@@ -22,31 +22,31 @@ class Connections {
   }
   file() { return this.store.file; }
   key(root) { return hash(root).slice(0, 24); }
+  password(value = {}) {
+    if (typeof value.password === 'string') return value.password;
+    if (!value.secret) return '';
+    // Read passwords saved by earlier versions once; all new writes are plain
+    // local configuration and do not need an operating-system keyring.
+    try { return this.safeStorage.decryptString(Buffer.from(value.secret, 'base64')); }
+    catch { throw fault('已保存的旧密码无法读取，请重新输入。'); }
+  }
   async get(root, reveal = false) {
     const all = await this.store.get('connections');
     return this.decode(all[this.key(root)] || {}, reveal);
   }
   decode(data, reveal) {
-    for (const key of ["webdav"]) {
-      data[key] ||= {};
-      data[key].sync = policy(data[key].sync);
-      const encrypted = data[key].secret;
-      delete data[key].secret;
-      data[key].hasPassword = !!encrypted;
-      if (reveal && encrypted)
-        data[key].password = this.safeStorage.decryptString(
-          Buffer.from(encrypted, "base64"),
-        );
-    }
-    return data;
+    const stored=data.webdav||{},webdav={...stored,sync:policy(stored.sync),hasPassword:!!(stored.password||stored.secret)};
+    delete webdav.secret;
+    delete webdav.password;
+    if(reveal)webdav.password=this.password(stored);
+    return {...data,webdav};
   }
   save(root, kind, input) {
     const action = this.queue.then(async () => {
       if (!["webdav"].includes(kind)) throw fault("配置类型无效。");
       await this.store.update("connections", all => {
-        const savedSecret = all[this.key(root)]?.[kind]?.secret;
-        const previous = this.decode(all[this.key(root)] || {}, true);
-        const savedPassword = previous[kind].password;
+        const stored = all[this.key(root)] || {};
+        const previous = this.decode(stored, false);
         let next;
         if (kind === "webdav") {
           const remote = String(input.directory || "/Moyu").replace(/\/$/, "");
@@ -64,31 +64,9 @@ class Connections {
             sync: policy(input.sync || previous[kind].sync),
           };
         }
-        next.password = input.clearPassword
-          ? ""
-          : String(input.password || previous[kind].password || "");
+        const password=input.clearPassword?'':String(input.password||this.password(stored[kind]));
+        if(password)next.password=password;
         previous[kind] = next;
-        for (const value of Object.values(previous)) {
-          const password = value.password;
-          delete value.password;
-          delete value.hasPassword;
-          if (password) {
-            if (savedSecret && password === savedPassword) {
-              value.secret = savedSecret;
-              continue;
-            }
-            if (
-              !this.safeStorage.isEncryptionAvailable() ||
-              this.safeStorage.getSelectedStorageBackend?.() === "basic_text"
-            )
-              throw fault(
-                "系统凭据加密服务不可用，无法保存密码。请启用系统密钥环。",
-              );
-            value.secret = this.safeStorage
-              .encryptString(password)
-              .toString("base64");
-          }
-        }
         all[this.key(root)] = previous;
         return all;
       });

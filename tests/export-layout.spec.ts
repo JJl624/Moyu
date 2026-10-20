@@ -72,7 +72,10 @@ test('PDF and HTML preserve the reading palette, typography, highlighted code, v
         const png=await page.locator('.pdf-viewer canvas').evaluate((canvas:HTMLCanvasElement)=>canvas.toDataURL('image/png').split(',')[1]);
         await fs.writeFile(path.resolve(project,`../../work/export-${mode}-v1719-page${number}.png`),Buffer.from(png,'base64'));
       }
-      expect(text).toContain('导出文档结束');expect(text).toContain('FIRST TAB');expect(text).toContain('SECOND TAB');expect(text).toContain('65');expect(text).toContain('80');
+      // CJK fallback fonts can extract compatibility glyphs and split spans
+      // differently on Linux. Compare semantic content, not font-specific runs.
+      const content=text.normalize('NFKC').replace(/\s/g,'');
+      expect(content).toContain('导出文档结束');expect(content).toContain('FIRSTTAB');expect(content).toContain('SECONDTAB');expect(content).toContain('65');expect(content).toContain('80');
       await page.getByRole('button',{name:'关闭当前文档',exact:true}).click();await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title','导出测试.md');
     }
     expect(errors).toEqual([]);

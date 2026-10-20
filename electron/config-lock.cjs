@@ -21,7 +21,7 @@ async function configLock(file) {
         return async () => {
           await fs.rmdir(path.join(directory, owner));
           await fs.rmdir(directory).catch(error => {
-            if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code)) throw error;
+            if (!['ENOENT', 'ENOTEMPTY', 'EEXIST', 'EPERM', 'EACCES'].includes(error.code)) throw error;
           });
         };
       } catch (error) {
@@ -34,8 +34,11 @@ async function configLock(file) {
       const names = await fs.readdir(directory).catch(error => { if (error.code !== 'ENOENT') throw error; return []; });
       if (!names.length) {
         await fs.rmdir(directory).catch(error => {
-          if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code)) throw error;
+          // Windows can report EPERM for a directory another writer has just
+          // populated. Do not remove any owner marker; retry acquisition.
+          if (!['ENOENT', 'ENOTEMPTY', 'EEXIST', 'EPERM', 'EACCES'].includes(error.code)) throw error;
         });
+        await delay(25);
         continue;
       }
       if (names.length === 1 && /^owner-\d+-[a-f\d-]+$/.test(names[0])) {
@@ -50,7 +53,7 @@ async function configLock(file) {
             return false;
           });
           if (removed) await fs.rmdir(directory).catch(error => {
-            if (!['ENOENT', 'ENOTEMPTY'].includes(error.code)) throw error;
+            if (!['ENOENT', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(error.code)) throw error;
           });
           continue;
         }

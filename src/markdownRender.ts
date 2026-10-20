@@ -9,6 +9,7 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import remarkHighlight from '../shared/remark-highlight.mjs';
 import remarkUnderline from '../shared/remark-underline.mjs';
+import remarkFoldingQuotes, { foldingQuoteHTML } from '../shared/remark-folding-quotes.mjs';
 import { readableHref } from '../shared/link-destinations.mjs';
 import { applyAttachmentSize, attachmentSize } from './attachmentLayout';
 import { attachmentMarkdown } from './attachmentLinks';
@@ -43,7 +44,7 @@ export async function renderMarkdown(
   options: { limitCodeHeight?: boolean; interactiveTabs?: boolean; sourceLocations?: boolean } = {},
 ) {
   const heights: (number | null)[] = [], metas: string[] = [];
-  return unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight).use(remarkUnderline).use(() => tree => {
+  return unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight).use(remarkUnderline).use(remarkFoldingQuotes).use(() => tree => {
     const definitions = new Map<string, string>();
     const collect = (node: any) => {
       if (node.type === 'definition' && !definitions.has(node.identifier)) definitions.set(node.identifier, node.url);
@@ -89,14 +90,15 @@ export async function renderMarkdown(
       node.children?.forEach(walk);
     };
     walk(tree);
-  }).use(remarkRehype).use(rehypeSanitize, {
+  }).use(remarkRehype, { handlers: { blockquote: foldingQuoteHTML } }).use(rehypeSanitize, {
     ...defaultSchema,
-    tagNames: [...(defaultSchema.tagNames || []), 'mark', 'u'],
+    tagNames: [...(defaultSchema.tagNames || []), 'mark', 'u', 'details', 'summary'],
     attributes: {
       ...defaultSchema.attributes,
       '*': [...(defaultSchema.attributes?.['*'] || []), 'dataSourceFrom', 'dataSourceTo'],
       a: [...(defaultSchema.attributes?.a || []), ...resourceAttributes],
       img: [...(defaultSchema.attributes?.img || []), ...resourceAttributes],
+      details: ['open', ['className', 'folding-quote']],
     },
   }).use(rehypeKatex).use(highlightReading).use(rehypeStringify).process(value).then(async file => {
     const root = document.createElement('div');

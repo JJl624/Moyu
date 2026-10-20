@@ -124,23 +124,23 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
             field.selectionStart ?? 0,
             field.selectionEnd ?? field.value.length,
           );
-          actions.push({ label: '复制', disabled: !text, action: () => write(text) });
+          actions.push({ id: 'copy', label: '复制', disabled: !text, action: () => write(text) });
           if (!field.readOnly && !field.disabled) {
             actions.push({
-              label: '剪切',
+              id: 'cut', label: '剪切',
               disabled: !text,
               action: () => edit('cut'),
-            }, { label: '粘贴', action: () => edit('paste') });
+            }, { id: 'paste', label: '粘贴', action: () => edit('paste') });
           }
-          actions.push({ label: '全选', action: () => edit('selectAll') });
+          actions.push({ id: 'selectAll', label: '全选', action: () => edit('selectAll') });
         } else if (target.closest('.text-file-editor')) {
           const text=selected;
           const readOnly=files.some(file=>file.path===ws.active&&file.system);
-          actions.push({label:'复制',disabled:!text,action:()=>write(text)});
-          if(!readOnly)actions.push({label:'剪切',disabled:!text,action:()=>edit('cut')},{label:'粘贴',action:()=>edit('paste')});
-          actions.push({label:'全选',action:()=>edit('selectAll')});
+          actions.push({id: 'copy', label:'复制',disabled:!text,action:()=>write(text)});
+          if(!readOnly)actions.push({id: 'cut', label:'剪切',disabled:!text,action:()=>edit('cut')},{id: 'paste', label:'粘贴',action:()=>edit('paste')});
+          actions.push({id: 'selectAll', label:'全选',action:()=>edit('selectAll')});
         } else if (target.closest('.pdf-viewer')) {
-          if(selected)actions.push({label:'复制',action:()=>write(selected)});
+          if(selected)actions.push({id: 'copy', label:'复制',action:()=>write(selected)});
         } else if (output) {
           const selection = window.getSelection(),
             part =
@@ -151,13 +151,13 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
           const artifact = target.closest('.run-artifact');
           const clickedText = target.closest('pre')?.textContent || '';
           if (part || clickedText || (!artifact && output.querySelector('pre')?.textContent)) actions.push({
-            label: artifact ? '复制文本' : '复制运行结果',
+            id:'copy', label: artifact ? '复制文本' : '复制运行结果',
             action: () => write(part || clickedText || output.querySelector('pre')?.textContent || ''),
           });
           const text = output.querySelector('pre')?.textContent || '';
           if (text && !artifact) {
             actions.push({
-              label: '保存结果为文本文件',
+              id: 'save.file', label: '保存结果为文本文件',
               action: () =>
                 void safe(() =>
                   api.feature('code.export', {
@@ -166,7 +166,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
                   })
                 ),
             }, {
-              label: '保存文本到附件',
+              id: 'save.attachment', label: '保存文本到附件',
               action: () =>
                 void safe(async () => {
                   const result = await api.feature<{ path: string }>('attachment.upload', {
@@ -185,22 +185,22 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
               others = ws.tabs.filter(tab => tab !== path),
               left = ws.tabs.slice(0, index),
               right = ws.tabs.slice(index + 1);
-            actions.push({ label: '复制文件路径', action: () => write(path) }, {
-              label: '关闭其他',
+            actions.push({ id: 'copy', label: '复制文件路径', action: () => write(path) }, {
+              id: 'close.others', label: '关闭其他',
               disabled: !others.length,
               action: () => void safe(() => closeDocuments(others)),
             }, {
-              label: '关闭左侧',
+              id: 'close.left', label: '关闭左侧',
               disabled: !left.length,
               action: () => void safe(() => closeDocuments(left)),
             }, {
-              label: '关闭右侧',
+              id: 'close.right', label: '关闭右侧',
               disabled: !right.length,
               action: () => void safe(() => closeDocuments(right)),
             });
           }
         } else if (math) {
-          actions.push({ label: '复制公式', action: () => write(selected || math.querySelector('annotation[encoding="application/x-tex"]')?.textContent || math.querySelector('.cm-content')?.textContent || '') });
+          actions.push({ id: 'copy', label: '复制公式', action: () => write(selected || math.querySelector('annotation[encoding="application/x-tex"]')?.textContent || math.querySelector('.cm-content')?.textContent || '') });
         } else if (linkedAttachment || resource) {
           if (rich && resource && !resource.classList.contains('editing')) {
             editor.current
@@ -213,12 +213,12 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
                 : resourcePath(ws.active, href);
             if (path && isPreviewResource(href)) {
               actions.push({
-                label: '编辑绘图',
+                id: 'open', label: '编辑绘图',
                 action: () => void safe(() => openDocument(path)),
               });
             } else if (path) {
               actions.push({
-                label: linkedAttachment.image || isImage(path)
+                id:'open', label: linkedAttachment.image || isImage(path)
                   ? '查看图片'
                   : /\.(md|markdown)$/i.test(path)
                   ? '打开链接'
@@ -227,53 +227,53 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
               });
             } else if (/^(https?:|mailto:)/i.test(href)) {
               actions.push({
-                label: '打开链接',
+                id: 'open', label: '打开链接',
                 action: () => void safe(() => api.openExternal(href)),
               });
             }
             if (path) {
-              actions.push({ label: /\.(md|markdown)$/i.test(path) ? '重命名文件' : '重命名附件', action: () => showRename(path) }, {
-                label: '在文件夹中显示',
+              actions.push({ id:'rename', label: /\.(md|markdown)$/i.test(path) ? '重命名文件' : '重命名附件', action: () => showRename(path) }, {
+                id: 'reveal', label: '在文件夹中显示',
                 action: () => void safe(() => api.reveal(path)),
               });
-              if (!/\.(md|markdown)$/i.test(path)) actions.push({ label: '删除附件', action: () => showAttachmentTrash(path, target, { left: event.clientX, top: event.clientY }) });
+              if (!/\.(md|markdown)$/i.test(path)) actions.push({ id: 'delete', label: '删除附件', action: () => showAttachmentTrash(path, target, { left: event.clientX, top: event.clientY }) });
             }
-            actions.push({ label: '复制链接', action: () => write(raw) }, {
-              label: '复制链接地址',
+            actions.push({ id: 'copy.link', label: '复制链接', action: () => write(raw) }, {
+              id: 'link.address', label: '复制链接地址',
               action: () => write(readableHref(href)),
             });
           }
           if (mode !== 'read' && !preview) {
             actions.push({
-              label: '复制文本',
+              id: 'copy', label: '复制文本',
               disabled: !selected,
               action: () => write(selected),
             }, {
-              label: '剪切',
+              id: 'cut', label: '剪切',
               disabled: !selected,
               action: () => edit('cut'),
-            }, { label: '粘贴', action: () => edit('paste') });
+            }, { id: 'paste', label: '粘贴', action: () => edit('paste') });
           }
         } else if (image) {
           const path = imagePath(image);
-          actions.push({ label: '复制图片路径', action: () => write(path || image.src) });
-          if (image.alt) actions.push({ label: '复制图片说明', action: () => write(image.alt) });
+          actions.push({ id: 'link.image', label: '复制图片路径', action: () => write(path || image.src) });
+          if (image.alt) actions.push({ id: 'copy.description', label: '复制图片说明', action: () => write(image.alt) });
           if (path) {
             actions.push({
-              label: '查看图片',
+              id: 'open', label: '查看图片',
               action: () => void safe(() => openDocument(path)),
             }, {
-              label: '重命名附件',
+              id: 'rename', label: '重命名附件',
               action: () => showRename(path),
-            }, { label: '在文件夹中显示图片', action: () => void safe(() => api.reveal(path)) }, {
-              label: '删除附件', action: () => showAttachmentTrash(path, target, { left: event.clientX, top: event.clientY }),
+            }, { id: 'reveal', label: '在文件夹中显示图片', action: () => void safe(() => api.reveal(path)) }, {
+              id: 'delete', label: '删除附件', action: () => showAttachmentTrash(path, target, { left: event.clientX, top: event.clientY }),
             });
           }
         } else if (code) {
           const c = code;
           const formatting = c.tab || c;
-          actions.push({ label: '复制代码', action: () => write(formatting.code) });
-          if(c.id || runnable(c.language))actions.push({label:'查看数据目录',action:()=>{
+          actions.push({ id: 'copy', label: '复制代码', action: () => write(formatting.code) });
+          if(c.id || runnable(c.language))actions.push({id: 'code.data', label:'查看数据目录',action:()=>{
             const original=codeBlocks(markdownValue).find(b=>c.id ? b.id===c.id : c.start!==undefined?b.start===c.start:b.language.toLowerCase()===c.language.toLowerCase()&&b.code===c.code);
             const id=c.id || original?.id,scope=codeRuns.scopeFor(id || (original ? codeKey(original):undefined));
             setRightbar(true);setRightTab('data');
@@ -285,7 +285,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
 
           if (mode !== 'read' && formattable(formatting.language)) {
             actions.push({
-              label: '格式化代码',
+              id: 'code.format', label: '格式化代码',
               disabled: codeRuns.busy,
               action: () =>
                 void safe(async () => {
@@ -299,7 +299,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
           }
           if (mode !== 'source' && runnable(c.language)) {
             actions.push({
-              label: '运行代码块',
+              id: 'code.run', label: '运行代码块',
               disabled: codeRuns.busy,
               action: () =>
                 window.dispatchEvent(
@@ -308,19 +308,19 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
             });
           }
           if (mode !== 'source' && runnable(c.language) && supportsRunArguments(c.language)) {
-            actions.push({label:'运行（参数）',disabled:codeRuns.busy,action:()=>window.dispatchEvent(new CustomEvent('moyu-run-code-arguments',{detail:{...c,target}}))});
+            actions.push({id: 'code.arguments', label:'运行（参数）',disabled:codeRuns.busy,action:()=>window.dispatchEvent(new CustomEvent('moyu-run-code-arguments',{detail:{...c,target}}))});
           }
         } else if (anchor?.getAttribute('href')) {
           const href = anchor.getAttribute('href')!;
           const linked = relativeLink(ws.active, href);
           if (linked && files.some(f => f.path === linked)) {
-            actions.push({ label: /\.(md|markdown)$/i.test(linked) ? '重命名文件' : '重命名附件', action: () => showRename(linked) });
+            actions.push({ id:'rename', label: /\.(md|markdown)$/i.test(linked) ? '重命名文件' : '重命名附件', action: () => showRename(linked) });
             if (!/\.(md|markdown)$/i.test(linked)) actions.push({
-              label: '删除附件', action: () => showAttachmentTrash(linked, target, { left: event.clientX, top: event.clientY }),
+              id: 'delete', label: '删除附件', action: () => showAttachmentTrash(linked, target, { left: event.clientX, top: event.clientY }),
             });
           }
           actions.push({
-            label: '打开链接',
+            id: 'open', label: '打开链接',
             action: () => {
               if (/^(https?:|mailto:)/i.test(href)) void api.openExternal(href);
               else {
@@ -329,20 +329,20 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
               }
             },
           }, {
-            label: '复制链接地址',
+            id: 'link.address', label: '复制链接地址',
             action: () => write(readableHref(href)),
           }, {
-            label: '复制链接文字',
+            id: 'copy.label', label: '复制链接文字',
             action: () => write(anchor.textContent || ''),
           });
         } else if (table) {
           const cell = target.closest('td,th');
           if (cell) actions.push({
-            label: '复制单元格',
+            id: 'copy', label: '复制单元格',
             action: () => write(selected || editorContext?.textFor('cell') || target.closest<HTMLElement>('td,th')?.innerText || ''),
           });
           actions.push({
-            label: '复制表格文本',
+            id: 'table.copy', label: '复制表格文本',
             action: () =>
               write(
                 editorContext?.textFor('table') || [...table.rows].map(row => [...row.cells].map(cell => cell.innerText).join('\t'))
@@ -351,58 +351,63 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
           });
           if (rich) {
             if (cell) actions.push(
-              { label: '在下方插入行', action: () => apply('rowAfter') },
-              { label: '在右侧插入列', action: () => apply('columnAfter') },
-              { label: '删除当前行', action: () => apply('deleteRow') },
+              { id: 'table.rowAfter', label: '在下方插入行', action: () => apply('rowAfter') },
+              { id: 'table.columnAfter', label: '在右侧插入列', action: () => apply('columnAfter') },
+              { id: 'table.deleteRow', label: '删除当前行', action: () => apply('deleteRow') },
               {
-                label: '删除当前列',
+                id: 'table.deleteColumn', label: '删除当前列',
                 action: () => apply('deleteColumn'),
               },
             );
-            actions.push({ label: '选中表格', action: () => apply('selectTable') }, { label: '删除表格', action: () => apply('deleteTable') });
+            actions.push({ id: 'table.select', label: '选中表格', action: () => apply('selectTable') }, { id: 'table.deleteTable', label: '删除表格', action: () => apply('deleteTable') });
           }
         } else if (heading) {
           actions.push({
-            label: '复制标题',
+            id: 'copy', label: '复制标题',
             action: () => write(selected || editorContext?.textFor('heading') || (heading as HTMLElement).innerText || ''),
           });
         } else if (list) {
           actions.push({
-            label: '复制列表项',
+            id: 'copy', label: '复制列表项',
             action: () => write(selected || editorContext?.textFor('list_item') || (list as HTMLElement).innerText || ''),
           });
           if (rich) {
-            actions.push({ label: '增加缩进', disabled: !editorContext?.can('indent'), action: () => apply('indent') }, {
-              label: '减少缩进',
+            actions.push({ id: 'indent', label: '增加缩进', disabled: !editorContext?.can('indent'), action: () => apply('indent') }, {
+              id: 'outdent', label: '减少缩进',
               disabled: !editorContext?.can('outdent'),
               action: () => apply('outdent'),
             });
           }
         } else if (quote) {
           actions.push({
-            label: '复制引用',
+            id: 'copy', label: '复制引用',
             action: () => write(selected || editorContext?.textFor('blockquote') || (quote as HTMLElement).innerText || ''),
           });
         } else if (target.closest('.ProseMirror,.source-editor,.reading-view')) {
           const text = selected || editorContext?.textFor('paragraph') || target.closest<HTMLElement>('p,.cm-line')?.innerText || '';
-          if (text) actions.push({ label: '复制文本', action: () => write(text) });
+          if (text) actions.push({ id: 'copy', label: '复制文本', action: () => write(text) });
           if (mode !== 'read' && /\.(md|markdown)$/i.test(ws.active)) {
-            actions.push({ label: '剪切', disabled: !selected, action: () => edit('cut') }, {
-              label: '粘贴',
+            actions.push({ id: 'cut', label: '剪切', disabled: !selected, action: () => edit('cut') }, {
+              id: 'paste', label: '粘贴',
               action: () => edit('paste'),
             });
           }
         }
+        if(selected && editorContext && !output && !field && !code && !math && (rich || mode==='source' && target.closest('.source-editor'))){
+          for(const [action,label] of [['bold','加粗'],['italic','斜体'],['strike','删除线'],['code','行内代码'],['highlight','高亮'],['underline','下划线'],['link','链接'],['math','行内公式']] as const){
+            if(editorContext.can(action))actions.push({id:'format.'+action,label,checked:!!editorContext.active?.(action),action:()=>apply(action)});
+          }
+        }
         if(editableRich && !output && !field){
-          if(!table && editorContext?.can('quote'))actions.push({label:'引用',action:()=>apply('quote')});
+          if(!table && editorContext?.can('quote'))actions.push({id: 'quote', label:'引用',action:()=>apply('quote')});
           const resourceBlock = table || code || math || preview || resource?.classList.contains('visual-attachment');
           if(resourceBlock && editor.current?.canIndentIntoList?.(target))
-            actions.push({label:'缩进至列表',action:()=>editor.current?.indentIntoList?.(target)});
+            actions.push({id: 'indent', label:'缩进至列表',action:()=>editor.current?.indentIntoList?.(target)});
           if(resourceBlock && editor.current?.canOutdentFromList?.(target))
-            actions.push({label:'脱离列表',action:()=>editor.current?.outdentFromList?.(target)});
+            actions.push({id: 'outdent', label:'脱离列表',action:()=>editor.current?.outdentFromList?.(target)});
         }
         if (rich && quote && !output && !field && !table && editorContext?.can('unquote')) {
-          actions.push({ label: '去除一层引用', action: () => apply('unquote') });
+          actions.push({ id: 'unquote', label: '去除一层引用', action: () => apply('unquote') });
         }
         const paragraph = target.closest('.ProseMirror p');
         if (
@@ -411,12 +416,22 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
           && editorContext?.canInsertDrawing
         ) {
           actions.push({
-            label: '插入空白 Excalidraw 绘图',
+            id: 'insert.drawing', label: '插入空白 Excalidraw 绘图',
             action: () => {
               if (!editorContext.restore()) { notify('编辑位置已改变，请重新打开菜单。'); return; }
               void safe(() => createDrawing(true));
             },
           });
+        }
+        if(table&&rich){
+          const insert=actions.filter(a=>a.id==='table.rowAfter'||a.id==='table.columnAfter');
+          const remove=actions.filter(a=>['table.deleteRow','table.deleteColumn','table.deleteTable'].includes(a.id||''));
+          const nest=(items:MenuAction[],id:string,label:string)=>{
+            if(!items.length)return;const index=actions.indexOf(items[0]);
+            for(const item of items)actions.splice(actions.indexOf(item),1);
+            actions.splice(index,0,{id,label,children:items});
+          };
+          nest(insert,'table.insert','插入');nest(remove,'table.delete','删除');
         }
         if (!actions.length) return;
         event.preventDefault();

@@ -53,7 +53,7 @@ export function AppUpdates({ ready }: { ready: boolean }) {
         {busy ? <p role='status'>正在检查更新…</p> : state?.latest ? <p role='status'>新版本 {state.latest.version}</p>
           : checked && !error ? <p role='status'>当前已是最新版本。</p> : null}
         {error && <p role='alert' className='feature-error'>{error}</p>}
-        {state?.latest && <p className='muted-note'>从 GitHub Release 下载便携版。退出程序后替换原来的 EXE 文件，再打开新版；文档和应用数据保留。</p>}
+        {state?.latest && <p className='muted-note'>{api.platform==='win32'?'从 GitHub Release 下载便携版。退出程序后替换原来的 EXE 文件，再打开新版；文档和应用数据保留。':api.platform==='linux'?'从 GitHub Release 下载 AppImage 或 DEB。退出程序后替换 AppImage 或安装 DEB，再打开新版；文档和应用数据保留。':'从 GitHub Release 下载新版，退出程序后替换应用；文档和应用数据保留。'}</p>}
         <label className='app-update-option'><input type='checkbox' checked={state?.automatic ?? true} disabled={!state || saving}
           onChange={event => {
             const automatic = event.target.checked;

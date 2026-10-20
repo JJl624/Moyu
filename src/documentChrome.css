@@ -1,0 +1,2 @@
+/* Body text below a heading uses the regular paragraph appearance. */
+.app .editor-host .milkdown .ProseMirror > h1 + p {color:var(--text);margin-bottom:var(--paragraph-gap,14px)}

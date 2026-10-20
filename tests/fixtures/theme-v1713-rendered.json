@@ -293,7 +293,7 @@
     "color": "rgb(69, 76, 94)",
     "background": "rgb(245, 246, 250)",
     "border": "rgba(38, 50, 69, 0.157)",
-    "shadow": "rgba(0, 0, 0, 0.22) 0px 12px 35px 0px"
+    "shadow": "rgba(0, 0, 0, 0.2) 0px 7px 24px 0px, rgba(0, 0, 0, 0.133) 0px 1px 4px 0px"
   },
   "light/source": {
     "color": "rgb(69, 76, 94)",
@@ -623,7 +623,7 @@
     "color": "rgb(213, 215, 222)",
     "background": "rgb(35, 38, 45)",
     "border": "rgba(255, 255, 255, 0.157)",
-    "shadow": "rgba(0, 0, 0, 0.22) 0px 12px 35px 0px"
+    "shadow": "rgba(0, 0, 0, 0.2) 0px 7px 24px 0px, rgba(0, 0, 0, 0.133) 0px 1px 4px 0px"
   },
   "dark/source": {
     "color": "rgb(171, 178, 191)",

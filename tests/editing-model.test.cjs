@@ -6,6 +6,44 @@ const schema=new Schema({nodes:{doc:{content:'block+'},paragraph:{content:'inlin
 const text=value=>schema.text(value),p=(...content)=>schema.node('paragraph',null,content),source=value=>schema.node('resource_link',null,text(value)),quote=(...content)=>schema.node('blockquote',null,content);
 const doc=(...content)=>schema.node('doc',null,content);
 
+test('Markdown paste slices retain soft newlines, nested lists and closed source nodes',()=>{
+ const {markdownPasteSlice}=load('inlinePaste');
+ const value=doc(p(text('a\nb\nc')),schema.node('bullet_list',null,schema.node('list_item',null,p(source('==高亮==')))));
+ const slice=normalizeInlinePaste(markdownPasteSlice(value),schema);
+ assert.equal(slice.content.firstChild.textContent,'a\nb\nc');
+ assert.equal(slice.content.lastChild.firstChild.firstChild.firstChild.textContent,'==高亮==');
+ assert.equal(slice.openStart,1);assert.equal(slice.openEnd,3);
+});
+
+test('Context formatting supports text, full-document and multi-paragraph selections with undo',()=>{
+ const {formatInline}=load('inlineFormatting'),{AllSelection}=require('prosemirror-state');
+ for(const [kind,marker]of [['strong','**'],['underline','__'],['highlight','=='],['delete','~~'],['inlineCode','`'],['inlineMath','$']]){
+  for(const all of [false,true]){
+   const d=doc(p(text('first')),p(text('second'))),s=EditorState.create({doc:d,selection:all?new AllSelection(d):TextSelection.create(d,1,d.content.size-1),plugins:[history()]});
+   let next=s;assert.equal(formatInline(kind)(s),true);
+   assert(formatInline(kind)(s,tr=>{next=s.apply(tr)}));next.doc.check();assert(next.selection.empty);
+   assert.equal(next.doc.child(0).textContent,marker+'first'+marker);assert.equal(next.doc.child(1).textContent,marker+'second'+marker);
+   assert(undo(next,tr=>{next=next.apply(tr)}));assert.deepEqual(next.doc.toJSON(),d.toJSON());
+  }
+ }
+ const d=doc(schema.node('code_block',null,text('code'))),s=EditorState.create({doc:d,selection:TextSelection.create(d,1,5)});
+ assert.equal(formatInline('highlight')(s),false);
+ for(const all of [false,true]){
+  const d=doc(schema.node('heading',null,text('## heading'))),s=EditorState.create({doc:d,selection:all?new AllSelection(d):TextSelection.create(d,1,d.content.size-1)});let next=s;
+  assert(formatInline('highlight')(s,tr=>{next=s.apply(tr)}));next.doc.check();assert.equal(next.doc.firstChild.textContent,'## ==heading==');
+ }
+ const linked=doc(p(text('label'))),linkState=EditorState.create({doc:linked,selection:new AllSelection(linked)});let next=linkState;
+ assert(formatInline('link')(linkState,tr=>{next=linkState.apply(tr)}));assert(next.selection.empty);
+ next=next.apply(next.tr.insertText('target.md'));assert.equal(next.doc.textContent,'[label](target.md)');
+ for(const value of ['`literal`',' code ','inside `` ticks']){
+  const d=doc(p(text(value))),s=EditorState.create({doc:d,selection:TextSelection.create(d,1,d.content.size-1)});let next=s;
+  assert(formatInline('inlineCode')(s,tr=>{next=s.apply(tr)}));
+  assert.equal(load('inlineActions').inlineActionText('code',value),next.doc.textContent);
+  const styled=next;assert(formatInline('inlineCode')(styled,tr=>{next=styled.apply(tr)}));
+  assert.equal(next.doc.textContent,value==='`literal`'?'\\`literal\\`':value);
+ }
+});
+
 test('Pasted inline source wrappers stay closed even when DOMParser opens through their text content',()=>{
  for(const raw of ['__下划线 **加粗**__','**加粗**','`代码`','[链接](a.md)']){
   const result=normalizeInlinePaste(new Slice(Fragment.from(p(source(raw))),2,2),schema);
@@ -121,4 +159,56 @@ test('An image-only list item outdents without leaving an empty item; surroundin
  const d=doc(list),pos=1+list.firstChild.nodeSize+1,s=state(d,pos+1);let next;
  assert(outdentBlockFromList(s,pos,tr=>next=s.apply(tr)));next.doc.check();assert.equal(next.doc.childCount,3);
  assert.equal(next.doc.child(0).textContent,'before');assert.equal(next.doc.child(1).textContent,image.textContent);assert.equal(next.doc.child(2).textContent,'after');
+});
+
+
+test('Every inline format toggles off for full-node, inner-text and full-document selections without losing text or undo',()=>{
+ const {formatInline}=load('inlineFormatting'),{richFormatState}=load('richFormatState'),{AllSelection}=require('prosemirror-state');
+ for(const [kind,raw]of [['strong','**text**'],['emphasis','*text*'],['delete','~~text~~'],['highlight','==text=='],['underline','__text__'],['inlineCode','`text`'],['inlineMath','$text$'],['link','[text](https://example.com)']]){
+  for(const selection of ['all','node','inner']){
+   const d=doc(p(source(raw)));const start=raw.indexOf('text');const selected=selection==='all'?new AllSelection(d):selection==='node'?TextSelection.create(d,1,d.content.size-1):TextSelection.create(d,2+start,6+start);
+   const s=EditorState.create({doc:d,selection:selected,plugins:[history()]});assert.equal(richFormatState(s,kind).active,true,kind+' '+selection);let next=s;
+   assert(formatInline(kind)(s,tr=>{next=s.apply(tr)}));next.doc.check();assert.equal(next.doc.textContent,'text');assert.equal(next.doc.firstChild.firstChild.type.name,'text');assert.equal(richFormatState(next,kind).active,false);
+   assert(undo(next,tr=>{next=next.apply(tr)}));assert.deepEqual(next.doc.toJSON(),d.toJSON());
+  }
+ }
+});
+test('Cancelling a nested format retains other styles, link labels, neighboring text and separate paragraphs',()=>{
+ const {formatInline}=load('inlineFormatting'),{richFormatState}=load('richFormatState'),{AllSelection}=require('prosemirror-state');
+ for(const [kind,raw,expected]of [['strong','***text***','*text*'],['emphasis','***text***','**text**'],['strong','__**text**__','__text__'],['underline','__**text**__','**text**'],['link','[**text**](https://example.com)','**text**'],['strong','[**text**](https://example.com)','[text](https://example.com)']]){
+  const d=doc(p(source(raw))),s=EditorState.create({doc:d,selection:new AllSelection(d)});let next=s;assert(richFormatState(s,kind).active);assert(formatInline(kind)(s,tr=>next=s.apply(tr)));next.doc.check();assert.equal(next.doc.textContent,expected);
+ }
+ const d=doc(p(source('**one**')),p(source('**two**'))),s=EditorState.create({doc:d,selection:new AllSelection(d)});let next=s;
+ assert(formatInline('strong')(s,tr=>next=s.apply(tr)));assert.equal(next.doc.childCount,2);assert.equal(next.doc.child(0).textContent,'one');assert.equal(next.doc.child(1).textContent,'two');
+ const heading=doc(schema.node('heading',null,[text('## '),source('**title**')])),h=EditorState.create({doc:heading,selection:new AllSelection(heading)});assert(formatInline('strong')(h,tr=>next=h.apply(tr)));assert.equal(next.doc.textContent,'## title');
+ const mixed=doc(p(source('**one**'),text(' two'))),m=EditorState.create({doc:mixed,selection:new AllSelection(mixed)});assert.equal(richFormatState(m,'strong').active,false);assert(formatInline('strong')(m,tr=>next=m.apply(tr)));assert.equal(next.doc.textContent,'**one two**');
+});
+test('Source format analysis recognizes nested and multiple spans, ignores literal code, and strips only the requested syntax',()=>{
+ const {analyzeInlineFormats,applyInlineChanges}=load('inlineFormatState');
+ for(const [kind,raw,expected]of [['strong','**one** **two**','one two'],['strong','***text***','*text*'],['underline','__**text**__','**text**'],['link','[**text**](https://example.com)','**text**'],['inlineCode','`text`','text'],['inlineMath','$x^2$','x^2']]){
+  const a=analyzeInlineFormats(raw);assert(a.active(kind),raw);assert.equal(applyInlineChanges(raw,a.changes(kind)),expected);
+ }
+ assert.equal(analyzeInlineFormats('**one** two').active('strong'),false);
+ assert.equal(analyzeInlineFormats('**text**').active('strong',2,6),true);
+ assert.equal(analyzeInlineFormats('\\*literal\\*').active('emphasis'),false);
+ assert.equal(analyzeInlineFormats('`**literal**`').active('strong'),false);
+ assert.equal(analyzeInlineFormats('## **title**\n\n**text**',true).active('strong'),true);
+});
+
+test('Removing code/math leaves literal Markdown literal; removing URL links does not recreate an autolink',()=>{
+ const {analyzeInlineFormats,applyInlineChanges}=load('inlineFormatState');
+ for(const [kind,raw]of [['inlineCode','`**literal**`'],['inlineMath','$**literal**$']]){
+  const a=analyzeInlineFormats(raw),plain=applyInlineChanges(raw,a.changes(kind));assert.equal(analyzeInlineFormats(plain).active(kind),false);assert.equal(analyzeInlineFormats(plain).active('strong'),false);assert(plain.includes('literal'));
+ }
+ for(const raw of ['https://example.com','<https://example.com>','[https://example.com](other.md)','[**https://example.com**](other.md)']){
+  const a=analyzeInlineFormats(raw);assert(a.active('link'));const plain=applyInlineChanges(raw,a.changes('link'));assert.equal(analyzeInlineFormats(plain).active('link'),false,plain);assert(plain.includes('example'));
+ }
+});
+
+test('Empty format delimiters can be cancelled at the caret without changing code literals',()=>{
+ const {analyzeInlineFormats,applyInlineChanges}=load('inlineFormatState');
+ for(const [kind,marker]of [['strong','**'],['emphasis','*'],['delete','~~'],['highlight','=='],['underline','__'],['inlineCode',String.fromCharCode(96)],['inlineMath','$']])for(const document of [false,true]){
+  const raw=marker+marker,caret=marker.length,a=analyzeInlineFormats(raw,document);assert(a.active(kind,caret,caret));assert.equal(applyInlineChanges(raw,a.changes(kind,caret,caret)),'');
+ }
+ const literal=String.fromCharCode(96)+'**'+String.fromCharCode(96),a=analyzeInlineFormats(literal,true);assert.equal(a.active('emphasis',2,2),false);assert.deepEqual(a.changes('emphasis',2,2),[]);
 });

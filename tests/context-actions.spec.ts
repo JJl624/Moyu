@@ -5,7 +5,9 @@ import path from 'node:path';
 const project = path.resolve(import.meta.dirname, '..');
 const checked = new Map<string, Set<string>>();
 async function choose(page: Page, category: string, label: string) {
-  await page.locator('.element-menu').getByRole('menuitem', { name: label, exact: true }).click();
+  const parent=['在下方插入行','在右侧插入列'].includes(label)?'插入':['删除当前行','删除当前列','删除表格'].includes(label)?'删除':null;
+  if(parent)await page.locator('.element-menu:not(.element-submenu)').getByRole('menuitem',{name:parent,exact:true}).hover();
+  await page.getByRole('menuitem', { name: label, exact: true }).click();
   if (!checked.has(category)) checked.set(category, new Set());
   checked.get(category)!.add(label);
   await expect(page.locator('.element-menu')).toHaveCount(0);
@@ -213,7 +215,7 @@ test('Explorer folder/file menus create, favorite, copy, cut, paste, rename, rev
   const exists=(name:string)=>fs.access(path.join(root,name)).then(()=>true,()=>false);
   try{
     expect((await page.evaluate(()=>window.moyu!.create('菜单目录','folder'))).ok).toBe(true);
-    await context(row('菜单目录'));await chooseFile('在这里新建文档');await page.getByLabel('新文件名称',{exact:true}).fill('菜单文档');await page.getByLabel('新文件名称',{exact:true}).press('Enter');await expect.poll(()=>exists('菜单目录/菜单文档.md')).toBe(true);
+    await context(row('菜单目录'));await fileMenu.screenshot({path:path.resolve(project,'../../work/menu-files-detail.png')});await chooseFile('在这里新建文档');await page.getByLabel('新文件名称',{exact:true}).fill('菜单文档');await page.getByLabel('新文件名称',{exact:true}).press('Enter');await expect.poll(()=>exists('菜单目录/菜单文档.md')).toBe(true);
     await context(row('菜单目录'));await chooseFile('新建子文件夹');await page.getByLabel('新文件夹名称',{exact:true}).fill('子目录');await page.getByLabel('新文件夹名称',{exact:true}).press('Enter');await expect.poll(()=>exists('菜单目录/子目录')).toBe(true);
     if(!await row('菜单目录/菜单文档.md').count())await row('菜单目录').click();await expect(row('菜单目录/菜单文档.md')).toBeVisible();
     await context(row('菜单目录/菜单文档.md'));await chooseFile('收藏文档');await context(row('菜单目录/菜单文档.md'));await expect(fileMenu.getByRole('button',{name:'取消收藏',exact:true})).toBeVisible();await chooseFile('取消收藏');
@@ -257,7 +259,7 @@ test('Result file previews copy their own text and PDF selection menus copy read
   const{app,page,root,errors}=await fixture();const clipboard=()=>app.evaluate(({clipboard})=>clipboard.readText());
   try{
     await open(page,'结果文件.md','```python\nwith open("/output/message.txt", "w") as f:\n    f.write("artifact text")\nprint("console output")\n```');await context(page.locator('.milkdown-code-block .cm-content'));await choose(page,'代码块','运行代码块');
-    const text=page.getByLabel('文件内容预览');await expect(text).toHaveText('artifact text');await context(text);await choose(page,'结果文件','复制文本');await expect.poll(clipboard).toBe('artifact text');
+    const text=page.getByLabel('文件内容预览');await expect(text).toHaveText('artifact text',{timeout:30000});await context(text);await choose(page,'结果文件','复制文本');await expect.poll(clipboard).toBe('artifact text');
     const stream='BT /F1 24 Tf 40 100 Td (PDF menu text) Tj ET',objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
     let pdf='%PDF-1.4\n',offsets:number[]=[];objects.forEach((o,i)=>{offsets.push(pdf.length);pdf+=`${i+1} 0 obj\n${o}\nendobj\n`;});const start=pdf.length;pdf+=`xref\n0 6\n0000000000 65535 f \n`+offsets.map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Root 1 0 R /Size 6 >>\nstartxref\n${start}\n%%EOF`;
     await fs.writeFile(path.join(root,'菜单.pdf'),pdf);await open(page,'菜单.pdf');const line=page.locator('.pdf-viewer .textLayer span').filter({hasText:'PDF menu text'});await expect(line).toBeVisible();

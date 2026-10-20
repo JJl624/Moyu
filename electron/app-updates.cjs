@@ -5,19 +5,36 @@ const repository = 'JJl624/Moyu';
 const releases = 'https://github.com/' + repository + '/releases';
 const DAY = 24 * 60 * 60 * 1000;
 const updateError = message => Object.assign(Error(message), {code:'UPDATE_RELEASE'});
-function releaseInfo(value) {
+function releaseAssets(version, platform=process.platform, arch=process.arch) {
+  const prefix=`Moyu-${version}-${arch}`;
+  if(platform==='win32')return[prefix+'.exe'];
+  if(platform==='linux'){
+    // electron-builder uses the distribution's architecture names in each
+    // target's filename, rather than Node's x64/ia32 names.
+    const imageArch=arch==='x64'?'x86_64':arch==='ia32'?'i386':arch;
+    const debArch=arch==='x64'?'amd64':arch==='ia32'?'i386':arch;
+    return[`Moyu-${version}-${imageArch}.AppImage`,`Moyu-${version}-${debArch}.deb`];
+  }
+  if(platform==='darwin')return[prefix+'.dmg',prefix+'.zip'];
+  throw Error('此平台暂无更新包。');
+}
+const missingAsset = platform => `新版本的 ${{win32:'Windows',linux:'Linux',darwin:'macOS'}[platform]||platform} 下载文件尚未就绪。`;
+function releaseInfo(value, platform=process.platform, arch=process.arch, currentVersion) {
   const version = semver.valid(String(value?.tag_name || '').replace(/^v/, ''));
   if (!version || ![version,'v'+version].includes(value.tag_name) || semver.prerelease(version) || value.draft || value.prerelease) throw Error('未找到正式发布的版本。');
-  const name = `Moyu-${version}-x64.exe`;
-  const asset = Array.isArray(value.assets) && value.assets.find(a => a.name === name && a.state === 'uploaded' && Number.isSafeInteger(a.size) && a.size > 0);
-  const url = `${releases}/download/${encodeURIComponent(value.tag_name)}/${name}`;
-  if (!asset || asset.browser_download_url !== url) throw Error('新版本的 Windows 下载文件尚未就绪。');
-  return { version, url: `${releases}/tag/${encodeURIComponent(value.tag_name)}` };
+  const info={version,url:`${releases}/tag/${encodeURIComponent(value.tag_name)}`};
+  if(currentVersion&&semver.lte(version,currentVersion))return info;
+  const ready = releaseAssets(version,platform,arch).some(name => Array.isArray(value.assets) && value.assets.some(a =>
+    a.name===name && a.state==='uploaded' && Number.isSafeInteger(a.size) && a.size>0
+    && a.browser_download_url===`${releases}/download/${encodeURIComponent(value.tag_name)}/${name}`));
+  if (!ready) throw Error(missingAsset(platform));
+  return info;
 }
 class AppUpdates {
-  constructor(root, version, { fetch: request = (...args) => globalThis.fetch(...args), now = Date.now, automatic = true } = {}) {
+  constructor(root, version, { fetch: request = (...args) => globalThis.fetch(...args), now = Date.now, automatic = true, platform=process.platform, arch=process.arch } = {}) {
     this.store = new ApplicationConfig(root); this.version = version; this.request = request;
     this.now = now; this.canAutoCheck = automatic; this.pending = null;
+    this.platform=platform;this.arch=arch;
   }
   async state() {
     const saved = await this.store.get('updates');
@@ -45,12 +62,15 @@ class AppUpdates {
     if (![301,302,303,307,308].includes(response.status) || target.origin !== 'https://github.com'
       || !target.pathname.startsWith(prefix) || !version || ![version,'v'+version].includes(tag) || semver.prerelease(version)
       || target.search || target.hash) throw updateError('无法读取 GitHub 版本信息，请稍后重试。');
-    const download = await this.request(`${releases}/download/${encodeURIComponent(tag)}/Moyu-${version}-x64.exe`, {
-      method:'HEAD', signal:AbortSignal.timeout(10000),
-    });
-    await download.body?.cancel();
-    if (!download.ok || !(Number(download.headers.get('content-length')) > 0)) throw updateError('新版本的 Windows 下载文件尚未就绪。');
-    return {version,url:`${releases}/tag/${encodeURIComponent(tag)}`};
+    if(semver.lte(version,this.version))return {version,url:`${releases}/tag/${encodeURIComponent(tag)}`};
+    for(const name of releaseAssets(version,this.platform,this.arch)){
+      const download = await this.request(`${releases}/download/${encodeURIComponent(tag)}/${name}`, {
+        method:'HEAD', signal:AbortSignal.timeout(10000),
+      });
+      await download.body?.cancel();
+      if(download.ok && Number(download.headers.get('content-length'))>0)return {version,url:`${releases}/tag/${encodeURIComponent(tag)}`};
+    }
+    throw updateError(missingAsset(this.platform));
   }
   async check(manual = false) {
     if (this.pending) return this.pending;
@@ -81,7 +101,7 @@ class AppUpdates {
         let metadata;
         try { metadata = JSON.parse((await readDownload(response, 256 * 1024)).toString('utf8')); }
         catch { throw Error('无法读取 GitHub 版本信息，请稍后重试。'); }
-        latest = releaseInfo(metadata);
+        latest = releaseInfo(metadata,this.platform,this.arch,this.version);
       }
       await this.store.update('updates', data => ({ ...data, checkedAt: this.now(), latest }));
       return this.state();
@@ -90,4 +110,4 @@ class AppUpdates {
     try { return await task; } finally { if (this.pending === task) this.pending = null; }
   }
 }
-module.exports = { AppUpdates, releaseInfo };
+module.exports = { AppUpdates, releaseInfo, releaseAssets };

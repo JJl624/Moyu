@@ -20,6 +20,7 @@ export type InlineAst = {
   position?: { start: { offset?: number }; end: { offset?: number } };
 };
 const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight).use(remarkUnderline);
+export const inlineFormatTree = (raw: string) => parser.parse(raw) as InlineAst;
 export const readableMarkdown = (markdown: string) =>
   readableSource(parser.parse(markdown), markdown).value;
 // Old double-bracket content is converted only when opening a note. It is no

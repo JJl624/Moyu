@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { build } from 'esbuild';
 import crypto from 'node:crypto';
+import { esbuildName, esbuildSource as esbuildBinarySource } from '../shared/native-esbuild.cjs';
 const root=path.resolve(import.meta.dirname,'..'), stage=path.join(root,'build-app');
 await import('./prepare-workspace-guide.mjs');
 await import('./prepare-terminal.mjs');
@@ -34,7 +35,9 @@ for(const kind of ['clang','sql','lua']){
  for(const name of await fs.readdir(folder))if(!(kind==='clang'&&name==='headers.json'))await fs.rm(path.join(folder,name),{recursive:true,force:true});
 }
 await fs.mkdir(path.join(stage,'resources/tools'),{recursive:true});
-await fs.copyFile(path.join(root,'node_modules/@esbuild/win32-x64/esbuild.exe'),path.join(stage,'resources/tools/esbuild.exe'));
+const binary=path.join(stage,'resources/tools',esbuildName());
+await fs.copyFile(path.join(root,'node_modules',esbuildBinarySource()),binary);
+if(process.platform!=='win32')await fs.chmod(binary,0o755);
 await fs.copyFile(path.join(root,'electron/history-database-worker.cjs'),path.join(stage,'electron/history-database-worker.cjs'));
 await fs.copyFile(path.join(root,'electron/preload.cjs'),path.join(stage,'electron/preload.cjs'));
 await fs.copyFile(path.join(root,'electron/managed-source.cjs'),path.join(stage,'electron/managed-source.cjs'));
@@ -43,5 +46,5 @@ await fs.mkdir(path.join(stage,'electron/runner'),{recursive:true});
 for(const name of ['runner.mjs','worker.mjs','run-files.mjs','clang-worker.mjs','clang-project.mjs','clang-lifetime.mjs','clang-workspace.mjs','sql-worker.mjs','sql-viewer.mjs','lua-worker.mjs','csharp-worker.mjs','java-worker.mjs','ruby-worker.mjs','bash-worker.mjs','bash-terminal.mjs','file-runtime.mjs'])await fs.copyFile(path.join(root,'electron/runner',name),path.join(stage,'electron/runner',name));
 await fs.copyFile(path.join(root,'shared/sqlite-browser.mjs'),path.join(stage,'electron/runner/sqlite-browser.mjs'));
 const original=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8'));
-await fs.writeFile(path.join(stage,'package.json'),JSON.stringify({name:original.name,version:original.version,description:original.description,author:original.author,license:original.license,main:'electron/main.cjs'},null,2));
+await fs.writeFile(path.join(stage,'package.json'),JSON.stringify({name:original.name,version:original.version,description:original.description,desktopName:original.desktopName,author:original.author,license:original.license,main:'electron/main.cjs'},null,2));
 console.log('Application staged with bundled language environments.');

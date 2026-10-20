@@ -1,6 +1,6 @@
 import { redo, undo } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { basicSetup, EditorView } from "codemirror";
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from "react";
@@ -9,6 +9,8 @@ import { codeBlocks } from "./codeBlocks";
 import { exhaustedIdsMessage, normalizeCodeIds } from "./codeIds";
 import { chineseEditorPhrases } from "./editor/chinesePhrases";
 import { prepareCodeContext } from "./editor/codeContext";
+import { inlineWrappers } from './editor/inlineActions';
+import { inlineShortcut } from './editor/inlineShortcut';
 import { codeIndentation } from "./editor/codeIndentation";
 import { sourceImagePaste } from "./editor/sourceImagePaste";
 import type { EditorHandle, EditorProps } from "./editorTypes";
@@ -101,7 +103,15 @@ export default forwardRef<EditorHandle, EditorProps>(
             EditorView.editable.of(!props.readOnly),
             markdown(),
             sourceImagePaste(props.path, props.root, message => callbacks.current.onError(message)),
-            EditorView.domEventHandlers({
+            Prec.highest(EditorView.domEventHandlers({
+              keydown(event, view) {
+                const action=inlineShortcut(event);
+                if (!action) return false;
+                if(event.isComposing)return true;
+                const handled=prepareCodeContext(view,view.contentDOM,undefined,true)?.run(action) || false;
+                if (handled) event.preventDefault();
+                return handled;
+              },
               mousedown(event, view) {
                 navigationEpoch.current++;
                 if (event.button !== 0 || !event.ctrlKey && !event.metaKey) return false;
@@ -116,7 +126,7 @@ export default forwardRef<EditorHandle, EditorProps>(
                 );
                 return true;
               },
-            }),
+            })),
             EditorView.lineWrapping,
             ...(props.theme === "dark" ? [oneDark] : []),
             EditorView.theme({
@@ -338,13 +348,10 @@ export default forwardRef<EditorHandle, EditorProps>(
           if (view.current) redo(view.current);
           return;
         }
-        const wrappers: Record<string, string[]> = {
-          bold: ["**", "**"],
-          italic: ["*", "*"],
-          strike: ["~~", "~~"],
-          code: ["`", "`"],
-        };
+        const wrappers=inlineWrappers;
         if (wrappers[action]) {
+          const v=view.current;
+          if(v&&prepareCodeContext(v,v.contentDOM,undefined,true)?.run(action))return;
           insert(wrappers[action][0], wrappers[action][1]);
           return;
         }

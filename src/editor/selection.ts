@@ -4,6 +4,7 @@ import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import remarkHighlight from '../../shared/remark-highlight.mjs';
+import remarkFoldingQuotes from '../../shared/remark-folding-quotes.mjs';
 import { readableSource } from '../../shared/link-destinations.mjs';
 import { attachmentFromSource, isAttachmentLink } from '../attachmentLinks';
 import { inlineRaw, inlineSourceRequired } from '../inlineSyntax';
@@ -21,7 +22,7 @@ const mappings = new WeakMap<
   Node,
   { markdown: string; blocks: { start: number; size: number; offsets: number[] }[] }
 >();
-const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight);
+const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight).use(remarkFoldingQuotes);
 function pairs(markdown: string, doc: Node) {
   const cached = mappings.get(doc);
   if (cached?.markdown === markdown) return cached.blocks;
@@ -94,7 +95,7 @@ function pairs(markdown: string, doc: Node) {
     }
     n.children?.forEach(walk);
   };
-  walk(parser.parse(markdown) as Ast);
+  walk(parser.runSync(parser.parse(markdown), { value: markdown }) as Ast);
   const result: { start: number; size: number; offsets: number[] }[] = [];
   let next = 0;
   doc.descendants((node, pos) => {

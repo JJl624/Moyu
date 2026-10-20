@@ -108,7 +108,7 @@ test('WebDAV reveals saved credentials explicitly and browses cached cloud struc
     const toggle=page.getByRole('switch',{name:'保存后同步',exact:true});for(let i=0;i<4;i++)await toggle.click();
     await expect(toggle).toHaveAttribute('aria-checked','false');
 
-    const stored=Object.values(JSON.parse(await fs.readFile(path.join(f.data,'settings.json'),'utf8')).connections)[0] as any;expect(stored.webdav.secret).not.toBe('secret');expect(stored.webdav.password).toBeUndefined();
+    const stored=Object.values(JSON.parse(await fs.readFile(path.join(f.data,'settings.json'),'utf8')).connections)[0] as any;expect(stored.webdav.secret).toBeUndefined();expect(stored.webdav.password).toBe('secret');
     const bounds=await page.locator('.dav-preferences').evaluate(el=>{const fields=el.querySelector('fieldset')!;const buttons=fields.querySelector('.dav-connection-actions')!,sync=el.querySelectorAll('h3')[1];return buttons.getBoundingClientRect().top<sync.getBoundingClientRect().top;});expect(bounds).toBe(true);
     await page.getByRole('button',{name:'关闭对话框',exact:true}).click();await page.getByRole('tab',{name:'云端目录',exact:true}).click();
     const at=server.requests.length;await page.waitForTimeout(350);expect(server.requests.length).toBe(at);

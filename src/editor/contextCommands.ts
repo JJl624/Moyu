@@ -7,8 +7,19 @@ import type { BlockAction, EditorAction, EditorContext } from '../editorTypes';
 import { canInsertInlineDrawing } from './drawingInsertion';
 import { resourceBlockPosition } from './listContinuation';
 import { addQuoteLayer, removeQuoteLayer } from './quoteEditing';
+import { formatInline } from './inlineFormatting';
+import { richFormatState } from './richFormatState';
+import { inlineKinds } from './inlineFormatState';
 
 export const contextCommands: Partial<Record<EditorAction | BlockAction, Command>> = {
+  bold: formatInline('strong'),
+  italic: formatInline('emphasis'),
+  strike: formatInline('delete'),
+  code: formatInline('inlineCode'),
+  highlight: formatInline('highlight'),
+  underline: formatInline('underline'),
+  math: formatInline('inlineMath'),
+  link: formatInline('link'),
   quote: addQuoteLayer,
   unquote: removeQuoteLayer,
   indent: (state, dispatch) => sinkListItem(state.schema.nodes.list_item)(state, dispatch),
@@ -53,8 +64,10 @@ export function prepareRichContext(view: EditorView, target: HTMLElement, coords
     } else {
       const native = view.dom.ownerDocument.getSelection();
       const element = native?.anchorNode instanceof Element ? native.anchorNode : native?.anchorNode?.parentElement;
+      const focusElement = native?.focusNode instanceof Element ? native.focusNode : native?.focusNode?.parentElement;
       if (native?.anchorNode && native.focusNode && view.dom.contains(native.anchorNode)
-        && view.dom.contains(native.focusNode) && !element?.closest('.cm-editor')) {
+        && view.dom.contains(native.focusNode) && !element?.closest('.cm-editor,.syntax-preview')
+        && !focusElement?.closest('.cm-editor,.syntax-preview')) {
         const anchor = view.posAtDOM(native.anchorNode, native.anchorOffset), head = view.posAtDOM(native.focusNode, native.focusOffset);
         if (doc.resolve(anchor).parent.inlineContent && doc.resolve(head).parent.inlineContent) {
           selection = TextSelection.create(doc, anchor, head);
@@ -101,6 +114,7 @@ export function prepareRichContext(view: EditorView, target: HTMLElement, coords
       return type === 'heading' ? text.replace(/^#{1,6}\s+/, '') : text;
     },
     canInsertDrawing: canInsertInlineDrawing(query),
+    active: action=>!!inlineKinds[action]&&richFormatState(query,inlineKinds[action]).active,
     can: action => !!contextCommands[action]?.(query),
     run: action => {
       const command = contextCommands[action];

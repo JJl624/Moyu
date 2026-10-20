@@ -1,7 +1,8 @@
 {
   "name": "moyu-editor",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "墨屿 Markdown 编辑器",
+  "desktopName": "moyu.desktop",
   "author": "Moyu",
   "license": "MIT",
   "private": true,
@@ -18,7 +19,7 @@
     "build": "npm run assets && npm run check && node scripts/build-native.mjs",
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "test:e2e": "node scripts/run-regressions.mjs all tests/v185-features.spec.ts tests/v184-features.spec.ts tests/v183-features.spec.ts tests/html-downloads.spec.ts tests/v18-runtime.spec.ts tests/v18-preferences.spec.ts tests/webdav-upgrade.spec.ts tests/navigation-list-polish.spec.ts tests/export-layout.spec.ts tests/performance-audit.spec.ts tests/context-actions.spec.ts tests/context-settings.spec.ts tests/resource-editing.spec.ts tests/theme-rollback.spec.ts tests/data-inventory.spec.ts tests/theme-links.spec.ts tests/editing-consistency.spec.ts tests/interface-polish.spec.ts tests/file-explorer.spec.ts tests/performance-attachments.spec.ts tests/drawing-insert.spec.ts tests/data-preview.spec.ts tests/document-files.spec.ts tests/workspace-runtime-guides.spec.ts tests/sql-lua.spec.ts tests/runtime-io.spec.ts tests/runtime-preferences.spec.ts tests/tabs-input.spec.ts tests/clang-memory.spec.ts tests/clang.spec.ts tests/code-tabs.spec.ts tests/inline-delimiters.spec.ts tests/headings.spec.ts tests/webdav.spec.ts tests/v1613.spec.ts tests/v1612.spec.ts tests/v1610.spec.ts tests/v169.spec.ts tests/stability-navigation.spec.ts tests/mermaid-theme.spec.ts tests/workspace-guides.spec.ts tests/mermaid-matrix.spec.ts tests/mermaid-charts.spec.ts tests/inline-media.spec.ts tests/drawing-release.spec.ts tests/list-resources.spec.ts tests/v161.spec.ts tests/v16.spec.ts tests/v15.spec.ts tests/v14.spec.ts tests/v13.spec.ts tests/v12.spec.ts tests/v11-inline.spec.ts tests/v11.spec.ts tests/v11-attachments.spec.ts tests/v10.spec.ts tests/v09.spec.ts tests/v09-polish.spec.ts tests/drawing-library-fonts.spec.ts tests/file-viewers.spec.ts tests/data-comments.spec.ts tests/v188-features.spec.ts tests/audit-regression.spec.ts tests/close-paste-regression.spec.ts tests/runtime-settings-ux.spec.ts tests/settings-v1810.spec.ts tests/manual-files.spec.ts tests/v1811-ux.spec.ts tests/argument-examples.spec.ts tests/environment-manager.spec.ts tests/v1815-polish.spec.ts tests/outline-v1816.spec.ts tests/document-history.spec.ts tests/underline.spec.ts tests/history-database.spec.ts tests/caret-layout.spec.ts tests/dirty-roundtrip.spec.ts tests/close-position.spec.ts tests/optimization.spec.ts tests/performance-baseline.spec.ts tests/build-runtime.spec.ts tests/markdown-preservation.spec.ts tests/process-resources.spec.ts tests/python-download-source.spec.ts tests/nested-artifacts.spec.ts tests/application-config.spec.ts tests/code-preferences.spec.ts tests/review-interactions.spec.ts tests/explorer-layout.spec.ts tests/release-readiness.spec.ts",
+    "test:e2e": "node scripts/run-regressions.mjs all tests/v185-features.spec.ts tests/v184-features.spec.ts tests/v183-features.spec.ts tests/html-downloads.spec.ts tests/v18-runtime.spec.ts tests/v18-preferences.spec.ts tests/webdav-upgrade.spec.ts tests/navigation-list-polish.spec.ts tests/export-layout.spec.ts tests/performance-audit.spec.ts tests/context-actions.spec.ts tests/context-settings.spec.ts tests/resource-editing.spec.ts tests/theme-rollback.spec.ts tests/data-inventory.spec.ts tests/theme-links.spec.ts tests/editing-consistency.spec.ts tests/interface-polish.spec.ts tests/file-explorer.spec.ts tests/performance-attachments.spec.ts tests/drawing-insert.spec.ts tests/data-preview.spec.ts tests/document-files.spec.ts tests/workspace-runtime-guides.spec.ts tests/sql-lua.spec.ts tests/runtime-io.spec.ts tests/runtime-preferences.spec.ts tests/tabs-input.spec.ts tests/clang-memory.spec.ts tests/clang.spec.ts tests/code-tabs.spec.ts tests/inline-delimiters.spec.ts tests/headings.spec.ts tests/webdav.spec.ts tests/v1613.spec.ts tests/v1612.spec.ts tests/v1610.spec.ts tests/v169.spec.ts tests/stability-navigation.spec.ts tests/mermaid-theme.spec.ts tests/workspace-guides.spec.ts tests/mermaid-matrix.spec.ts tests/mermaid-charts.spec.ts tests/inline-media.spec.ts tests/drawing-release.spec.ts tests/list-resources.spec.ts tests/v161.spec.ts tests/v16.spec.ts tests/v15.spec.ts tests/v14.spec.ts tests/v13.spec.ts tests/v12.spec.ts tests/v11-inline.spec.ts tests/v11.spec.ts tests/v11-attachments.spec.ts tests/v10.spec.ts tests/v09.spec.ts tests/v09-polish.spec.ts tests/drawing-library-fonts.spec.ts tests/file-viewers.spec.ts tests/data-comments.spec.ts tests/v188-features.spec.ts tests/audit-regression.spec.ts tests/close-paste-regression.spec.ts tests/runtime-settings-ux.spec.ts tests/settings-v1810.spec.ts tests/manual-files.spec.ts tests/v1811-ux.spec.ts tests/argument-examples.spec.ts tests/environment-manager.spec.ts tests/v1815-polish.spec.ts tests/outline-v1816.spec.ts tests/document-history.spec.ts tests/underline.spec.ts tests/history-database.spec.ts tests/caret-layout.spec.ts tests/dirty-roundtrip.spec.ts tests/close-position.spec.ts tests/optimization.spec.ts tests/performance-baseline.spec.ts tests/build-runtime.spec.ts tests/markdown-preservation.spec.ts tests/process-resources.spec.ts tests/python-download-source.spec.ts tests/nested-artifacts.spec.ts tests/application-config.spec.ts tests/code-preferences.spec.ts tests/review-interactions.spec.ts tests/explorer-layout.spec.ts tests/release-readiness.spec.ts tests/editing-file-drag.spec.ts tests/menu-table-polish.spec.ts tests/format-toggle.spec.ts tests/desktop-platform.spec.ts tests/folding-quotes.spec.ts",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && node scripts/dist.mjs",
     "dist:win": "npm run build && node scripts/dist-win.mjs",
@@ -100,7 +101,7 @@
     "appId": "com.moyu.editor",
     "productName": "Moyu",
     "directories": {
-      "output": "release/v1.0.0",
+      "output": "release/v1.0.6",
       "app": "build-app"
     },
     "files": [
@@ -132,11 +133,15 @@
       "icon": "resources/icon.png"
     },
     "linux": {
+      "syncDesktopName": true,
+      "artifactName": "Moyu-${version}-${arch}.${ext}",
       "target": [
         "AppImage",
         "deb"
       ],
       "category": "Office",
+      "maintainer": "Moyu",
+      "executableName": "moyu",
       "icon": "resources/icon.png"
     },
     "portable": {

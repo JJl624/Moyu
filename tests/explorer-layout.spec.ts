@@ -59,7 +59,7 @@ for(const theme of ['light','dark'])test(`Narrow explorer preserves single-line 
   }finally{await app.evaluate(({app})=>app.exit(0));}
 });
 
-test('Drag expansion waits one second at each folder level and cancels after leaving',async()=>{
+test('Drag expansion waits two seconds at each folder level and cancels after leaving',async()=>{
   const{app,page,root}=await fixture();
   try{
     await page.evaluate(async()=>{for(const folder of ['目标','目标/子目录','目标/子目录/孙目录','取消','取消/子目录'])await window.moyu!.create(folder,'folder');await window.moyu!.create('拖动.md','file','保留内容');await window.moyu!.create('取消.md','file','不移动');});

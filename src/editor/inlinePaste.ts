@@ -76,6 +76,9 @@ export function markdownLinkSlice(doc:Node):Slice|null{
     return !node.type.spec.code;
   });
   if(!links)return null;
+  return markdownPasteSlice(doc);
+}
+export function markdownPasteSlice(doc:Node):Slice{
   if(doc.childCount===1&&doc.firstChild?.type.name==='paragraph')return new Slice(doc.firstChild.content,0,0);
   return new Slice(doc.content,blockDepth(doc.firstChild),blockDepth(doc.lastChild,true));
 }
@@ -85,11 +88,15 @@ export const inlinePaste = $prose(ctx => new Plugin({
     handleDOMEvents:{paste(view,event){
       const data=event.clipboardData,text=data?.getData('text/plain');
       if(!view.editable||!text||text.length>20*1024*1024||data?.files.length||/<img\b[^>]*src=["']data:/i.test(data?.getData('text/html')||''))return false;
-      if(!text.includes('[')||!text.includes(']')||!text.includes('(')&&!text.includes(']['))return false;
+      if(data?.getData('vscode-editor-data'))return false;
+      const plain=!data?.getData('text/html');
+      if(!plain&&(!text.includes('[')||!text.includes(']')||!text.includes('(')&&!text.includes('][')))return false;
       readNativeSelection(view);
       if(view.state.selection.$from.parent.type.spec.code)return false;
       const doc=ctx.get(parserCtx)(text);if(!doc)return false;
-      const slice=markdownLinkSlice(doc);if(!slice)return false;
+      // Keep the parsed document directly. Serializing soft newlines to DOM
+      // and parsing it again collapses them as HTML whitespace.
+      const slice=plain?markdownPasteSlice(doc):markdownLinkSlice(doc);if(!slice)return false;
       const tr=view.state.tr.replaceSelection(normalizeInlinePaste(slice,view.state.schema)).scrollIntoView();
       view.dispatch(tr);event.preventDefault();return true;
     }},

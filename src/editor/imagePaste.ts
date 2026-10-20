@@ -2,6 +2,7 @@ import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { $prose } from '@milkdown/kit/utils';
 import { clipboardImages, importClipboardImages } from './clipboardImages';
 import { readNativeSelection } from './nativeSelection';
+import { acceptsAttachmentDrop, droppedAttachmentLinks } from './attachmentDrop';
 export const imagePaste = (
   document: string,
   root: string | undefined,
@@ -37,6 +38,12 @@ export const imagePaste = (
           drop(view, event) {
             return insert(view, event);
           },
+          dragover(view,event){
+            if(!view.editable||!acceptsAttachmentDrop(event.dataTransfer))return false;
+            const pos=view.posAtCoords({left:event.clientX,top:event.clientY})?.pos;
+            if(pos==null||view.state.doc.resolve(pos).parent.type.spec.code)return false;
+            event.preventDefault();event.dataTransfer!.dropEffect='copy';return true;
+          },
         },
       },
     });
@@ -49,13 +56,14 @@ export const imagePaste = (
       try {
         files = event instanceof ClipboardEvent
           ? clipboardImages(event)
-          : Array.from(event.dataTransfer?.files || []).filter(file => /^image\//i.test(file.type));
+          : Array.from(event.dataTransfer?.files || []);
       } catch (error) {
         event.preventDefault();
         onError((error as Error).message);
         return true;
       }
-      if (!files.length) return false;
+      const drop=event instanceof DragEvent && acceptsAttachmentDrop(event.dataTransfer);
+      if (!files.length&&!drop) return false;
       readNativeSelection(view);
       const dropped = event instanceof DragEvent
         ? view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
@@ -66,14 +74,18 @@ export const imagePaste = (
       event.preventDefault();
       const job = { from, to, cancelled: false };
       pending.add(job);
-      void importClipboardImages(files, document, root).then(links => {
+      void (drop?droppedAttachmentLinks((event as DragEvent).dataTransfer!,document,root):importClipboardImages(files, document, root)).then(links => {
+        if(!links.length)return;
         if (destroyed || view.isDestroyed || job.cancelled) return;
         pending.delete(job);
         const type = view.state.schema.nodes.resource_link,
           inSource = view.state.doc.resolve(job.from).parent.type.name === 'resource_link',
           nodes = inSource
-            ? [view.state.schema.text(links.join(''))]
-            : links.map(raw => type.create(null, view.state.schema.text(raw))),
+            ? [view.state.schema.text(links.join('\n'))]
+            : links.flatMap((raw,index) => {
+              const node=type.create(null,view.state.schema.text(raw));
+              return index?[view.state.schema.nodes.hardbreak.create(),node]:[node];
+            }),
           selection = view.state.selection;
         const tr = view.state.tr.replaceWith(job.from, job.to, nodes);
         if (dropped != null || selection.from === job.from && selection.to === job.to) {

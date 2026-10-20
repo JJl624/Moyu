@@ -23,8 +23,10 @@ export async function createTestArtifacts(work) {
   const root = await fs.realpath(work), parent = path.join(root, 'test-runs');
   await fs.mkdir(parent, { recursive: true });
   const directory = await fs.mkdtemp(path.join(parent, 'run-')), ledger = path.join(directory, 'profiles.jsonl');
-  const started = Date.now();
   await fs.writeFile(ledger, '', { flag: 'wx' });
+  // Compare timestamps from the same filesystem clock. Linux directory birth
+  // times can lag Date.now() by a clock tick even for a newly created profile.
+  const started = (await fs.stat(ledger)).birthtimeMs;
   return {
     ledger,
     async finish(success) {

@@ -134,12 +134,12 @@ test("Drawing saves use optimistic versions and portable scene/image files", asy
   assert.notEqual(saved.version, doc.version);
   await assert.rejects(drawings.create({ path: "../bad.excalidraw" }));
 });
-test("Credentials are encrypted outside the vault and omitted from renderer responses", async (t) => {
+test("Credentials are stored in local configuration without a keyring and omitted from ordinary renderer responses", async (t) => {
   const vault = await fixture(t);
   const directory = path.join(vault.root, "user-data");
   const storage = {
-    isEncryptionAvailable: () => true,
-    encryptString: (s) => Buffer.from(s.split("").reverse().join("")),
+    isEncryptionAvailable: () => false,
+    encryptString: () => { throw Error("Encryption must not be used"); },
     decryptString: (b) => b.toString().split("").reverse().join(""),
   };
   const connections = new Connections(directory, storage);
@@ -156,7 +156,7 @@ test("Credentials are encrypted outside the vault and omitted from renderer resp
     "my-secret",
   );
   assert(
-    !(await fs.readFile(connections.file("workspace-1"), "utf8")).includes(
+    (await fs.readFile(connections.file("workspace-1"), "utf8")).includes(
       "my-secret",
     ),
   );

@@ -1,8 +1,11 @@
 import {codeId} from '../shared/code-documents.mjs';
+import { foldingQuoteRemark, foldingQuoteSchema, foldingQuoteInput, foldingQuotes } from './editor/foldingQuotes';
 import {stableCodeIds, codeIdTransaction, exhaustedIdsMessage} from './editor/codeIds';
 import { EditorView as CodeView } from '@codemirror/view';
 import { Crepe } from '@milkdown/crepe';
 import { codeBlockConfig, codeBlockView } from '@milkdown/kit/component/code-block';
+import { tableBlockView } from '@milkdown/kit/component/table-block';
+import { editingTableView } from './editor/tableEditing';
 import type { Ctx } from '@milkdown/kit/ctx';
 import { toggleLinkCommand as toolbarLinkCommand } from '@milkdown/kit/component/link-tooltip';
 import {
@@ -155,6 +158,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           [Crepe.Feature.LinkTooltip]: false,
           [Crepe.Feature.BlockEdit]: false,
           [Crepe.Feature.Placeholder]: false,
+          [Crepe.Feature.Toolbar]: false,
         },
         featureConfigs: {
           [Crepe.Feature.Cursor]: { virtual: false },
@@ -174,18 +178,10 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
             previewLabel: '预览',
             previewLoading: '正在加载…',
           },
-          [Crepe.Feature.Toolbar]: {
-            boldLabel: '加粗',
-            italicLabel: '斜体',
-            codeLabel: '行内代码',
-            linkLabel: '链接',
-            strikethroughLabel: '删除线',
-            latexLabel: '数学公式',
-            aiLabel: '辅助编辑',
-          },
         },
       });
       void crepe.editor.remove([
+        tableBlockView,
         ...imageSchema,
         uploadPlugin,
         insertImageCommand,
@@ -235,10 +231,12 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         .use(imagePaste(props.path, props.root, message => callbacks.current.onError(message)))
         .use(sourceHeadings).use(sourceHeadingInputRule).use(headingSource).use(inlinePresentation)
         .use(ordinaryEmptyParagraphs)
+        .use(foldingQuoteRemark).use(foldingQuoteSchema).use(foldingQuoteInput).use(foldingQuotes)
         .use(headingListItems)
         .use(stableListItemView)
         .use(syncListTextSelection)
         .use(tableDeleteKeys)
+        .use(editingTableView)
         .use(documentTail).use(selectionGesture);
       crepe.on((listener) => {
         listener.selectionUpdated(ctx =>
@@ -546,6 +544,10 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           bold: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('strong'))),
           italic: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('emphasis'))),
           strike: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('delete'))),
+          highlight: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('highlight'))),
+          underline: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('underline'))),
+          math: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('inlineMath'))),
+          link: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('link'))),
           code: () => editor.action(ctx => ctx.get(commandsCtx).inline(formatInline('inlineCode'))),
           bullet: () => editor.action(callCommand(wrapInBulletListCommand.key)),
           ordered: () => editor.action(callCommand(wrapInOrderedListCommand.key)),

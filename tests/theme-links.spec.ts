@@ -13,7 +13,7 @@ async function fixture(){
 }
 async function open(page:Page,file:string,content:string){await page.evaluate(({file,content})=>window.moyu!.create(file,'file',content),{file,content});await page.locator(`.tree-item[title="${file}"]`).dblclick();await expect(page.locator('.editor-host')).not.toHaveAttribute('data-editor-pending','true');}
 async function select(el:Locator,from:number,to=from){await el.evaluate((el,{from,to})=>{const node=el.firstChild!;const r=document.createRange();r.setStart(node,from);r.setEnd(node,to);const s=getSelection()!;s.removeAllRanges();s.addRange(r);el.closest<HTMLElement>('[contenteditable=true]')!.focus();document.dispatchEvent(new Event('selectionchange'));},{from,to});}
-test('Floating toolbar inserts editable Markdown; ordinary link clicks reveal source and Ctrl clicks navigate once',async()=>{
+test('Selection context menu inserts editable Markdown; ordinary link clicks reveal source and Ctrl clicks navigate once',async()=>{
  const {app,page,data,errors}=await fixture();
  try{
   await app.evaluate(({ipcMain})=>{(globalThis as any).__external=[];ipcMain.removeHandler('moyu:external');ipcMain.handle('moyu:external',(_event,url)=>{(globalThis as any).__external.push(url);return {ok:true,data:null};});});
@@ -22,8 +22,9 @@ test('Floating toolbar inserts editable Markdown; ordinary link clicks reveal so
   await fs.copyFile(path.join(project,'resources/workspace-guide/公式和代码示例.assets/attachments/示例绘图.excalidraw'),path.join(data,'示例知识库','图.excalidraw'));
   await open(page,'链接.md','选择文字\n\n[普通链接](目标.md)\n\n[**加粗链接**](目标.md)\n\n[网页](https://example.com/)\n\nhttps://example.org\n\n![图](图.svg)\n\n[绘图](图.excalidraw)\n\n结束段落\n');
   const first=page.locator('.ProseMirror > p').first();await first.click();await select(first,0,4);
-  const toolbar=page.locator('.milkdown-toolbar');await expect(toolbar).toBeVisible();
-  await toolbar.locator('[title="链接"]').click();
+  await expect(page.locator('.milkdown-toolbar')).toHaveCount(0);
+  await first.click({button:'right',position:{x:8,y:8}});
+  await page.getByRole('menuitemcheckbox',{name:'链接',exact:true}).click();
   const source=first.locator('.syntax-raw');await expect(source).toHaveText('[选择文字]()');
   await page.keyboard.insertText('目标.md');await expect(source).toHaveText('[选择文字](目标.md)');
   await expect(page.locator('.milkdown-link-edit,.milkdown-link-preview')).toHaveCount(0);

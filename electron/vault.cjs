@@ -191,9 +191,10 @@ class Vault {
         await fs.mkdir(target);
         return { path: relative };
       }
-      if (!markdown(relative)) throw fault("文档名称需要以 .md 结尾。");
       await fs.writeFile(target, content, { flag: "wx", flush: true });
-      return this.read(relative);
+      return ['markdown','html','text'].includes(fileKind(relative))
+        ? this.read(relative)
+        : {path:relative,content,version:hash(content),updated:(await fs.stat(target)).mtimeMs};
     });
   }
   rename(from, to) {

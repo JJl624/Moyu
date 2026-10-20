@@ -1,0 +1,18 @@
+.app :is(.ProseMirror,.reading-view) .folding-quote {
+  border:1px solid var(--border);border-radius:5px;background:transparent;
+  margin:1em 0;padding:0 12px;color:inherit;
+}
+.app .ProseMirror .folding-quote > p:first-child {
+  position:relative;padding-left:21px;margin:8px 0;font-weight:600;
+}
+.app .ProseMirror .folding-quote[data-fold-open="false"] > :not(:first-child) {display:none;}
+.app .ProseMirror .folding-quote-marker {font-size:0;letter-spacing:0;}
+.app .ProseMirror .folding-quote-toggle {
+  position:absolute;left:0;top:0;width:18px;height:1lh;padding:0;border:0;
+  background:transparent;color:var(--muted);cursor:pointer;
+}
+.app .ProseMirror .folding-quote-toggle::before {content:'▸';display:inline-block;}
+.app .ProseMirror .folding-quote-toggle[aria-expanded="true"]::before {transform:rotate(90deg);}
+.app .ProseMirror .folding-quote-toggle:focus-visible {outline:2px solid var(--accent);border-radius:3px;}
+.app .reading-view details.folding-quote > summary {cursor:pointer;margin:8px 0;font-weight:600;}
+.app .reading-view details.folding-quote > summary::marker {color:var(--muted);}

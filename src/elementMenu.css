@@ -1,0 +1,20 @@
+.app :is(.element-menu,.file-context-menu) {width:228px;min-width:220px;max-width:calc(100vw - 16px);padding:6px;border-radius:6px;max-height:calc(100vh - 16px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 7px 24px #0003,0 1px 4px #0002;z-index:1100}
+.app :is(.element-menu,.file-context-menu) button {display:flex;align-items:center;gap:9px;border:0;border-radius:5px;min-height:26px;width:100%;padding:4px 8px;text-align:left;font:inherit;font-size:12px;line-height:1.5;color:var(--text);background:transparent;white-space:nowrap}
+.app :is(.element-menu,.file-context-menu) button>svg {flex:none;color:var(--secondary)}
+.app :is(.element-menu,.file-context-menu) button>span {flex:1;min-width:0}
+.app :is(.element-menu,.file-context-menu) button:hover:not(:disabled),.app :is(.element-menu,.file-context-menu) button:focus-visible,.app :is(.element-menu,.file-context-menu) button[aria-expanded=true] {background:var(--selected);outline:none;color:var(--accent)}
+.app :is(.element-menu,.file-context-menu) button:focus-visible {box-shadow:inset 0 0 0 1px var(--accent)}
+.app :is(.element-menu,.file-context-menu) button:disabled {opacity:.4;cursor:default}
+.app :is(.element-menu,.file-context-menu) button kbd {background:none;border:0;box-shadow:none;color:var(--muted);font:11px var(--font-ui);padding:0;margin-left:12px}
+.app :is(.element-menu,.file-context-menu) .menu-chevron {margin-left:auto}
+.app :is(.element-menu,.file-context-menu) .menu-danger:not(:disabled),.app :is(.element-menu,.file-context-menu) .menu-danger>svg {color:var(--danger)}
+.app .menu-formats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.app .menu-formats button {justify-content:center;min-height:26px;padding:4px 2px}
+.app .menu-formats button>span {display:none}
+.app .menu-section-start {border-top:1px solid var(--border);padding-top:4px;margin-top:4px}
+.app .element-submenu {width:220px;z-index:1101}
+
+.app .menu-row button[data-menu-id="table.insert"]>svg,.app .menu-row button[data-menu-id="code.run"]>svg {color:var(--green)}
+
+.app .menu-formats button[aria-checked=true] {background:var(--selected);color:var(--accent)}
+.app .menu-formats button[aria-checked=true]>svg {color:var(--accent)}

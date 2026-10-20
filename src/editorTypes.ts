@@ -3,6 +3,10 @@ export type EditorAction =
   | 'italic'
   | 'strike'
   | 'code'
+  | 'highlight'
+  | 'underline'
+  | 'math'
+  | 'link'
   | 'bullet'
   | 'ordered'
   | 'quote'
@@ -87,6 +91,7 @@ export interface EditorContext {
   text: string;
   textFor(type: 'heading' | 'list_item' | 'blockquote' | 'table' | 'cell' | 'paragraph'): string;
   canInsertDrawing: boolean;
+  active?(action: EditorAction | BlockAction): boolean;
   can(action: EditorAction | BlockAction): boolean;
   run(action: EditorAction | BlockAction): boolean;
   restore(): boolean;

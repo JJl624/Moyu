@@ -101,11 +101,11 @@ test('Preference drafts commit on Enter, category switch and close; invalid JSON
   const {app,page,data,errors}=await fixture();try{
     await page.getByRole('button',{name:'偏好设置',exact:true}).click();await selectPreference(page,'JavaScript');
     const input=page.getByLabel('JavaScript / TypeScript 代码执行时限',{exact:true});await input.fill('15');await input.press('Enter');
-    await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).code.javascript.executionTimeoutSeconds).toBe(15);
+    await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).code?.javascript?.executionTimeoutSeconds).toBe(15);
     await input.fill('16');await selectPreference(page,'SQL');
-    await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).code.javascript.executionTimeoutSeconds).toBe(16);
+    await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).code?.javascript?.executionTimeoutSeconds).toBe(16);
     const name=page.getByLabel('SQL 数据库文件名',{exact:true});await name.fill('local.sqlite');await page.getByRole('button',{name:'关闭对话框',exact:true}).click();
-    expect(JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).code.sql.databaseFile).toBe('local.sqlite');
+    await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).code?.sql?.databaseFile).toBe('local.sqlite');
     await settings(page,'Python');await page.getByLabel('Python 代码执行时限',{exact:true}).fill('25');await page.keyboard.press('Tab');
     await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'Python/settings.json'),'utf8')).executionTimeoutSeconds).toBe(25);
     await page.getByRole('button',{name:'恢复默认',exact:true}).click();await expect.poll(async()=>JSON.parse(await fs.readFile(path.join(data,'Python/settings.json'),'utf8')).executionTimeoutSeconds).toBe(10);

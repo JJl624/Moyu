@@ -34,6 +34,9 @@ import {
   ChevronRight,
   Circle,
   Cloud,
+  Copy,
+  Scissors,
+  ClipboardPaste,
   Code2,
   Download,
   Files,
@@ -598,7 +601,7 @@ export default function App() {
     }));
   };
   const showNew = (kind: 'new' | 'folder', requestedParent?: string) => {
-    if (busy || !ws.workspace) return;
+    if (busy || !ws.workspace || ws.workspace.readOnly) return;
     const visibleFolders = new Set<string>();
     const collect = (nodes: FileNode[]) => {
       for (const node of nodes) if (node.kind === 'folder') {
@@ -610,7 +613,8 @@ export default function App() {
     let parent = requestedParent ?? (treeSelection
       ? folders.some(folder => folder.path === treeSelection) ? treeSelection : folderOf(treeSelection)
       : selectedFolder || folderOf(ws.active));
-    if (fileView === 'document' && !visibleFolders.has(parent)) parent = assets?.path || '';
+    if(requestedParent==='')setFileView('workspace');
+    else if (fileView === 'document' && !visibleFolders.has(parent)) parent = assets?.path || '';
     else while (parent && !visibleFolders.has(parent)) parent = folderOf(parent);
     setFileCreation({ kind, parent });
     setView('files');
@@ -626,11 +630,11 @@ export default function App() {
       return next;
     });
   };
-  useEffect(()=>{setFileCreation(null);},[ws.workspace?.root,fileView]);
+  useEffect(()=>{setFileCreation(null);},[ws.workspace?.root]);
   const createInline = async (name:string) => {
     if(!fileCreation)return;
     const root=ws.workspace?.root, isFolder=fileCreation.kind==='folder';
-    const filename=isFolder || /\.(md|markdown)$/i.test(name)?name:name+'.md';
+    const filename=isFolder || /\.[^.]+$/.test(name)?name:name+'.md';
     const target=[fileCreation.parent,filename].filter(Boolean).join('/');
     setBusy(true);
     try{await api.create(target,isFolder?'folder':'file','');
@@ -802,7 +806,7 @@ export default function App() {
         return;
       }
       const { documentHTML } = await import('./documentExport');
-      const html = await documentHTML(ws.docs.current[ws.active].content, ws.active, displayName(ws.active));
+      const html = await documentHTML(ws.docs.current[ws.active].content, ws.active, displayName(ws.active), { expandFolds: kind === 'pdf' });
       if (kind === 'pdf') {
         if (await api.exportPDF(ws.active, html)) notify('已导出 PDF');
         return;
@@ -957,7 +961,7 @@ export default function App() {
     event.stopPropagation();
     if(node.system){
       setContext(null);
-      setElementMenu({x:event.clientX,y:event.clientY,actions:[{label:'在文件管理器中显示',action:()=>void safe(()=>api.reveal(node.path))}]});
+      setElementMenu({x:event.clientX,y:event.clientY,actions:[{id:'reveal',label:'在文件管理器中显示',action:()=>void safe(()=>api.reveal(node.path))}]});
       return;
     }
 
@@ -1066,19 +1070,19 @@ export default function App() {
                     <IconButton
                       title={fileView === 'workspace' ? '查看当前文档附属目录' : '查看工作空间'}
                       active={fileView === 'document'}
-                      onClick={() => { setSortMenu(null); setFileView(fileView === 'workspace' ? 'document' : 'workspace'); }}
+                      onClick={() => { setSortMenu(null); setFileCreation(null); setFileView(fileView === 'workspace' ? 'document' : 'workspace'); }}
                     ><FolderTree size={16} /></IconButton>
                     <IconButton
                       title='新建文档'
-                      disabled={!ws.workspace || fileView === 'document' && !assets}
-                      onClick={() => showNew('new')}
+                      disabled={busy || !ws.workspace || ws.workspace.readOnly}
+                      onClick={() => showNew('new', '')}
                     >
                       <Plus size={17} />
                     </IconButton>
                     <IconButton
                       title='新建文件夹'
-                      disabled={fileView === 'document' && !assets}
-                      onClick={() => showNew('folder')}
+                      disabled={busy || !ws.workspace || ws.workspace.readOnly}
+                      onClick={() => showNew('folder', '')}
                     >
                       <FolderPlus size={16} />
                     </IconButton>
@@ -1195,6 +1199,9 @@ export default function App() {
                 <div className='sidebar-scroll'>
                   <FileTree
                     nodes={fileNodes}
+                    root={ws.workspace?.root}
+                    create={showNew}
+                    createDisabled={busy || !!ws.workspace?.readOnly}
                     creation={fileCreation || undefined}
                     draft={fileCreation && <FileNameInput key={fileCreation.kind+":"+fileCreation.parent} folder={fileCreation.kind==='folder'} document={fileCreation.kind==='new'} create={createInline} cancel={()=>setFileCreation(null)} />}
                     baseFolder={fileView === 'document' ? assets?.path : ''}
@@ -1442,7 +1449,7 @@ export default function App() {
               : activeDoc
               ? (
                 <>
-                  <div className='document-toolbar'>
+                  <div className='document-toolbar' role='toolbar' aria-label='文档工具栏'>
                     <div className='breadcrumbs'>
                       <IconButton title='关闭当前文档' onClick={() => void safe(() => closeDocuments([ws.active]))}><X size={16} /></IconButton>
                       <Folder size={14} />
@@ -1847,7 +1854,7 @@ export default function App() {
       {sortMenu && <ExplorerSortMenu {...sortMenu} order={fileOrder} change={setFileOrder} close={() => setSortMenu(null)} />}
       {context && (
         <div
-          className='popover-menu context-menu'
+          className='popover-menu context-menu file-context-menu'
           ref={fileMenuElement}
           style={{ left: context.x, top: context.y }}
           onClick={(event) => event.stopPropagation()}
@@ -1886,9 +1893,10 @@ export default function App() {
                 {favorites.includes(context.node.path) ? '取消收藏' : '收藏文档'}
               </button>
             )}
-          <button disabled={!!context.node.companionFor} onClick={()=>{clipboardAction('cut',context.node.path,'');setContext(null);}}>剪切</button>
-          <button disabled={!!context.node.companionFor} onClick={()=>{clipboardAction('copy',context.node.path,'');setContext(null);}}>复制</button>
-          <button disabled={!fileClipboard.current} onClick={()=>{clipboardAction('paste',context.node.path,context.node.path.split('/').slice(0,-1).join('/'));setContext(null);}}>粘贴</button>
+
+          <button disabled={!!context.node.companionFor} onClick={()=>{clipboardAction('copy',context.node.path,'');setContext(null);}}><Copy size={16}/>复制</button>
+          <button disabled={!!context.node.companionFor} onClick={()=>{clipboardAction('cut',context.node.path,'');setContext(null);}}><Scissors size={16}/>剪切</button>
+          <button disabled={!fileClipboard.current} onClick={()=>{clipboardAction('paste',context.node.path,context.node.path.split('/').slice(0,-1).join('/'));setContext(null);}}><ClipboardPaste size={16}/>粘贴</button>
           <button
             onClick={() => {
               showRename(context.node.path);
@@ -1910,7 +1918,7 @@ export default function App() {
           </button>
           <hr />
           <button
-            className='danger'
+            className='danger menu-danger'
             disabled={!!context.node.companionFor}
             onClick={() => {
               setDialog({ kind: 'trash', path: context.node.path });

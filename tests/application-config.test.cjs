@@ -9,6 +9,26 @@ const base=path.resolve(__dirname,'../../../work/application-config-tests');
 async function fixture(t){await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,'case-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
 const safeStorage={isEncryptionAvailable:()=>true,encryptString:value=>Buffer.from('encrypted:'+value),decryptString:bytes=>bytes.toString().slice(10)};
 
+test('Windows lock-directory contention retries without failing a completed write or removing a new owner',{skip:process.platform!=='win32'},async t=>{
+ const root=await fixture(t),file=path.join(root,'settings.json'),lock=file+'.lock';
+ const {configLock}=require('../electron/config-lock.cjs'),original=fs.rmdir;
+ await fs.mkdir(lock);let denied=false;
+ fs.rmdir=async(directory,...args)=>{
+  if(directory===lock&&!denied){denied=true;throw Object.assign(Error('directory changed'),{code:'EPERM'});}
+  return original(directory,...args);
+ };
+ let release;
+ try{release=await configLock(file);}finally{fs.rmdir=original;}
+ assert(denied);
+ const newOwner=path.join(lock,'owner-'+process.pid+'-new');let changed=false;
+ fs.rmdir=async(directory,...args)=>{
+  if(directory===lock&&!changed){changed=true;await fs.mkdir(newOwner);throw Object.assign(Error('new writer'),{code:'EPERM'});}
+  return original(directory,...args);
+ };
+ try{await release();}finally{fs.rmdir=original;}
+ assert.deepEqual(await fs.readdir(lock),[path.basename(newOwner)]);
+});
+
 test('All application owners serialize into one file without losing concurrent sections or workspace credentials',async t=>{
  const root=await fixture(t),config=new ApplicationConfig(root);
  assert.deepEqual(await config.get('workspace'),{});assert.deepEqual(await fs.readdir(root),[]);
@@ -26,7 +46,7 @@ test('All application owners serialize into one file without losing concurrent s
   assert.equal((await connections.get(vault,true)).webdav.password,'secret-'+vault);
   assert.equal((await connections.get(vault)).webdav.password,undefined);
  }
- assert(!Object.values(saved.connections).some(item=>Object.hasOwn(item.webdav,'password')));
+ assert(Object.values(saved.connections).every(item=>Object.hasOwn(item.webdav,'password')&&!Object.hasOwn(item.webdav,'secret')));
  assert.equal((await new DataStore(root).get())['moyu-test-11'],'11');
 });
 
@@ -66,7 +86,7 @@ test('Independent editor processes retain simultaneous edits and recover only a 
  assert.deepEqual(await fs.readdir(root),['settings.json']);
 });
 
-test('Saving unchanged encrypted credentials does not re-encrypt, acquire a lock or write the shared file',async t=>{
+test('Saving unchanged local credentials does not acquire a lock or write the shared file',async t=>{
  const root=await fixture(t),connections=new Connections(root,{...safeStorage,encryptString:value=>Buffer.from(value+Math.random()),decryptString:()=> 'password'});
  const input={url:'https://example.com/dav',password:'password'};
  await connections.save('notes','webdav',input);
@@ -75,4 +95,24 @@ test('Saving unchanged encrypted credentials does not re-encrypt, acquire a lock
  assert.equal((await fs.stat(connections.file())).mtimeMs,before.mtimeMs);
  assert.equal(await fs.readFile(connections.file(),'utf8'),bytes);
  assert.deepEqual(await fs.readdir(root),['settings.json']);
+});
+
+test('Existing encrypted credentials can be read, saved locally, replaced or cleared without a working keyring',async t=>{
+ const root=await fixture(t),config=new ApplicationConfig(root),connections=new Connections(root,safeStorage),key=connections.key('vault');
+ const old={url:'https://example.com/dav',directory:'/Moyu',username:'u',secret:Buffer.from('encrypted:old-password').toString('base64')};
+ await config.set('connections',{[key]:{webdav:old}});
+ assert.equal((await connections.get('vault',true)).webdav.password,'old-password');
+ await connections.save('vault','webdav',{url:old.url});
+ const saved=(await config.get('connections'))[key].webdav;
+ assert.equal(saved.password,'old-password');assert.equal(saved.secret,undefined);
+ assert.equal((await new Connections(root).get('vault',true)).webdav.password,'old-password');
+ await config.set('connections',{[key]:{webdav:old}});
+ const unavailable=new Connections(root,{decryptString(){throw Error('locked');}});
+ await assert.rejects(unavailable.get('vault',true),/重新输入/);
+ await unavailable.save('vault','webdav',{url:old.url,password:'replacement'});
+ assert.equal((await unavailable.get('vault',true)).webdav.password,'replacement');
+ await config.set('connections',{[key]:{webdav:old}});
+ await unavailable.save('vault','webdav',{url:old.url,clearPassword:true});
+ assert.equal((await unavailable.get('vault',true)).webdav.password,'');
+ assert.equal((await config.get('connections'))[key].webdav.secret,undefined);
 });

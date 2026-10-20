@@ -54,3 +54,15 @@ test('Heading source hashes and body retain every caret offset across modes',()=
  const rich=new Schema({nodes:{doc:{content:'block+'},heading:{content:'inline*',group:'block',attrs:{sourceHeading:{default:true}}},text:{group:'inline'}}}),md='### 标题',doc=rich.node('doc',null,rich.node('heading',null,rich.text(md)));
  for(let offset=0;offset<=md.length;offset++)assert.equal(toMarkdownSelection(md,doc,fromMarkdownSelection(md,doc,offset)),offset);
 });
+
+test('Folding headings, bodies and nested quotes retain caret offsets across modes',()=>{
+ const rich=new Schema({nodes:{doc:{content:'block+'},blockquote:{content:'block+',group:'block'},paragraph:{content:'inline*',group:'block'},text:{group:'inline'}}});
+ for(const eol of ['\n','\r\n']){
+  const md=['> [-] 标题','> 一级内容','>','> > [+] 内层','> > 二级内容','>','> 继续'].join(eol);
+  const p=text=>rich.node('paragraph',null,rich.text(text));
+  const doc=rich.node('doc',null,rich.node('blockquote',null,[p('[-] 标题'),p('一级内容'),rich.node('blockquote',null,[p('[+] 内层'),p('二级内容')]),p('继续')]));
+  for(const text of ['标题','一级内容','内层','二级内容','继续'])for(let index=0;index<text.length;index++){
+   const offset=md.indexOf(text)+index;assert.equal(toMarkdownSelection(md,doc,fromMarkdownSelection(md,doc,offset)),offset,`${eol}:${text}:${index}`);
+  }
+ }
+});

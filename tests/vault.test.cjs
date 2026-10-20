@@ -33,6 +33,16 @@ test("Markdown round trip creates no metadata folder and serializes concurrent w
   assert.equal(results[1].reason.code, "CONFLICT");
   assert.equal((await vault.read("文档.md")).content, "writer one");
 });
+test("New files keep text, compound and viewer-specific extensions without overwriting", async () => {
+  for (const name of ['说明.txt','页面.html','模块.test.js','大写.MD','压缩.tar.gz','图片.png']) {
+    const created=await vault.create(name,'file','');
+    assert.equal(created.path,name);
+    assert.equal((await fs.stat(path.join(root,name))).size,0);
+    await assert.rejects(vault.create(name,'file','overwrite'),{code:'EEXIST'});
+    assert.equal(await fs.readFile(path.join(root,name),'utf8'),'');
+  }
+});
+
 test("External edit conflict never silently overwrites disk", async () => {
   const document = await vault.create("note.md", "file", "original");
   await fs.writeFile(path.join(root, "note.md"), "external edit");
