@@ -14,7 +14,7 @@ class Attachments {
   target(document,name){return this.vault.mutate(()=>this.targetUnlocked(document,name));}
   async targetUnlocked(document,name){if(document&&/\.(md|markdown)$/i.test(document))await this.documents.ensureUnlocked(document);const directory=await this.directory(document||'');return path.posix.join(directory==='.'?'':directory,filename(name));}
   async put(document,name,bytes){
-    filename(name);if(!ArrayBuffer.isView(bytes)||bytes.byteLength>20*1024*1024)throw fault('附件无效或超过 20 MB。');
+    filename(name);if(!ArrayBuffer.isView(bytes))throw fault('附件内容无效。');
     const original=await this.targetUnlocked(document,name),extension=path.posix.extname(name),stem=path.posix.basename(name,extension);let target=original;
     for(let index=0;;index++){
       target=index?path.posix.join(path.posix.dirname(original),stem+'-'+index+extension):original;

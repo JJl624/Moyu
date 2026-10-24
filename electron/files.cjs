@@ -3,7 +3,6 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { hash, fault } = require("./vault.cjs");
 const { DATA_FOLDER } = require("./vault-paths.cjs");
-const MAX = 20 * 1024 * 1024;
 const eligible = (p) =>
   p
     .split("/")
@@ -97,7 +96,6 @@ async function snapshot(vault, relative) {
     if (!stat.isFile() || stat.isSymbolicLink()) {
       throw fault("只能操作普通文件。");
     }
-    if (stat.size > MAX) throw fault(relative + " 超过 20 MB。", "TOO_LARGE");
     const bytes = await fs.readFile(target);
     return {
       path: relative,
@@ -161,7 +159,6 @@ async function replace(vault, relative, bytes, expected) {
   if ((current?.version ?? null) !== expected) {
     throw fault("本地文件在操作过程中发生变化：" + relative, "CONFLICT");
   }
-  if (bytes && bytes.length > MAX) throw fault("文件超过 20 MB。");
   const target = await vault.resolve(relative, true);
   if (bytes === null) {
     if (current) await fs.unlink(target);
@@ -173,7 +170,6 @@ async function replace(vault, relative, bytes, expected) {
   return snapshot(vault, relative);
 }
 module.exports = {
-  MAX,
   eligible,
   internal,
   atomic,

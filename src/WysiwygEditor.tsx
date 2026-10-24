@@ -1,5 +1,5 @@
 import {codeId} from '../shared/code-documents.mjs';
-import { foldingQuoteRemark, foldingQuoteSchema, foldingQuoteInput, foldingQuotes } from './editor/foldingQuotes';
+import { foldingQuoteRemark, foldingQuoteSchema, foldingQuotes } from './editor/foldingQuotes';
 import {stableCodeIds, codeIdTransaction, exhaustedIdsMessage} from './editor/codeIds';
 import { EditorView as CodeView } from '@codemirror/view';
 import { Crepe } from '@milkdown/crepe';
@@ -39,7 +39,9 @@ import {
 import { insertTableCommand, strikethroughInputRule } from '@milkdown/kit/preset/gfm';
 import { type Node, Slice } from '@milkdown/kit/prose/model';
 import { NodeSelection, TextSelection } from '@milkdown/kit/prose/state';
-import { callCommand, insert } from '@milkdown/kit/utils';
+import { callCommand, insert, $remark } from '@milkdown/kit/utils';
+import remarkEmptyTasks from '../shared/remark-empty-tasks.mjs';
+const emptyTaskRemark=$remark('emptyTasks',()=>remarkEmptyTasks);
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
 import katex from 'katex';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
@@ -55,7 +57,7 @@ import { selectionGesture } from './editor/selectionGesture';
 import { indentPlugin } from '@milkdown/kit/plugin/indent';
 import { inlinePaste } from './editor/inlinePaste';
 import {resourceBlockPosition,indentBlockIntoList,outdentBlockFromList} from './editor/listContinuation';
-import { contextCommands, prepareRichContext } from './editor/contextCommands';
+import { contextCommands, prepareRichContext,richSelectionContext } from './editor/contextCommands';
 import {
   headingSource,
   installHeadingCommands,
@@ -164,7 +166,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           [Crepe.Feature.Cursor]: { virtual: false },
           [Crepe.Feature.CodeMirror]: {
             languages,
-            extensions: [codeHighlight, codeIndentation()],
+            extensions: [codeHighlight, codeIndentation(), ...(props.codeWrap ? [CodeView.lineWrapping] : [])],
             renderPreview: (language, content, apply) =>
               language.toLowerCase() === 'mermaid'
                 ? mermaidPreview(content, apply)
@@ -230,8 +232,8 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         ).use(resourceKeys).use(resourceInput).use(toolbarLinkCommand).use(inlineFormatting).use(inlinePaste)
         .use(imagePaste(props.path, props.root, message => callbacks.current.onError(message)))
         .use(sourceHeadings).use(sourceHeadingInputRule).use(headingSource).use(inlinePresentation)
-        .use(ordinaryEmptyParagraphs)
-        .use(foldingQuoteRemark).use(foldingQuoteSchema).use(foldingQuoteInput).use(foldingQuotes)
+        .use(ordinaryEmptyParagraphs).use(emptyTaskRemark)
+        .use(foldingQuoteRemark).use(foldingQuoteSchema).use(foldingQuotes)
         .use(headingListItems)
         .use(stableListItemView)
         .use(syncListTextSelection)
@@ -239,9 +241,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         .use(editingTableView)
         .use(documentTail).use(selectionGesture);
       crepe.on((listener) => {
-        listener.selectionUpdated(ctx =>
-          callbacks.current.onDrawingAllowed?.(drawingAllowed(ctx.get(editorViewCtx)))
-        );
+        listener.selectionUpdated(ctx =>{callbacks.current.onDrawingAllowed?.(drawingAllowed(ctx.get(editorViewCtx)));callbacks.current.onContextChange?.();});
         listener.mounted((ctx) => {
           identityReady.current = true;
           installInlineCommands(ctx);
@@ -254,15 +254,17 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           const view = ctx.get(editorViewCtx), selected = callbacks.current.selection;
           if (selected) {
             stopRestore.current();
-            stopRestore.current = restoreRichSelection(view, callbacks.current.value, selected);
+            stopRestore.current = restoreRichSelection(view, callbacks.current.value, selected, callbacks.current.autoFocus !== false);
           } else {
             const host = view.dom.closest<HTMLElement>('.editor-host');
             if (host) delete host.dataset.editorPending;
           }
           window.dispatchEvent(new Event('moyu-code-dom'));
           callbacks.current.onDrawingAllowed?.(drawingAllowed(view));
+          callbacks.current.onContextChange?.();
         });
         listener.updated(ctx => {
+          callbacks.current.onContextChange?.();
           callbacks.current.onDrawingAllowed?.(drawingAllowed(ctx.get(editorViewCtx)));
           const current = ctx.get(editorViewCtx).state.doc;
           if (lastDocument.current && !lastDocument.current.eq(current)) {
@@ -288,6 +290,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
   useImperativeHandle(
     ref,
     () => ({
+      selectionContext(){return !loading?get()?.action(ctx=>richSelectionContext(ctx.get(editorViewCtx)))||null:null;},
       prepareContext(target, coords) {
         if (loading) return null;
         return get()?.action(ctx => prepareRichContext(ctx.get(editorViewCtx), target, coords)) || null;
@@ -532,11 +535,11 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
       outdentFromList(target) {
         get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);if(pos!==undefined&&outdentBlockFromList(view.state,pos,view.dispatch))view.focus();});
       },
-      action(action) {
+      action(action,options) {
         const editor = get();
         if (!editor || loading) return;
         if (contextCommands[action]) {
-          editor.action(ctx => { const view = ctx.get(editorViewCtx); contextCommands[action]!(view.state, view.dispatch); view.focus(); });
+          editor.action(ctx => { const view = ctx.get(editorViewCtx); contextCommands[action]!(view.state, view.dispatch); if(options?.focus!==false)view.focus(); });
           return;
         }
         const actions: Partial<Record<Parameters<EditorHandle['action']>[0], () => void>> = {
@@ -558,14 +561,14 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
             ),
           undo: () => editor.action(callCommand(undoCommand.key)),
           redo: () => editor.action(callCommand(redoCommand.key)),
-          task: () => editor.action(insert('- [ ] 待办事项\n')),
-          codeblock: () => editor.action(insert('\n```typescript\n// 在这里写代码\n```\n')),
+          task: () => editor.action(insert('- [ ] \n')),
+          codeblock: () => editor.action(insert('\n```\n\n```\n')),
           h1: () => editor.action(callCommand(wrapInHeadingCommand.key, 1)),
           h2: () => editor.action(callCommand(wrapInHeadingCommand.key, 2)),
           h3: () => editor.action(callCommand(wrapInHeadingCommand.key, 3)),
         };
         actions[action]?.();
-        editor.action((ctx) => ctx.get(editorViewCtx).focus());
+        if(options?.focus!==false)editor.action((ctx) => ctx.get(editorViewCtx).focus());
       },
       insert(text) {
         const editor = get();

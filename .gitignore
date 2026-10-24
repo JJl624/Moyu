@@ -20,6 +20,22 @@
 !/tests/
 !/resources/
 !/public/
+!/android/
+!/mobile.html
+!/start-android.cmd
+!/vite.mobile.config.ts
+
+/android/.gradle/
+/android/local.properties
+/android/emulator.local.json
+/android/app/build/
+/android/build/
+/android/app/src/main/assets/web/
+/android/app/src/main/assets/guides/
+/android/keystore.properties
+/android/*.jks
+/android/signing/
+!/playwright.mobile.config.ts
 
 node_modules/
 .runtime-build/

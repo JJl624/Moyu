@@ -1,6 +1,7 @@
 import {HistoryPreferences} from './documents/HistoryPreferences';
 import {TerminalPreferences} from "./terminal/TerminalPreferences";
 import './preferenceLayout.css';
+import './typeTerminalPreferences.css';
 import { useEffect, useRef, useState } from 'react';
 import { version } from '../package.json';
 import { CodePreferences, codeLanguages, type CodeLanguage, type CodePreferencesHandle } from './CodePreferences';
@@ -317,7 +318,7 @@ export function Preferences(p: Props) {
             </div>
             <section className='pref-section'>
               <h3>区域字体</h3>
-              <div className='font-region-layout'>
+              <div className='font-region-layout regional-type-settings'>
                 <nav aria-label='字体区域'>
                   <strong>编辑区</strong>
                   {fontRoles.slice(0, 4).map(([key, label]) => (
@@ -343,75 +344,80 @@ export function Preferences(p: Props) {
                   ))}
                 </nav>
                 <div className='font-region-controls' key={region}>
-                  <div className='pref-section-heading'>
+                  <div className='regional-type-heading'>
                     <h4>{regionLabel}</h4>
-                    <small>{p.value.roleFonts[region] ? '自定义' : '继承默认'}</small>
+                    <button
+                      className='text-button'
+                      disabled={!p.value.roleFonts[region]}
+                      onClick={() => {
+                        const roleFonts = { ...p.value.roleFonts };
+                        delete roleFonts[region];
+                        change('roleFonts', roleFonts);
+                      }}
+                    >
+                      恢复继承
+                    </button>
                   </div>
-                  <div className='pref-row'>
+                  <div className='compact-inline-field regional-font-field'>
                     <span>字体</span>
-                    <FontSelector
-                      label={regionLabel + '字体'}
-                      value={regionValue.family || ''}
-                      inherited={regionFont}
-                      fonts={fonts}
-                      change={family => regionChange({ family })}
-                    />
-                  </div>
-                  <div className='pref-row'>
-                    <span>{heading?'标题比例':'字号'}</span>
-                    <div>
-                      <NumberField
-                        label={regionLabel + (heading?'比例':'字号')}
-                        value={heading?regionValue.scale:regionValue.size}
-                        min={heading?0.5:10}
-                        max={heading?2:32}
-                        step={heading?0.05:1}
-                        change={value => regionChange(heading?{scale:value}:{size:value})}
+                    <div className='compact-pref-field'>
+                      <FontSelector
+                        label={regionLabel + '字体'}
+                        value={regionValue.family || ''}
+                        inherited={regionFont}
+                        fonts={fonts}
+                        change={family => regionChange({ family })}
                       />
-                      {!heading&&<small>px</small>}
+                      <small>{regionValue.family ? '自定义' : '跟随' + regionBase}</small>
                     </div>
                   </div>
-                  <div className='pref-row'>
-                    <span>行高</span>
-                    <NumberField
-                      label={regionLabel + '行高'}
-                      value={regionValue.lineHeight}
-                      min={1}
-                      max={3}
-                      step={0.1}
-                      change={lineHeight => regionChange({ lineHeight })}
-                    />
+                  <div className='compact-pref-grid regional-type-metrics'>
+                    <div className='compact-inline-field'>
+                      <span>{heading ? '标题比例' : '字号'}</span>
+                      <div className='compact-pref-field'>
+                        <div className='compact-number-unit'>
+                          <NumberField
+                            label={regionLabel + (heading ? '比例' : '字号')}
+                            value={heading ? regionValue.scale : regionValue.size}
+                            min={heading ? 0.5 : 10}
+                            max={heading ? 2 : 32}
+                            step={heading ? 0.05 : 1}
+                            change={value => regionChange(heading ? { scale: value } : { size: value })}
+                          />
+                          <small>{heading ? '倍' : 'px'}</small>
+                        </div>
+                        <small>{(heading ? p.value.roleFonts[region]?.scale : p.value.roleFonts[region]?.size)
+                          ? '自定义' : '跟随' + inheritedSize}</small>
+                      </div>
+                    </div>
+                    <div className='compact-inline-field'>
+                      <span>行高</span>
+                      <div className='compact-pref-field'>
+                        <div className='compact-number-unit'>
+                          <NumberField
+                            label={regionLabel + '行高'}
+                            value={regionValue.lineHeight}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            change={lineHeight => regionChange({ lineHeight })}
+                          />
+                          <small>倍</small>
+                        </div>
+                        <small>{p.value.roleFonts[region]?.lineHeight ? '自定义'
+                          : region.startsWith('reading') ? '跟随正文行高' : '默认 1.7'}</small>
+                      </div>
+                    </div>
                   </div>
-                  <div className='font-inheritance' aria-label='当前字体继承关系'>
-                    <span>
-                      字体：{regionValue.family
-                        ? '自定义 ' + regionValue.family
-                        : '继承 ' + regionBase + '（' + regionFont + '）'}
-                    </span>
-                    <span>
-                      {heading?'比例':'字号'}：{(heading?p.value.roleFonts[region]?.scale:p.value.roleFonts[region]?.size)
-                        ? '自定义'
-                        : '继承 ' + inheritedSize}（{heading?regionValue.scale:regionValue.size}{heading?'':'px'}）
-                    </span>
-                    <span>
-                      行高：{p.value.roleFonts[region]?.lineHeight
-                        ? '自定义'
-                        : region.startsWith('reading')
-                        ? '继承正文行高'
-                        : '默认界面行高'}（{regionValue.lineHeight}）
-                    </span>
-                  </div>
-                  <button
-                    className='secondary-button inherit-font'
-                    disabled={!p.value.roleFonts[region]}
-                    onClick={() => {
-                      const roleFonts = { ...p.value.roleFonts };
-                      delete roleFonts[region];
-                      change('roleFonts', roleFonts);
-                    }}
+                  <div
+                    className='regional-type-preview'
+                    aria-label={regionLabel + '字体预览'}
+                    style={{ fontFamily: regionValue.family || regionFont,
+                      fontSize: heading ? regionValue.size * regionValue.scale : regionValue.size,
+                      lineHeight: regionValue.lineHeight }}
                   >
-                    恢复继承
-                  </button>
+                    中文字体预览<br />Aa Bb 0123456789
+                  </div>
                 </div>
               </div>
             </section>

@@ -83,7 +83,7 @@ export const WebDAVPreferences = forwardRef<WebDAVPreferencesHandle, { root: str
         <h3 className='pref-section-heading'>同步</h3>
         {toggle('打开知识库后同步','onOpen')}{toggle('保存后同步','afterSave')}
         {number('定时同步间隔','interval',0,1440,'分钟，0 关闭')}
-        <p className='muted-note'>自动同步仅处理已保存的文件。</p>
+        <p className='muted-note'>自动同步仅处理已保存的文件，至少间隔 30 秒；期间的保存合并处理。</p>
         <label className='pref-row'><span>删除策略</span><select aria-label='删除策略' value={value.sync.deletion}
           onChange={e => changePolicy({deletion:e.target.value as SyncPolicy['deletion']},true)}>
           <option value='confirm'>确认后同步删除</option><option value='sync'>同步删除</option><option value='keep'>不同步删除</option>

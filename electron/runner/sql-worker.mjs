@@ -40,7 +40,6 @@ self.onmessage = async ({ data: input }) => {
     // bytes also catches metadata writes (PRAGMA user_version/application_id),
     // which do not change schema_version or total_changes.
     const next = memory ? new Uint8Array() : db.export();
-    if (next.length > 20 * 1024 * 1024) throw new Error('数据库超过 20 MB。');
     if ((old || next.length) && !same(bytes, next)) { const at = files.findIndex(file => file.name === name), file = { name, data: encode(next) }; if (at < 0) files.push(file); else files[at] = file; }
     elapsed = performance.now() - started;
     self.postMessage({ type: 'result', output: artifacts.length ? '' : '执行完成。', artifacts, dataFiles: files, elapsed });

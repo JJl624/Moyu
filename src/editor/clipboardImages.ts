@@ -27,9 +27,6 @@ export function clipboardImages(event: ClipboardEvent): File[] {
       image.getAttribute('src') || '',
     );
     if (!match) continue;
-    if (match[2].length > Math.ceil(20 * 1024 * 1024 * 4 / 3) + 1024) {
-      throw new Error('剪贴板图片超过 20 MB。');
-    }
     try {
       const binary = atob(match[2]), bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
       const file = new File(
@@ -48,7 +45,6 @@ export async function importClipboardImages(files: File[], document: string, roo
   for (const file of files) {
     const suffix = extensions[file.type.toLowerCase()];
     if (!suffix) throw new Error('不支持此剪贴板图片格式。');
-    if (file.size > 20 * 1024 * 1024) throw new Error('剪贴板图片超过 20 MB。');
     const name = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(file.name)
         ? file.name
         : '粘贴图片.' + suffix,

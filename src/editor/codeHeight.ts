@@ -190,8 +190,11 @@ export const resizeCodeBlocks = $prose(() =>
           field.addEventListener("input", input);
           field.addEventListener("keydown", keys);
           field.readOnly = !view.editable;
-          let pointer: number | null = null, start = 0, base = 0, moved = false;
+          const mobile=!!view.dom.closest('.mobile-app');
+          if(mobile)handle.title='长按 1 秒后拖动调整高度；双击恢复默认高度';
+          let pointer: number | null = null, start = 0, startX=0, base = 0, moved = false,armed=false,timer:ReturnType<typeof setTimeout>|null=null,pressedAt=0,lastTap=0,lastX=0,lastY=0;
           const finish = () => {
+            if(timer)clearTimeout(timer);timer=null;armed=false;handle.classList.remove('resize-ready');
             const id = pointer;
             pointer = null;
             dragging.delete(dom);
@@ -199,17 +202,21 @@ export const resizeCodeBlocks = $prose(() =>
           };
           const down = (e: PointerEvent) => {
             if (e.button !== 0 || !view.editable || pointer !== null) return;
-            e.preventDefault();
+            if(!mobile)e.preventDefault();
             e.stopPropagation();
             pointer = e.pointerId;
             start = e.clientY;
+            startX=e.clientX;
+            pressedAt=performance.now();
             base = heightTarget.getBoundingClientRect().height;
             moved = false;
-            dragging.add(dom);
-            handle.setPointerCapture(e.pointerId);
+            const arm=()=>{timer=null;if(pointer===null)return;armed=true;dragging.add(dom);handle.classList.add('resize-ready');handle.setPointerCapture(pointer);};
+            if(mobile)timer=setTimeout(arm,1000);else arm();
           };
           const move = (e: PointerEvent) => {
             if (e.pointerId !== pointer) return;
+            if(!armed){if(Math.hypot(e.clientX-startX,e.clientY-start)>8){lastTap=0;finish();}return;}
+            e.preventDefault();
             if (Math.abs(e.clientY - start) > 2) moved = true;
             if (moved) {
               heightTarget.style.height =
@@ -220,11 +227,22 @@ export const resizeCodeBlocks = $prose(() =>
           const up = (e: PointerEvent) => {
             if (e.pointerId !== pointer) return;
             const height = moved ? Number.parseFloat(heightTarget.style.height) : null;
+            const now=performance.now(),tap=mobile&&!armed&&!moved&&now-pressedAt<500;
             finish();
             if (height !== null && Number.isFinite(height)) save(height);
+            if(tap){
+              // Android WebView does not consistently synthesize dblclick from
+              // two touch releases, especially after a captured resize gesture.
+              if(lastTap&&now-lastTap<400&&Math.hypot(e.clientX-lastX,e.clientY-lastY)<20){e.preventDefault();e.stopPropagation();lastTap=0;save(null);}
+              else{lastTap=now;lastX=e.clientX;lastY=e.clientY;}
+            }else lastTap=0;
           };
+          // Before the hold completes Android owns vertical scrolling. Once
+          // armed, cancel touchmove's scrolling default to keep pointer events.
+          const touchMove=(event:TouchEvent)=>{if(armed)event.preventDefault();};
           const cancel = () => {
             if (pointer === null) return;
+            lastTap=0;
             finish();
             const at = position(),
               meta = at === undefined ? "" : view.state.doc.nodeAt(at)?.attrs.meta || "",
@@ -238,7 +256,10 @@ export const resizeCodeBlocks = $prose(() =>
             cancel();
             save(null);
           };
+          const menu=(event:MouseEvent)=>{if(mobile){event.preventDefault();event.stopPropagation();}};
           handle.addEventListener("pointerdown", down);
+          handle.addEventListener('contextmenu',menu);
+          if(mobile)handle.addEventListener('touchmove',touchMove,{passive:false});
           handle.addEventListener("pointermove", move);
           handle.addEventListener("pointerup", up);
           handle.addEventListener("dblclick", reset);
@@ -256,6 +277,8 @@ export const resizeCodeBlocks = $prose(() =>
               attributes.remove();
               badge.remove();
               handle.removeEventListener("pointerdown", down);
+              handle.removeEventListener('contextmenu',menu);
+              handle.removeEventListener('touchmove',touchMove);
               handle.removeEventListener("pointermove", move);
               handle.removeEventListener("pointerup", up);
               handle.removeEventListener("dblclick", reset);

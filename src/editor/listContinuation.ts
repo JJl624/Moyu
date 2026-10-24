@@ -5,6 +5,11 @@ import type { EditorView } from '@milkdown/kit/prose/view';
 export function resourceBlockPosition(view: EditorView, target: HTMLElement) {
   const sourceId = target.closest<HTMLElement>('.attachment-overlay')?.id;
   const source = sourceId ? view.dom.querySelector<HTMLElement>(`[data-attachment-preview="${sourceId}"]`) : target;
+  if(source)try{
+    const point=view.posAtDOM(source,0),at=view.state.doc.resolve(point),types=['table','code_block','paragraph','math_block'];
+    for(let depth=1;depth<=at.depth;depth++){const pos=at.before(depth);if(types.includes(at.node(depth).type.name)&&view.nodeDOM(pos)?.contains(source))return pos;}
+    if(types.includes(view.state.doc.nodeAt(point)?.type.name||'')&&view.nodeDOM(point)?.contains(source))return point;
+  }catch{/* Detached node views fall back to the document lookup. */}
   let found: number | undefined;
   view.state.doc.descendants((node, pos) => {
     if (found !== undefined) return false;

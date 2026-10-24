@@ -53,7 +53,7 @@ class ManagedRuntimes {
       await fs.rm(path.join(stage,'adapter'),{recursive:true,force:true});
       // Keep the downloaded package sources and notices visible alongside the
       // engine. JavaScript loaders are bundled from the exact selected version.
-      const manifest={kind,adapterVersion:["clang","lua"].includes(kind)?1:undefined,name:definitions[kind].name,version,files,size:Object.values(files).reduce((n,f)=>n+f.bytes,0)};
+      const manifest={kind,adapterVersion:require('./runtime-adapters.cjs').adapterVersion(kind),name:definitions[kind].name,version,files,size:Object.values(files).reduce((n,f)=>n+f.bytes,0)};
       job.check();await fs.writeFile(path.join(stage,'manifest.json'),JSON.stringify(manifest,null,2));await fs.mkdir(path.dirname(target),{recursive:true});job.commit();await require("./files.cjs").renameWithRetry(stage,target);published=true;
       if(!config.selected||localSource)config.selected=version;config.versions=[...new Set([...config.versions,version])];await this.write(kind,config);registered=true;return this.state(kind);
     }catch(error){if(published&&!registered){const persisted=await this.config(kind).catch(()=>null);if(persisted&&persisted.selected!==version)await fs.rm(target,{recursive:true,force:true});}throw error;}finally{await fs.rm(stage,{recursive:true,force:true});}

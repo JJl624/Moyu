@@ -406,6 +406,9 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
           if(resourceBlock && editor.current?.canOutdentFromList?.(target))
             actions.push({id: 'outdent', label:'脱离列表',action:()=>editor.current?.outdentFromList?.(target)});
         }
+        if (rich && quote && !output && !field && editorContext?.can('toggleFoldDefault')) {
+          actions.push({ id: 'quote.default', label: '默认展开', checked: !!editorContext.active?.('toggleFoldDefault'), action: () => apply('toggleFoldDefault') });
+        }
         if (rich && quote && !output && !field && !table && editorContext?.can('unquote')) {
           actions.push({ id: 'unquote', label: '去除一层引用', action: () => apply('unquote') });
         }

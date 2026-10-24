@@ -25,7 +25,7 @@ export function mountData(FS, files) {
   FS.chdir('/data');
 }
 export function collectData(FS) {
-  const result = []; let bytes = 0;
+  const result = [];
   const visit = (directory, prefix = '', depth = 0) => {
     if (depth > 12) throw new Error('数据目录层级过深。');
     for (const name of FS.readdir(directory).filter(name => name !== '.' && name !== '..')) {
@@ -33,7 +33,7 @@ export function collectData(FS) {
       if (isLink(stat.mode)) throw new Error('代码数据不支持符号链接。');
       if (isDirectory(stat.mode)) visit(target, logical + '/', depth + 1);
       else if (FS.isFile(stat.mode)) {
-        if (stat.size > 20 * 1024 * 1024 || (bytes += stat.size) > 40 * 1024 * 1024 || result.length >= 128) throw new Error('代码数据超过限制。');
+        if (result.length >= 128) throw new Error('代码数据超过限制。');
         result.push({ name: logical, data: encode(FS.readFile(target)) });
       }
     }

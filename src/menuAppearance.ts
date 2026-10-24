@@ -6,7 +6,7 @@ const spec={
   'format.highlight':{Icon:Highlighter,section:'format'},'format.underline':{Icon:Underline,section:'format'},'format.link':{Icon:Link,section:'format'},'format.math':{Icon:SquareFunction,section:'format'},
   'table.copy':{Icon:Table,section:'table'},'table.insert':{Icon:Table,section:'table'},'table.rowAfter':{Icon:Rows3,section:'table'},'table.columnAfter':{Icon:Columns3,section:'table'},
   'table.delete':{Icon:Trash2,section:'table',danger:true},'table.deleteRow':{Icon:Rows3,section:'table',danger:true},'table.deleteColumn':{Icon:Columns3,section:'table',danger:true},'table.deleteTable':{Icon:Trash2,section:'table',danger:true},'table.select':{Icon:Table,section:'table'},
-  quote:{Icon:Quote,section:'structure'},unquote:{Icon:Quote,section:'structure'},indent:{Icon:IndentIncrease,section:'structure'},outdent:{Icon:IndentDecrease,section:'structure'},
+  quote:{Icon:Quote,section:'structure'},'quote.default':{Icon:Quote,section:'structure'},unquote:{Icon:Quote,section:'structure'},indent:{Icon:IndentIncrease,section:'structure'},outdent:{Icon:IndentDecrease,section:'structure'},
   'code.run':{Icon:Play,section:'code'},'code.arguments':{Icon:Play,section:'code'},'code.format':{Icon:Code2,section:'code'},'code.data':{Icon:FolderOpen,section:'code'},
   open:{Icon:ExternalLink,section:'resource'},rename:{Icon:FilePenLine,section:'resource'},reveal:{Icon:FolderOpen,section:'resource'},delete:{Icon:Trash2,section:'resource',danger:true},
   link:{Icon:Link,section:'copy'},'copy.secondary':{Icon:Copy,section:'copy'},save:{Icon:Download,section:'save'},selectAll:{Icon:ListChecks,section:'selection',shortcut:'A'},close:{Icon:X,section:'document'},

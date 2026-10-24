@@ -18,7 +18,7 @@ class CodeDataTransaction {
       if (file.before === null) await fs.unlink(target);
       else {
         const backup = path.join(directory, index + '.bin');
-        const stat=await fs.lstat(backup);if(stat.isSymbolicLink()||!stat.isFile()||stat.size>20*1024*1024)throw fault('代码数据备份无效或超过 20 MB。');
+        const stat=await fs.lstat(backup);if(stat.isSymbolicLink()||!stat.isFile())throw fault('代码数据备份无效。');
         const bytes = await fs.readFile(backup);
         if (hash(bytes) !== file.before) throw fault('代码数据备份校验失败。');
         await fs.mkdir(path.dirname(target), {recursive:true});

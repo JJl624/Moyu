@@ -32,7 +32,7 @@ export default function remarkFoldingQuotes() {
   const data = this.data();
   (data.toMarkdownExtensions ||= []).push({ handlers: { blockquote(node, parent, state, info) {
     const value = defaultHandlers.blockquote(node, parent, state, info);
-    return typeof node.folding === 'boolean' ? value.replace(/^(> )\\(\[[+-]\])/, '$1$2') : value;
+    return typeof node.folding === 'boolean' || node.foldingDraft ? value.replace(/^(> )\\(\[)/, '$1$2') : value;
   } } });
   return (tree, file) => {
     const source = String(file.value);
@@ -41,6 +41,7 @@ export default function remarkFoldingQuotes() {
       if (node.type === 'blockquote' && first?.type === 'paragraph') {
         const raw = source.slice(first.position?.start.offset, first.position?.end.offset);
         const marker = /^\[([+-])\]/.exec(raw);
+        node.foldingDraft = /^\[(?![+-]\])/.test(raw) && first.children[0]?.type === 'text';
         // Only the first characters count; escaped markers stay ordinary text.
         if (marker?.index === 0 && first.children[0]?.type === 'text' && /^\[[+-]\]/.test(first.children[0].value)) {
           node.folding = marker[1] === '+';

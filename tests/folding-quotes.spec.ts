@@ -73,3 +73,67 @@ test('Styled headings, tables, code and escaped markers retain their Markdown be
   await page.getByRole('button',{name:'阅读',exact:true}).click();await expect(page.locator('.reading-view details summary strong')).toHaveText('标题');await expect(page.locator('.reading-view details code')).toHaveText('[-] 代码');await expect(page.locator('.reading-view > blockquote')).toContainText('[-] 普通文字');expect(errors).toEqual([]);
  }finally{await app.evaluate(({app})=>app.exit(0));}
 });
+
+
+test('Quote marker drafts survive saving and mode switches; Backspace unfolds and the default menu persists nested changes',async()=>{
+ const{app,page,data,errors}=await fixture();
+ try{
+  const plain=page.locator('.ProseMirror > blockquote').first(),heading=plain.locator('p').first();
+  await heading.click();await page.keyboard.press('Home');await page.keyboard.type('[');
+  await expect(page.locator('.save-status')).toContainText('本地未保存');await page.locator('.save-status').click();
+  await expect.poll(()=>fs.readFile(path.join(data,'示例知识库','折叠.md'),'utf8')).toContain('> [普通引用');
+  await page.getByRole('button',{name:'源码',exact:true}).click();await page.getByRole('button',{name:'预览编辑',exact:true}).click();
+  await heading.click();await page.keyboard.press('Home');await page.keyboard.press('ArrowRight');await page.keyboard.type('+] ');
+  await expect(plain).toHaveClass(/folding-quote/);await expect(plain).toHaveAttribute('data-fold-open','true');
+  await heading.click();await page.keyboard.press('Home');
+  await heading.dispatchEvent('keydown',{key:'Backspace',isComposing:true});await expect(plain).toHaveClass(/folding-quote/);
+  await page.keyboard.press('Backspace');await expect(plain).not.toHaveClass(/folding-quote/);await expect(heading).toHaveText('[+ 普通引用');
+  await page.keyboard.press('Backspace');await expect(heading).toHaveText('[ 普通引用');
+  await page.keyboard.type('-]');await expect(plain).toHaveAttribute('data-fold-open','false');
+  await heading.click({button:'right'});const defaults=page.getByRole('menuitemcheckbox',{name:'默认展开',exact:true});await expect(defaults).not.toBeChecked();await defaults.click();
+  await expect(plain).toHaveAttribute('data-fold-open','true');
+  await page.keyboard.press('Control+z');await expect(plain).toHaveAttribute('data-fold-open','false');
+  await heading.click({button:'right'});await defaults.click();
+  const outer=page.locator('.ProseMirror > blockquote').nth(1);await outer.locator(':scope > p > .folding-quote-toggle').click();
+  const nested=outer.locator('blockquote.folding-quote');await nested.locator('p').last().click({button:'right'});
+  await expect(defaults).toBeChecked();await defaults.click();await expect(nested).toHaveAttribute('data-fold-open','false');await expect(outer).toHaveAttribute('data-fold-open','true');
+  expect(await page.evaluate(()=>{const node=document.getSelection()?.anchorNode;return(node instanceof Element?node:node?.parentElement)?.closest('p')?.textContent;})).toContain('二级折叠');
+  await expect(page.locator('.save-status')).toContainText('本地未保存');await page.locator('.save-status').click();
+  const file=path.join(data,'示例知识库','折叠.md');await expect.poll(()=>fs.readFile(file,'utf8')).toContain('> > [-] 二级折叠');
+  const saved=await fs.readFile(file,'utf8');expect(saved).toContain('> [+] 普通引用');expect(saved).toContain('> [-] 一级折叠');expect(errors).toEqual([]);
+ }finally{await app.evaluate(({app})=>app.exit(0));}
+});
+
+
+test('Empty folding titles keep a visible caret on click and keyboard navigation',async()=>{
+ const{app,page,errors}=await fixture();
+ try{
+  await page.evaluate(()=>window.moyu!.create('光标.md','file','> [+]\n\n> [-]\n> 内容\n\n> [+] 有标题\n> 内容\n\n末尾\n'));
+  await page.locator('.tree-item[title="光标.md"]').dblclick();
+  const title=page.locator('.ProseMirror > blockquote > p').first();
+  await title.click({position:{x:24,y:12}});await page.keyboard.press('Home');
+  const caret=await page.evaluate(()=>{const s=document.getSelection()!,r=s.getRangeAt(0),b=r.getBoundingClientRect();return{height:b.height,left:b.left,top:b.top,node:s.anchorNode?.nodeName,offset:s.anchorOffset,markup:document.querySelector('.ProseMirror > blockquote > p')?.innerHTML};});
+  expect(caret.height,JSON.stringify(caret)).toBeGreaterThan(10);
+  await page.keyboard.press('ArrowLeft');
+  const afterLeft=await page.evaluate(()=>{const s=document.getSelection()!,b=s.getRangeAt(0).getBoundingClientRect();return{height:b.height,node:s.anchorNode?.nodeName,offset:s.anchorOffset,parent:s.anchorNode?.parentElement?.outerHTML};});expect(afterLeft.height,JSON.stringify(afterLeft)).toBeGreaterThan(10);
+  await page.keyboard.type('标题');await expect(title).toContainText('标题');
+  await page.keyboard.press('Home');await page.keyboard.press('Backspace');
+  await expect(page.locator('.ProseMirror > blockquote').first()).not.toHaveClass(/folding-quote/);
+  await expect(title).toHaveText('[+标题');
+  const closed=page.locator('.ProseMirror > blockquote').nth(1),empty=closed.locator('p').first();
+  for(const size of [14,20,28]){
+   await empty.evaluate((p,size)=>{p.style.fontSize=size+'px';},size);
+   await empty.click({position:{x:24,y:12}});await page.keyboard.press('Home');
+   const bounds=await empty.evaluate(p=>({marker:p.querySelector('.folding-quote-marker')!.getBoundingClientRect().width,caret:document.getSelection()!.getRangeAt(0).getBoundingClientRect().height}));
+   expect(bounds.caret,JSON.stringify(bounds)).toBeGreaterThan(10);expect(Math.abs(bounds.marker),JSON.stringify(bounds)).toBeLessThan(1);
+   await expect(closed).toHaveAttribute('data-fold-open','false');
+  }
+  const cdp=await page.context().newCDPSession(page);
+  await cdp.send('Input.imeSetComposition',{text:'zhong',selectionStart:5,selectionEnd:5});
+  await cdp.send('Input.insertText',{text:'中文标题'});await cdp.detach();
+  await expect(empty).toContainText('中文标题');await expect(closed).toHaveAttribute('data-fold-open','false');
+  await page.keyboard.press('Home');await page.keyboard.press('ArrowLeft');
+  expect(await page.evaluate(()=>{const node=document.getSelection()?.anchorNode;return(node instanceof Element?node:node?.parentElement)?.closest('p')?.textContent;})).toContain('[+标题');
+  expect(errors).toEqual([]);
+ }finally{await app.evaluate(({app})=>app.exit(0));}
+});

@@ -1,11 +1,11 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { fault, hash } = require("./vault.cjs");
-const { MAX, snapshot, replace, atomic } = require("./files.cjs");
+const { snapshot, replace, atomic } = require("./files.cjs");
 const isDrawing = (p) => typeof p === "string" && /\.excalidraw$/i.test(p);
 function validate(content) {
-  if (typeof content !== "string" || Buffer.byteLength(content) > MAX)
-    throw fault("绘图文件超过 20 MB。");
+  if (typeof content !== "string")
+    throw fault("绘图文件内容无效。");
   const scene = JSON.parse(content);
   if (
     scene.type !== "excalidraw" ||
@@ -73,8 +73,7 @@ class Drawings {
       if (
         !isDrawing(input.path) ||
         !["png", "svg"].includes(input.format) ||
-        !ArrayBuffer.isView(input.bytes) ||
-        input.bytes.byteLength > MAX
+        !ArrayBuffer.isView(input.bytes)
       )
         throw fault("绘图导出格式无效。");
       await this.vault.resolve(input.path);

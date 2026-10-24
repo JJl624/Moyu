@@ -1,15 +1,15 @@
 import {nameOf, decode, encode} from './run-files.mjs';
 let python,language,output='',artifacts=[],warming=false,namespace,runStart=0;
 let data=new Map();
-const writeFile=async(name,value)=>{name=nameOf(name);const bytes=typeof value==='string'?new TextEncoder().encode(value):value instanceof Uint8Array?value:new Uint8Array(value);if(bytes.length>20*1024*1024)throw new Error('文件超过 20 MB。');data.set(name,bytes);};
+const writeFile=async(name,value)=>{name=nameOf(name);const bytes=typeof value==='string'?new TextEncoder().encode(value):value instanceof Uint8Array?value:new Uint8Array(value);data.set(name,bytes);};
 self.files=Object.freeze({root:'/data',readFile:async(name,encoding='utf8')=>{const bytes=data.get(nameOf(name));if(!bytes)throw new Error('数据文件不存在：'+name);return encoding==='utf8'?new TextDecoder().decode(bytes):bytes.slice();},writeFile,list:async()=>[...data.keys()],remove:async name=>data.delete(nameOf(name)),download:async(url,name)=>{name=nameOf(name);const response=await fetch('/download?url='+encodeURIComponent(url));if(!response.ok)throw new Error(await response.text());await writeFile(name,new Uint8Array(await response.arrayBuffer()));return name;}});
 self.moyu_download=async(url,name)=>{name=nameOf(name);const response=await fetch('/download?url='+encodeURIComponent(url));if(!response.ok)throw new Error(await response.text());const bytes=new Uint8Array(await response.arrayBuffer());python.FS.mkdirTree('/data/'+name.split('/').slice(0,-1).join('/'));python.FS.writeFile('/data/'+name,bytes);return name;};
-function dataFiles(){const out=[];let total=0;const add=(name,bytes)=>{total+=bytes.length;if(bytes.length>20*1024*1024||total>40*1024*1024||out.length>=128)throw new Error('代码数据超过 128 个文件或 40 MB。');out.push({name:nameOf(name),data:encode(bytes)});};
+function dataFiles(){const out=[];const add=(name,bytes)=>{if(out.length>=128)throw new Error('代码数据超过 128 个文件。');out.push({name:nameOf(name),data:encode(bytes)});};
   if(python){const visit=(dir,prefix='')=>{for(const name of python.FS.readdir(dir)){if(name==='.'||name==='..')continue;const full=dir+'/'+name,stat=python.FS.lstat(full);if(python.FS.isDir(stat.mode))visit(full,prefix+name+'/');else if(python.FS.isFile(stat.mode))add(prefix+name,python.FS.readFile(full));}};visit('/data');visit('/output','output/');}else for(const [name,bytes] of data)add(name,bytes);return out;
 }
 const write=text=>{if(!warming&&output.length<65536)output+=String(text).slice(0,65536-output.length)+'\n';};
 const format=value=>{try{return typeof value==='string'?value:JSON.stringify(value)??String(value);}catch{return String(value);}};
-self.displayHTML=(html,name='result.html')=>{const bytes=new TextEncoder().encode(String(html));if(bytes.length>10*1024*1024||artifacts.length>=20)throw Error('HTML 结果超过限制。');artifacts.push({kind:'html',name,mime:'text/html',data:encode(bytes)});};
+self.displayHTML=(html,name='result.html')=>{const bytes=new TextEncoder().encode(String(html));if(artifacts.length>=20)throw Error('HTML 结果超过限制。');artifacts.push({kind:'html',name,mime:'text/html',data:encode(bytes)});};
 for(const key of ['log','info','warn','error','debug','dir'])console[key]=(...args)=>write(args.map(format).join(' '));
 console.table=value=>{
   if(!Array.isArray(value)){write(format(value));return;}
@@ -64,16 +64,15 @@ def display(value, name=None):
         _moyu_table(value.columns, value.iloc[:1000, :100].itertuples(index=False, name=None), name, len(value)>1000 or len(value.columns)>100)
     elif hasattr(value, 'savefig'):
         target = io.StringIO(); value.savefig(target, format='svg'); content = target.getvalue()
-        if len(content.encode()) <= 20 * 1024 * 1024:
-            _moyu_results.append(dict(kind='image', name=name or f'figure-{getattr(value,"number",len(_moyu_results)+1)}.svg', mime='image/svg+xml', data=base64.b64encode(content.encode()).decode())); _moyu_figures.add(id(value))
+        _moyu_results.append(dict(kind='image', name=name or f'figure-{getattr(value,"number",len(_moyu_results)+1)}.svg', mime='image/svg+xml', data=base64.b64encode(content.encode()).decode())); _moyu_figures.add(id(value))
     elif hasattr(value, 'save') and hasattr(value, 'size'):
         target = io.BytesIO(); value.save(target, format='PNG'); data = target.getvalue()
-        if len(data) <= 20 * 1024 * 1024: _moyu_results.append(dict(kind='image', name=name or (pathlib.Path(value.filename).stem+'.png' if getattr(value,'filename','') else _moyu_name('image','png')), mime='image/png', data=base64.b64encode(data).decode()))
+        _moyu_results.append(dict(kind='image', name=name or (pathlib.Path(value.filename).stem+'.png' if getattr(value,'filename','') else _moyu_name('image','png')), mime='image/png', data=base64.b64encode(data).decode()))
     elif isinstance(value, (list, tuple)) and value and isinstance(value[0], dict):
         columns=list(dict.fromkeys(k for r in value[:1000] for k in r))[:101]
         _moyu_table(columns, ([r.get(c,'') for c in columns[:100]] for r in value[:1000]), name, len(value)>1000)
     elif isinstance(value, (bytes, bytearray)):
-        if len(value) <= 20 * 1024 * 1024: _moyu_results.append(dict(kind='file', name=name or _moyu_name('result','bin'), mime='application/octet-stream', data=base64.b64encode(value).decode()))
+        _moyu_results.append(dict(kind='file', name=name or _moyu_name('result','bin'), mime='application/octet-stream', data=base64.b64encode(value).decode()))
     else: print(value)
 def _moyu_finish():
     plt = sys.modules.get('matplotlib.pyplot')
@@ -84,7 +83,7 @@ def _moyu_finish():
         plt.close('all')
     for file in sorted(pathlib.Path('/output').rglob('*')):
         if len(_moyu_results)>=20: break
-        if file.is_file() and not file.is_symlink() and file.stat().st_size<=20*1024*1024:
+        if file.is_file() and not file.is_symlink():
             data=file.read_bytes();mime='image/svg+xml' if file.suffix=='.svg' else 'image/png' if file.suffix=='.png' else 'application/octet-stream'
             _moyu_results.append(dict(kind='image' if mime.startswith('image/') else 'file',name=file.name,mime=mime,data=base64.b64encode(data).decode()))
     return json.dumps(_moyu_results)

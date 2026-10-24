@@ -26,7 +26,7 @@ export type EditorAction =
   | 'h2'
   | 'h3';
 // Context actions operate on the clicked block.
-export type BlockAction = 'paragraph' | 'indent' | 'outdent' | 'unquote';
+export type BlockAction = 'paragraph' | 'indent' | 'outdent' | 'indentBlock' | 'outdentBlock' | 'unquote' | 'toggleFoldDefault' | 'paragraphBefore' | 'paragraphAfter';
 export interface CodeContext {
   language: string;
   code: string;
@@ -51,6 +51,7 @@ export interface EditorSelection {
   viewportAnchor?: { pos: number; offset: number };
 }
 export interface EditorHandle {
+  selectionContext?(): EditorContext | null;
   prepareContext?(target: HTMLElement, coords: { left: number; top: number }): EditorContext | null;
   selectedText?(): string;
   canIndentIntoList?(target: HTMLElement): boolean;
@@ -80,7 +81,7 @@ export interface EditorHandle {
     wiki?: boolean;
     parameter?: string;
   } | null;
-  action(action: EditorAction | BlockAction): void;
+  action(action: EditorAction | BlockAction,options?:{focus?:boolean}): void;
   insert(text: string): void;
   focus(): void;
   scrollToHeading(index: number): void;
@@ -88,8 +89,10 @@ export interface EditorHandle {
 }
 // A menu owns an editor selection, not a viewport-restoration session.
 export interface EditorContext {
+  ancestors?: readonly string[];
+  resource?: boolean;
   text: string;
-  textFor(type: 'heading' | 'list_item' | 'blockquote' | 'table' | 'cell' | 'paragraph'): string;
+  textFor(type: 'heading' | 'list_item' | 'blockquote' | 'table' | 'cell' | 'paragraph' | 'code_block' | 'math_block'): string;
   canInsertDrawing: boolean;
   active?(action: EditorAction | BlockAction): boolean;
   can(action: EditorAction | BlockAction): boolean;
@@ -110,8 +113,11 @@ export interface EditorProps {
   theme: 'dark' | 'light';
   fontSize: number;
   readOnly?: boolean;
+  autoFocus?: boolean;
+  codeWrap?: boolean;
   selection?: EditorSelection | null;
   onDrawing?(): void;
   onDrawingAllowed?(allowed: boolean): void;
+  onContextChange?(): void;
 }
 

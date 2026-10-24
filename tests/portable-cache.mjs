@@ -54,7 +54,7 @@ async function launch() {
   await expect(page.locator('.ProseMirror h1').first()).toBeVisible();
   const response = await page.evaluate(() => window.moyu.feature('data.list'));
   if (!response.ok) throw Error('Data list failed');
-  for (const id of ['program', 'temporary', 'managed-runtimes', 'python', 'cache']) {
+  for (const id of ['program', 'managed-runtimes', 'python', 'cache']) {
     const item = response.data.find(i => i.id === id);
     if (!item || path.relative(data, item.path).startsWith('..')) {
       throw Error('Environment outside data root: ' + JSON.stringify(item));

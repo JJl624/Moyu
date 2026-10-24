@@ -94,10 +94,10 @@ function createCodeOperations(services) {
         input.bytes = await services.resultStore.read(input.token);
       }
       if (
-        !ArrayBuffer.isView(input.bytes) || input.bytes.byteLength > 20 * 1024 * 1024
+        !ArrayBuffer.isView(input.bytes)
         || typeof input.name !== "string"
       ) {
-        throw new Error("运行结果文件无效或超过 20 MB。");
+        throw new Error("运行结果文件无效。");
       }
       const result = await services.dialog.showSaveDialog(services.window, {
         title: "保存运行结果",

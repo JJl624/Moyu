@@ -31,6 +31,7 @@ const pinnedHTML=new(require('./pinned-html.cjs').PinnedHTML)(htmlResults,()=>co
 // Cross-site sandbox frames must not share the editor's renderer event loop.
 app.commandLine.appendSwitch('site-per-process');
 let references, attachments, codeData, watcher, watchTimer, scanPending = false, scanAgain = false;
+function scheduleScan(){clearTimeout(watchTimer);watchTimer=setTimeout(()=>void scanVault(),300);}
 function watchVault() {
   watcher?.close();
   clearTimeout(watchTimer);
@@ -46,9 +47,8 @@ function watchVault() {
       if(changed){references?.cache.delete(changed);references?.unreadable.delete(changed);}
       else {references?.cache.clear();references?.unreadable.clear();}
       sync?.invalidateLocal?.(changed);
-      syncScheduler?.changed();
-      clearTimeout(watchTimer);
-      watchTimer = setTimeout(() => void scanVault(), 300);
+      syncScheduler?.changed(changed);
+      scheduleScan();
     });
     watcher.on('error', () => {
       watcher?.close();
@@ -59,6 +59,7 @@ function watchVault() {
   }
 }
 async function scanVault() {
+  clearTimeout(watchTimer);
   if (scanPending) {
     scanAgain = true;
     return;
@@ -377,9 +378,10 @@ function registerIPC() {
     const current = vault;
     if(root && root!==current?.root)throw new Error('知识库已切换。');
     const saved = await current.save(name, content, version);
+    if(saved.version===version)return saved;
     if(current===vault && /\.(md|markdown)$/i.test(saved.path))await attachments.documents.sync(saved.path,saved.content);
-    void scanVault();
-    syncScheduler?.changed();
+    scheduleScan();
+    syncScheduler?.changed(name);
     return saved;
   });
   handle('create', async (relative,kind,content='') => {if(kind==='file'&&/\.(md|markdown)$/i.test(relative))content=(await import('../shared/code-documents.mjs')).normalizeIds(content).content;const created=await vault.create(relative,kind,content);if(kind==='file'&&/\.(md|markdown)$/i.test(relative))await attachments.documents.sync(relative,content);return created;});
@@ -395,9 +397,6 @@ function registerIPC() {
       throw new Error('图片路径无效。');
     }
     const target = await vault.resolve(relative);
-    if ((await fs.stat(target)).size > 20 * 1024 * 1024) {
-      throw new Error('图片超过 20 MB。');
-    }
     const extension = path
       .extname(target)
       .slice(1)

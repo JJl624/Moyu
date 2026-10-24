@@ -15,7 +15,7 @@ const content = `# 列表对齐
 105. ###### 六级标题
 106. 段落与块
 
-     \`\`\`javascript
+     \`\`\`javascript {id=0001}
      console.log(42)
      \`\`\`
 
@@ -79,7 +79,7 @@ test("List markers follow the first text baseline and share a column across font
   const directory = await fs.mkdtemp(path.join(work, "list-alignment-"));
   const env = { ...process.env, MOYU_USER_DATA: directory, MOYU_TEST: "1", MOYU_DEMO: "1" };
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ args: [project], env });
+  const app = await electron.launch({ ...(process.env.MOYU_E2E_EXECUTABLE?{executablePath:process.env.MOYU_E2E_EXECUTABLE,args:[]}:{args:[project]}), env });
   try {
     const page = await app.firstWindow(), errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));

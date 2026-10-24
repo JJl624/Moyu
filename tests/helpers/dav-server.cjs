@@ -18,6 +18,7 @@ async function davServer(options = {}) {
     omitETag = false;
   let delayed;
   let lostPut;
+  const failures = [];
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
@@ -26,7 +27,7 @@ async function davServer(options = {}) {
         /\/$/,
         "",
       ) || "/";
-    requests.push({ method: req.method, path: p, headers: req.headers });
+    requests.push({ method: req.method, path: p, headers: req.headers,at:Date.now() });
     if (delayed && delayed.path === p && delayed.method === req.method) {
       await new Promise(resolve => {
         const timer = setTimeout(resolve, delayed.ms);
@@ -47,6 +48,8 @@ async function davServer(options = {}) {
       res.end();
       return;
     }
+    const failure=failures.find(item=>item.times>0&&item.path===p&&item.method===req.method);
+    if(failure){failure.times--;res.writeHead(failure.status,failure.headers||{});res.end();return;}
     if (race && race.path === p && req.method === (race.method || "PUT")) {
       files.set(p, Buffer.from(race.content));
       race = null;
@@ -132,6 +135,7 @@ async function davServer(options = {}) {
     },
     delay: value => { delayed = value; },
     loseNextPut: value => {lostPut=value;},
+    fail: value => failures.push({...value,times:value.times??1}),
     close: () =>
       new Promise((resolve) => {
         server.close(resolve);

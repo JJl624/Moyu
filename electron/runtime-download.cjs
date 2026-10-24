@@ -28,7 +28,7 @@ async function destination(value, lookup = dns.lookup, signal) {
 }
 async function downloadRuntimeFile(value, options = {}) {
   const lookup = options.lookup || dns.lookup, request = options.request || ((url, init, callback) => (url.protocol === 'https:' ? https : http).get(url, init, callback));
-  const signal = AbortSignal.timeout(8000), maximum = 20 * 1024 * 1024;
+  const signal = AbortSignal.timeout(8000);
   for (let redirects = 0; redirects <= 5; redirects++) {
     const { url, address } = await destination(value, lookup, signal);
     const response = await new Promise((resolve, reject) => {
@@ -44,9 +44,8 @@ async function downloadRuntimeFile(value, options = {}) {
       continue;
     }
     if (response.statusCode < 200 || response.statusCode >= 300) { response.resume(); throw new Error('HTTP ' + response.statusCode); }
-    if (Number(response.headers['content-length']) > maximum) { response.destroy(); throw new Error('文件超过 20 MB。'); }
-    const chunks = []; let bytes = 0;
-    for await (const chunk of response) { bytes += chunk.length; if (bytes > maximum) { response.destroy(); throw new Error('文件超过 20 MB。'); } chunks.push(chunk); }
+    const chunks = [];
+    for await (const chunk of response) chunks.push(chunk);
     return Buffer.concat(chunks);
   }
 }

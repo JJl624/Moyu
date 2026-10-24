@@ -1,0 +1,15 @@
+import { createRoot } from 'react-dom/client';
+import { hydrateSettings } from '../settingsStore';
+import MobileApp from './MobileApp';
+import '../styles.css';
+import '../next.css';
+import '../refinements.css';
+import '../ux.css';
+import '../codeTabs.css';
+import '../polish.css';
+import '../drawingPreview.css';
+import '../foldingQuotes.css';
+import '../documents/documentHistory.css';
+import './mobile.css';
+await hydrateSettings();
+createRoot(document.getElementById('root')!).render(<MobileApp />);

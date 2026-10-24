@@ -13,9 +13,9 @@ async function readTree(file) {
   if (scanned) value.scannedAt = JSON.parse(scanned).scannedAt;
   return value;
 }
-async function saveTree(file, root, entries) {
+async function saveTree(file, root, entries,options={}) {
   entries = [...entries].sort((a,b)=>a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  const value = { version:2, root, scannedAt: Date.now(), entries };
+  const value = { version:2, root, scannedAt:options.preserveScan?(await readTree(file))?.scannedAt||0:Date.now(), entries };
   // Stable listings are not rewritten merely to update the scan timestamp.
   await atomicIfChanged(file + '.tree.json', JSON.stringify({version:2,root,entries}));
   await atomicIfChanged(file + '.tree-scan.json', JSON.stringify({scannedAt:value.scannedAt}));

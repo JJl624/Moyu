@@ -111,15 +111,13 @@ self.onmessage = async event => {
 };
 function collectFiles(root) {
   const result = [];
-  let total = 0;
   const visit = (directory, prefix = '', depth = 0) => {
     if (depth > 12) throw new Error('数据目录层级过深。');
     for (const [name, node] of directory.contents) {
       const path = nameOf(prefix + name);
       if (node.contents instanceof Map) visit(node, path + '/', depth + 1);
       else if (node.data instanceof Uint8Array) {
-        total += node.data.length;
-        if (node.data.length > 20 * 1024 * 1024 || total > 40 * 1024 * 1024 || result.length >= 128) throw new Error('代码数据超过 128 个文件或 40 MB。');
+        if (result.length >= 128) throw new Error('代码数据超过 128 个文件。');
         result.push({ name: path, data: encode(node.data) });
       }
     }

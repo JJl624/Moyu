@@ -18,15 +18,13 @@ export function readNativeSelection(view: EditorView) {
   // it with posAtDOM can turn a valid document selection into a single caret.
   if (anchor?.closest('.cm-editor,.syntax-preview') || focus?.closest('.cm-editor,.syntax-preview')) return;
   try {
-    const selected = TextSelection.create(
-      view.state.doc,
-      view.posAtDOM(native.anchorNode, native.anchorOffset),
-      view.posAtDOM(native.focusNode, native.focusOffset),
-    );
-    if (
-      selected.$from.parent.inlineContent && selected.$to.parent.inlineContent
-      && !selected.eq(view.state.selection)
-    ) view.dispatch(view.state.tr.setSelection(selected));
+    const anchor = view.posAtDOM(native.anchorNode, native.anchorOffset),
+      head = view.posAtDOM(native.focusNode, native.focusOffset),doc = view.state.doc;
+    // Select-all may end at document boundaries. Keep the editor's AllSelection
+    // rather than constructing an invalid TextSelection (which also logs a warning).
+    if (!doc.resolve(anchor).parent.inlineContent || !doc.resolve(head).parent.inlineContent) return;
+    const selected = TextSelection.create(doc, anchor, head);
+    if (!selected.eq(view.state.selection)) view.dispatch(view.state.tr.setSelection(selected));
   } catch { /* A node view may be replacing its DOM. */ }
 }
 

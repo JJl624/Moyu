@@ -28,10 +28,11 @@ test('Libraries remain independent across knowledgebases and invalid imports can
   assert.equal(parseLibrary(JSON.stringify({ type: 'excalidrawlib', version: 1, library: [item.elements] })).version, 1);
   assert.throws(() => parseLibrary(JSON.stringify({ type: 'excalidrawlib', version: 2, library: [item.elements] })), /格式无效/);
 });
-test('Corrupted and oversized library files fail with a clear error', async t => {
+test('Corrupted library files fail, while valid libraries above 20 MB remain readable', async t => {
   const { root, library } = await fixture(t); await library.save([item]);
   const file = path.join(root, '.data/excalidraw_library.excalidrawlib');
   await fs.writeFile(file, 'null'); await assert.rejects(library.read(), /格式无效/);
-  const handle = await fs.open(file, 'w'); await handle.truncate(20 * 1024 * 1024 + 1); await handle.close();
-  await assert.rejects(library.read(), /超过 20 MB/); await assert.rejects(readLibraryFile(file), /超过 20 MB/);
+  const content=JSON.stringify({type:'excalidrawlib',version:2,libraryItems:[item],padding:' '.repeat(21*1024*1024)});
+  await fs.writeFile(file,content);
+  assert.deepEqual((await library.read()).libraryItems,[item]);assert.equal(await readLibraryFile(file),content);
 });

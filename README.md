@@ -2,9 +2,9 @@
 
 本地 Markdown 编辑器，支持预览编辑、源码与阅读视图，以及绘图、公式、代码运行和 WebDAV 同步。
 
-[下载 Windows / Linux 版](https://github.com/JJl624/Moyu/releases/latest) · [问题反馈](https://github.com/JJl624/Moyu/issues)
+[下载 Windows / Linux / Android 版](https://github.com/JJl624/Moyu/releases/latest) · [问题反馈](https://github.com/JJl624/Moyu/issues)
 
-启动时自动检查更新，每天最多一次，也可在偏好设置底部手动检查。Windows 替换 EXE；Linux 替换 AppImage 或安装 DEB，文档和应用数据保留。
+启动时自动检查更新，每天最多一次，也可在偏好设置底部手动检查。可关闭自动检查。Windows 替换 EXE，Linux 替换 AppImage 或安装 DEB，Android 安装 APK；文档和应用数据保留。
 
 ## 开发
 

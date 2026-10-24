@@ -11,6 +11,7 @@ export interface FileNode {
   system?: boolean;
 }
 export interface Workspace {
+  changedPaths?: string[];
   warnings?: string[];
   readOnly?: boolean;
   root: string;

@@ -7,7 +7,7 @@ export function invalidateResourceImages(root:string,paths:string[]){
 }
 export function resourceImageURL(document:string,href:string){
   const url=assetURL(document,href);
-  if(!url.startsWith('moyu-asset:'))return url;
+  if(!url.startsWith('moyu-asset:') && !(api.platform==='android' && url.startsWith('https://appassets.androidplatform.net/vault/')))return url;
   const fresh=new URL(url);fresh.searchParams.set('revision',String(imageRevisions.get(resourcePath(document,href))??imageSequence));return fresh.href;
 }
 export const isPreviewResource = (href: string) =>

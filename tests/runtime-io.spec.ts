@@ -63,8 +63,10 @@ test('JS, Python and C/C++ cannot read host files, spawn host commands, or conta
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); const port = (server.address() as any).port;
   const run = (language: string, code: string) => feature(page, 'code.run', { language, code });
   try {
-    const js = await run('js', `console.log(typeof process, typeof require, typeof window);try {await import('node:fs')} catch {console.log('node blocked')}try {await files.readFile(${JSON.stringify(hostFile)})} catch {console.log('host blocked')}try {await files.download('http://127.0.0.1:${port}/secret','secret.txt')} catch {console.log('network blocked')}await files.writeFile('ok.txt','own data');console.log(await files.readFile('ok.txt'));`);
-    expect(js.output).toContain('undefined undefined undefined'); expect(js.output).toContain('node blocked'); expect(js.output).toContain('host blocked'); expect(js.output).toContain('network blocked'); expect(js.output).toContain('own data'); expect(js.output).not.toContain('HOST_SECRET');
+    const nodeImport:any=await page.evaluate(()=>window.moyu!.feature('code.run',{language:'js',code:"await import('node:fs')"}));
+    expect(nodeImport.ok).toBe(false);expect(nodeImport.error.message).toContain('不支持 Node.js 模块：node:fs');
+    const js = await run('js', `console.log(typeof process, typeof require, typeof window);try {await files.readFile(${JSON.stringify(hostFile)})} catch {console.log('host blocked')}try {await files.download('http://127.0.0.1:${port}/secret','secret.txt')} catch {console.log('network blocked')}await files.writeFile('ok.txt','own data');console.log(await files.readFile('ok.txt'));`);
+    expect(js.output).toContain('undefined undefined undefined'); expect(js.output).toContain('host blocked'); expect(js.output).toContain('network blocked'); expect(js.output).toContain('own data'); expect(js.output).not.toContain('HOST_SECRET');
     const py = await run('python', `import os, subprocess, js\ntry:\n    print(open(${JSON.stringify(hostFile)}).read())\nexcept Exception:\n    print("host blocked")\ntry:\n    subprocess.run(["cmd", "/c", "echo HOST_PROCESS"], check=True)\nexcept Exception:\n    print("process blocked")\ntry:\n    await download("http://127.0.0.1:${port}/secret", "secret.txt")\nexcept Exception:\n    print("network blocked")\nprint(js.eval("typeof process + ' ' + typeof require + ' ' + typeof window"))\nwith open("ok.txt", "w") as f:\n    f.write("own data")\nprint(open("ok.txt").read())`);
     expect(py.output).toContain('host blocked'); expect(py.output).toContain('process blocked'); expect(py.output).toContain('network blocked'); expect(py.output).toContain('undefined undefined undefined'); expect(py.output).toContain('own data'); expect(py.output).not.toContain('HOST_SECRET');
     const hostPath = hostFile.replaceAll('\\', '/');
@@ -86,7 +88,8 @@ test('Code indentation updates mounted regular and tabbed editors; C/C++ format 
     await regular.click(); await page.getByRole('button', { name: '偏好设置', exact: true }).click(); await selectPreference(page,'通用');
     await page.getByLabel('代码块默认缩进空格数', { exact: true }).fill('4'); await page.getByLabel('代码块默认缩进空格数', { exact: true }).press('Enter');
     const draft = JSON.parse(await page.getByLabel('dprint 配置 JSON').inputValue()); draft.clangFormat = { BasedOnStyle: 'LLVM', IndentWidth: 4, BreakBeforeBraces: 'Allman', AllowShortFunctionsOnASingleLine: 'None' };
-    await page.getByLabel('dprint 配置 JSON').fill(JSON.stringify(draft)); await page.getByRole('button', { name: '应用', exact: true }).click(); await expect(page.locator('.code-formatting [role=status]')).toHaveText('已应用');
+    await page.getByLabel('dprint 配置 JSON').fill(JSON.stringify(draft));await page.getByLabel('dprint 配置 JSON').blur();
+    await expect.poll(async()=>JSON.parse(JSON.parse(await fs.readFile(path.join(data,'settings.json'),'utf8')).values['moyu-code-formatting']||'{}').clangFormat?.IndentWidth).toBe(4);
     await page.getByRole('button', { name: '关闭对话框' }).click(); await regular.click({ button: 'right' }); await page.getByRole('menuitem', { name: '格式化代码', exact: true }).click(); await expect(regular).toContainText('    int x = 1;');
     await tabbed.click({ button: 'right' }); await page.getByRole('menuitem', { name: '格式化代码', exact: true }).click(); await expect.poll(async () => (await tabbed.locator('.cm-line').allTextContents()).join('\n')).toBe('int value()\n{\n    return 42;\n}');
     for (const editor of [regular, tabbed]) { await editor.click(); await page.keyboard.press('Control+Home'); await page.keyboard.press('Tab'); await expect(editor).toContainText('    int'); await page.keyboard.press('Shift+Tab'); }
@@ -100,6 +103,7 @@ test('Python packages required by another installed package have no uninstall bu
     await feature(page, 'python.state');
     await fs.writeFile(path.join(data, 'Python/Runtime/314.0.7/packages.json'), JSON.stringify({ requested: ['numpy', 'matplotlib'], installed: ['numpy', 'matplotlib'] }));
     await page.getByRole('button', { name: '偏好设置', exact: true }).click(); await selectPreference(page,'Python');
+    await page.getByRole('tab',{name:'依赖',exact:true}).click();await page.getByLabel('筛选 Python 包状态',{exact:true}).selectOption('installed');
     const numpy = page.locator('.python-package').filter({ has: page.locator('strong', { hasText: /^numpy$/ }) }), matplotlib = page.locator('.python-package').filter({ has: page.locator('strong', { hasText: /^matplotlib$/ }) });
     await expect(numpy).toContainText('依赖'); await expect(numpy.getByRole('button', { name: '卸载', exact: true })).toHaveCount(0); await expect(matplotlib.getByRole('button', { name: '卸载', exact: true })).toHaveCount(1); expect(errors).toEqual([]);
   } finally { await app.evaluate(({ app }) => app.exit(0)).catch(() => {}); }

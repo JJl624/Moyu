@@ -51,7 +51,7 @@ class DocumentFiles {
   async buffers(input) {
     const buffers = new Map();
     for (const b of input.buffers || []) {
-      if (typeof b.content !== "string" || Buffer.byteLength(b.content) > 20 * 1024 * 1024) {
+      if (typeof b.content !== "string") {
         throw fault("文档内容无效。");
       }
       const disk = await this.vault.read(b.path);

@@ -28,3 +28,13 @@ test('Editor-generated soft breaks without source positions can split a folding 
  const tree=p.parse(raw);for(const node of tree.children[0].children[0].children)delete node.position;
  const result=p.runSync(tree,{value:raw});assert.equal(result.children[0].folding,false);assert.equal(result.children[0].children.length,2);
 });
+
+test('Partial quote markers survive serialization without escaping, while escaped drafts stay literal',async()=>{
+ const [{unified},{default:parse},{default:fold},{default:stringify}]=await Promise.all([import('unified'),import('remark-parse'),import('../shared/remark-folding-quotes.mjs'),import('remark-stringify')]);
+ const p=unified().use(parse).use(fold).use(stringify);
+ for(const draft of ['[','[+','[-','[- Title','[+ Title']){
+  const raw='> '+draft+'\n',saved=String(await p.process(raw));assert.equal(saved,raw);
+  const tree=p.runSync(p.parse(saved),{value:saved});assert.equal(tree.children[0].foldingDraft,true);
+  const escaped='> \\'+draft+'\n';assert.equal(String(await p.process(escaped)),escaped);
+ }
+});

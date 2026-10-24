@@ -6,7 +6,11 @@
   position:relative;padding-left:21px;margin:8px 0;font-weight:600;
 }
 .app .ProseMirror .folding-quote[data-fold-open="false"] > :not(:first-child) {display:none;}
-.app .ProseMirror .folding-quote-marker {font-size:0;letter-spacing:0;}
+/* Zero advance keeps the source marker hidden without giving the native caret
+   a zero font height, including when the heading has no visible text yet. */
+.app .ProseMirror .folding-quote-marker {
+  font-family:monospace;font-size:inherit;letter-spacing:-1ch;color:transparent;
+}
 .app .ProseMirror .folding-quote-toggle {
   position:absolute;left:0;top:0;width:18px;height:1lh;padding:0;border:0;
   background:transparent;color:var(--muted);cursor:pointer;

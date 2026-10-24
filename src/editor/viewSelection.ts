@@ -81,6 +81,7 @@ export function restoreRichSelection(
   view: EditorView,
   markdown: string,
   selected: EditorSelection,
+  focus = true,
 ) {
   const host = view.dom.closest<HTMLElement>('.editor-host');
   if (host) host.dataset.editorPending = 'true';
@@ -108,7 +109,7 @@ export function restoreRichSelection(
       TextSelection.between(view.state.doc.resolve(anchor), view.state.doc.resolve(head)),
     ),
   );
-  view.focus();
+  if (focus) view.focus();
   const initialCode = codeView(view);
   if (initialCode && selected.codeScroll?.pos === initialCode.pos) {
     codeScrollContainer(initialCode.code).scrollTop = selected.codeScroll.top;

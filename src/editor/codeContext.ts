@@ -5,7 +5,7 @@ import { codeBlocks } from '../codeBlocks';
 import type { EditorContext } from '../editorTypes';
 import { inlineActionText, inlineWrappers } from './inlineActions';
 import { analyzeInlineFormats, inlineKinds, withoutInlineFormat, type InlineChange } from './inlineFormatState';
-const formatCache = new WeakMap<EditorView,{doc:EditorView['state']['doc'];analysis:ReturnType<typeof analyzeInlineFormats>}>();
+const formatCache = new WeakMap<EditorView,{doc:EditorView['state']['doc'];source:string;blocks:ReturnType<typeof codeBlocks>;analysis?:ReturnType<typeof analyzeInlineFormats>}>();
 
 export function prepareCodeContext(
   view: EditorView,
@@ -23,18 +23,19 @@ export function prepareCodeContext(
   ) {
     selection = EditorSelection.single(point);
   }
-  const source=doc.toString();
+  let cached=formatCache.get(view);if(cached?.doc!==doc){const source=doc.toString();cached={doc,source,blocks:codeBlocks(source)};formatCache.set(view,cached);}
+  const source=cached.source;
+  const inCode=cached.blocks.some(block=>block.start<=selection.main.to&&block.end>=selection.main.from);
+  const activeCode=cached.blocks.find(block=>block.start<=selection.main.from&&block.end>=selection.main.to);
   const supportsInline = !view.state.readOnly && (allowCaret || !selection.main.empty)
-    && !codeBlocks(source).some(block =>
-      block.start <= selection.main.to && block.end >= selection.main.from
-    );
-  const cached=formatCache.get(view);
-  let analysis=cached?.doc===doc?cached.analysis:undefined;
-  if (supportsInline && !analysis) { analysis=analyzeInlineFormats(source,true);formatCache.set(view,{doc,analysis}); }
+    && !inCode;
+  let analysis=cached.analysis;
+  if (supportsInline && !analysis) { analysis=analyzeInlineFormats(source,true);cached.analysis=analysis; }
   const active=(action:string)=>!!inlineKinds[action]&&!!analysis&&selection.ranges.every(range=>analysis!.active(inlineKinds[action],range.from,range.to));
   return {
+    ancestors:activeCode?['code_block']:[],
     text: selection.ranges.map(range => doc.sliceString(range.from, range.to)).join('\n'),
-    textFor: () => '',
+    textFor: type => type==='code_block'?activeCode?.code||'':'',
     canInsertDrawing: false,
     active,
     can: action => !!inlineWrappers[action] && supportsInline,

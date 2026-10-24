@@ -4,7 +4,6 @@ const crypto = require("node:crypto");
 const {DATA_FOLDER,isVaultData}=require('./vault-paths.cjs');
 
 const {fileKind}=require('../shared/file-kind.mjs');
-const MAX_SIZE = 20 * 1024 * 1024;
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const markdown = (value) => /\.(md|markdown)$/i.test(value);
 const fault = (message, code = "INVALID_PATH", current) =>
@@ -123,8 +122,6 @@ class Vault {
     if (!['markdown','html','text'].includes(fileKind(relative))) throw fault('此文件不能作为文本打开。');
     const target = await this.resolve(relative);
     const stat = await fs.stat(target);
-    if (stat.size > MAX_SIZE)
-      throw fault("文件超过 20 MB，暂不支持打开。", "TOO_LARGE");
     if (!stat.isFile()) throw fault('只能打开普通文件。');
     const bytes = await fs.readFile(target);
     let content;
@@ -148,10 +145,9 @@ class Vault {
       if(isVaultData(relative))throw fault('知识库数据请通过设置管理。');
       if (
         !['markdown','html','text'].includes(fileKind(relative)) ||
-        typeof content !== "string" ||
-        Buffer.byteLength(content) > MAX_SIZE
+        typeof content !== "string"
       )
-        throw fault("文档格式或大小无效。");
+        throw fault("文档格式无效。");
       const target = await this.resolve(relative);
       const current = await this.read(relative);
       if (current.version !== expectedVersion)
@@ -163,6 +159,7 @@ class Vault {
       if (content === current.content) return current;
       await require('./files.cjs').atomic(target, content);
       const saved = await this.read(relative);
+      if(saved.content!==content)throw fault('保存期间文件已被其他程序修改，请比较两个版本。','CONFLICT',saved);
       if (this.history) {
         try { await this.history.capture(current, saved); }
         catch (error) { saved.historyWarning = '文档已保存，历史记录失败：' + error.message; }
@@ -175,9 +172,9 @@ class Vault {
       if(isVaultData(relative))throw fault('知识库数据请通过设置管理。');
       if (
         kind !== "folder" &&
-        (typeof content !== "string" || Buffer.byteLength(content) > MAX_SIZE)
+        typeof content !== "string"
       )
-        throw fault("文档无效或超过 20 MB。", "TOO_LARGE");
+        throw fault("文档内容无效。");
       const target = await this.resolve(relative, true);
       const name = path.basename(target);
       if (
@@ -250,10 +247,9 @@ class Vault {
     const doc = await this.resolve(document);
     if (
       !markdown(document) ||
-      !ArrayBuffer.isView(bytes) ||
-      bytes.byteLength > MAX_SIZE
+      !ArrayBuffer.isView(bytes)
     )
-      throw fault("图片无效或超过 20 MB。");
+      throw fault("图片内容无效。");
     const extension = path.extname(filename).toLowerCase();
     if (
       ![".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"].includes(extension)

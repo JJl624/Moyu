@@ -4,40 +4,7 @@ const {atomic,eligible,snapshot,replace}=require('./files.cjs');
 const {fault,hash}=require('./vault.cjs');
 const {DATA_FOLDER}=require('./vault-paths.cjs');
 const {readableNote}=require('./readable-note.cjs');
-const localPath=(document,url)=>{
-  const raw=String(url||'').split(/[?#]/)[0];let decoded;try{decoded=decodeURIComponent(raw);}catch{decoded=raw;}
-  if(!decoded||/^([a-z][\w+.-]*:|\/)/i.test(decoded))return '';
-  const target=path.posix.normalize(path.posix.join(path.posix.dirname(document),decoded));return eligible(target)?target:'';
-};
-const {relativeHref:link,markdownDestination,destinationSpan}=require('../shared/link-destinations.mjs');
-let parser;
-let wiki;
-const wikiModule=()=>wiki ||= import('../shared/wiki-links.mjs');
-async function links(content){
-  parser ||= Promise.all([import('unified'),import('remark-parse'),import('remark-gfm')]).then(([u,p,g])=>u.unified().use(p.default).use(g.default));
-  const tree=(await parser).parse(content),out=[];(await wikiModule()).wikiSyntax(tree,content);
-  const definitions=new Map();function index(n){if(n.type==='definition'&&!definitions.has(n.identifier))definitions.set(n.identifier,n);n.children?.forEach(index);}index(tree);
-  function visit(n){if(['link','image','definition','wikiEmbed','wikiLink'].includes(n.type)&&n.url)out.push(n);else if(['linkReference','imageReference'].includes(n.type)){const definition=definitions.get(n.identifier);if(definition)out.push({...n,url:definition.url});}n.children?.forEach(visit);}visit(tree);return out;
-}
-async function referencePath(document,node,files=[]){return ['wikiEmbed','wikiLink'].includes(node.type)?(await wikiModule()).wikiPath(document,node.url,files):localPath(document,node.url);}
-// Locate only the destination, leaving labels, titles, whitespace and fenced
-// code untouched. Parentheses and escaped delimiters are valid Markdown URLs.
-function destination(content,node){
-  if(['linkReference','imageReference'].includes(node.type))return null;
-  const start=node.position.start.offset,end=node.position.end.offset,raw=content.slice(start,end);
-  if(['wikiEmbed','wikiLink'].includes(node.type)){const from=raw.indexOf(node.url,raw.startsWith('!')?3:2);return from<0?null:{from:start+from,to:start+from+node.url.length};}
-  const span=destinationSpan(raw,node.type==='definition');return span?{from:start+span.from,to:start+span.to,angle:span.angle}:null;
-}
-async function rewrite(content,document,from,to,files=[]){
-  const moves=Array.isArray(from)?from:[{from,to}],remap=p=>{const m=moves.find(m=>p===m.from||p.startsWith(m.from+'/'));return m?m.to+p.slice(m.from.length):p;},nextDocument=remap(document),edits=[];
-  for(const node of await links(content)){
-    const target=await referencePath(document,node,files);if(!target)continue;
-    const isWiki=['wikiEmbed','wikiLink'].includes(node.type),next=remap(target);if(next===target&&(isWiki||nextDocument===document))continue;
-    const range=destination(content,node);if(range){const href=(isWiki?next:link(nextDocument,next))+(node.url.match(/[?#].*$/)?.[0]||'');edits.push({...range,value:isWiki?href:markdownDestination(href,range.angle)});}
-  }
-  for(const e of edits.sort((a,b)=>b.from-a.from))content=content.slice(0,e.from)+e.value+content.slice(e.to);
-  return content;
-}
+const {localPath,link,links,rewrite,referencePath}=require('../shared/reference-links.mjs');
 class References {
   constructor(vault){this.vault=vault;this.cache=new Map();this.unreadable=new Map();this.last='';this.queue=Promise.resolve();}
   async directory(){const absolute=await this.vault.resolve(DATA_FOLDER,true);await fs.mkdir(absolute,{recursive:true});if((await fs.lstat(absolute)).isSymbolicLink())throw fault('知识库数据不能是符号链接。');return absolute;}
@@ -46,15 +13,21 @@ class References {
     const files=[];function walk(nodes){for(const n of nodes)if(n.kind==='folder')walk(n.children||[]);else if(!n.system&&/\.(md|markdown)$/i.test(n.path))files.push(n);}walk(state.tree);
     const present=new Set(files.map(f=>f.path));for(const p of this.cache.keys())if(!present.has(p))this.cache.delete(p);
     for(const p of this.unreadable.keys())if(!present.has(p))this.unreadable.delete(p);
-    const all=[];const flatten=nodes=>nodes.forEach(n=>n.kind==='folder'?flatten(n.children||[]):all.push(n.path));flatten(state.tree);const inventory=all.slice().sort().join('\n');if(inventory!==this.inventory){this.cache.clear();this.inventory=inventory;}
+    const all=[];const flatten=nodes=>nodes.forEach(n=>n.kind==='folder'?flatten(n.children||[]):all.push(n.path));flatten(state.tree);const inventory=all.slice().sort().join('\n'),inventoryChanged=inventory!==this.inventory;
     for(const file of files){
       const old=this.cache.get(file.path), skipped=this.unreadable.get(file.path);
-      if(old?.updated===file.updated&&old.size===file.size||skipped?.updated===file.updated&&skipped.size===file.size)continue;
+      if(old?.updated===file.updated&&old.size===file.size){
+        if(inventoryChanged&&old.wiki?.length)old.targets=[...new Set([...old.local,...(await Promise.all(old.wiki.map(node=>referencePath(file.path,node,all)))).filter(Boolean)])];
+        continue;
+      }
+      if(skipped?.updated===file.updated&&skipped.size===file.size)continue;
       const doc=await readableNote(this.vault,file.path,message=>this.unreadable.set(file.path,{updated:file.updated,size:file.size,message}));
       if(!doc){this.cache.delete(file.path);continue;}
       this.unreadable.delete(file.path);
-      const targets=[...new Set((await Promise.all((await links(doc.content)).map(n=>referencePath(file.path,n,all)))).filter(Boolean))];this.cache.set(file.path,{updated:doc.updated,size:file.size,targets});
+      const nodes=await links(doc.content),wiki=nodes.filter(n=>['wikiEmbed','wikiLink'].includes(n.type)).map(({type,url})=>({type,url})),local=[...new Set(nodes.filter(n=>!['wikiEmbed','wikiLink'].includes(n.type)).map(n=>localPath(file.path,n.url)).filter(Boolean))];
+      const targets=[...new Set([...local,...(await Promise.all(wiki.map(n=>referencePath(file.path,n,all)))).filter(Boolean)])];this.cache.set(file.path,{updated:doc.updated,size:file.size,targets,local,wiki});
     }
+    this.inventory=inventory;
     const documents={},attachments={};for(const [p,value] of [...this.cache].sort(([a],[b])=>a.localeCompare(b))){documents[p]=value.targets;for(const target of value.targets)(attachments[target] ||= []).push(p);}
     const content=JSON.stringify({version:1,documents,attachments},null,2),file=path.join(this.vault.root,DATA_FOLDER,'attachment_map.json');if(!this.vault.recoveryError&&(content!==this.last||!await fs.lstat(file).catch(()=>null))){await this.directory();let disk;try{disk=await fs.readFile(file,'utf8');}catch{}if(disk!==content)await atomic(file,content);this.last=content;}return {documents,attachments};
   }
@@ -87,7 +60,7 @@ class References {
     }
     for(const override of input.overrides||[]){const disk=await this.vault.read(override.path);if(disk.version!==override.version)throw fault('文档已在外部修改。','CONFLICT',disk);const existing=plans.find(p=>p.original===override.path);if(existing)existing.after=override.content;else if(disk.content!==override.content)plans.push({path:remap(override.path),original:override.path,before:disk.content,after:override.content,version:disk.version});}
     for(const buffer of input.buffers||[]){
-      if(typeof buffer.content!=='string'||Buffer.byteLength(buffer.content)>20*1024*1024)throw fault('文档无效。');
+      if(typeof buffer.content!=='string')throw fault('文档无效。');
       if(/\.(md|markdown)$/i.test(buffer.path)){
         const disk=await this.vault.read(buffer.path);if(disk.version!==buffer.version)throw fault('文档已在外部修改，请先处理冲突：'+buffer.path,'CONFLICT',disk);
         buffers.push({original:buffer.path,path:remap(buffer.path),content:await rewrite(buffer.content,buffer.path,moves,undefined,files)});

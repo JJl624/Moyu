@@ -13,7 +13,7 @@ import {
   type DiskDocument,
 } from "./types";
 const isDrawing=(path:string)=>/\.excalidraw$/i.test(path);
-const readDocument=async(path:string)=>{const document=['image','pdf','sqlite'].includes(fileKind(path))?await api.feature<DiskDocument>('file.binary-read',{path}):isDrawing(path)?await api.feature<DiskDocument>('drawing.read',{path}):await api.read(path);if(api.desktop&&/\.(md|markdown)$/i.test(path)){const counter=await api.feature<{next:number}>('code.counter',{document:path});reserveIds(undefined,path,counter.next);}return document;};
+const readDocument=async(path:string)=>{const document=['image','pdf','sqlite'].includes(fileKind(path))?await api.feature<DiskDocument>('file.binary-read',{path}):isDrawing(path)?await api.feature<DiskDocument>('drawing.read',{path}):await api.read(path);if(api.desktop&&api.platform!=='android'&&/\.(md|markdown)$/i.test(path)){const counter=await api.feature<{next:number}>('code.counter',{document:path});reserveIds(undefined,path,counter.next);}return document;};
 const initialMarkdown=(files:{path:string}[])=>files.find(f=>f.path==='markdown完全语法示例.md') ?? files.find(f=>f.path==='开始使用.md') ?? files.find(f=>/\.(md|markdown)$/i.test(f.path));
 export type SavePolicy='manual'|'close'|'realtime';
 
@@ -42,6 +42,7 @@ export function useWorkspace() {
   const renaming=useRef(false),closingQueue=useRef<ReturnType<typeof createCloseQueue>|null>(null);
   closingQueue.current ??= createCloseQueue();
   const pending = useRef(new Map<string, Promise<boolean>>());
+  const normalized=useRef(new Map<string,{content:string;floor:number}>());
   const lifetimes = useRef(new DocumentLifetimes());
   const commit = useCallback((next: Record<string, OpenDocument>) => {
     docs.current = next;
@@ -195,12 +196,22 @@ export function useWorkspace() {
     },
     [update,pin],
   );
-  useEffect(()=>{if(!api.desktop)return;const timer=setTimeout(()=>{for(const doc of Object.values(docs.current))if(doc.dirty&&/\.(md|markdown)$/i.test(doc.path))void api.feature('code.normalize',{root:currentRoot.current,document:doc.path,content:doc.content,next:idFloor(undefined,doc.path)}).catch(e=>setError(e.message));},750);return()=>clearTimeout(timer);},[documents]);
+  useEffect(()=>{
+    if(!api.desktop||api.platform==='android')return;
+    for(const name of normalized.current.keys())if(!docs.current[name]?.dirty)normalized.current.delete(name);
+    if(!Object.values(documents).some(doc=>doc.dirty&&/\.(md|markdown)$/i.test(doc.path)))return;
+    const timer=setTimeout(()=>{for(const doc of Object.values(docs.current))if(doc.dirty&&/\.(md|markdown)$/i.test(doc.path)){
+      const floor=idFloor(undefined,doc.path),old=normalized.current.get(doc.path);if(old?.content===doc.content&&old.floor===floor)continue;
+      const value={content:doc.content,floor};normalized.current.set(doc.path,value);
+      void api.feature('code.normalize',{root:currentRoot.current,document:doc.path,content:doc.content,next:floor}).catch(e=>{if(normalized.current.get(doc.path)===value)normalized.current.delete(doc.path);setError(e.message);});
+    }},750);return()=>clearTimeout(timer);
+  },[documents]);
   useEffect(()=>api.onScanError?.(setError),[]);
   const refresh = useCallback(async () => {const request=generation.current,state=await api.list();if(request===generation.current&&state.root===currentRoot.current)setWorkspace(state);}, []);
   const replaceWorkspace = useCallback(
     async (state: Workspace) => {
       generation.current++;
+      normalized.current.clear();
       lifetimes.current.clear();
       openTicket.current++;
       currentTabs.current=[];currentActive.current='';currentPreview.current='';setPreviewTab('');
@@ -219,6 +230,7 @@ export function useWorkspace() {
   );
   const leaveWorkspace = () => {
     generation.current++;openTicket.current++;currentRoot.current=undefined;
+    normalized.current.clear();
     lifetimes.current.clear();
     currentTabs.current=[];currentActive.current='';currentPreview.current='';
     commit({});setTabs([]);setActive('');setPreviewTab('');setWorkspace(null);inventory.current=null;setError('');
@@ -274,7 +286,7 @@ export function useWorkspace() {
   }, [workspace?.root, tabs, active, previewTab, ready]);
   useEffect(() => {
     settingsStore.setItem('moyu-save-policy',savePolicy);
-    if (savePolicy!=='realtime') return;
+    if (savePolicy!=='realtime'||!Object.values(documents).some(doc=>doc.dirty&&!doc.saving&&!doc.conflict&&!doc.error)) return;
     const timer = window.setTimeout(() => {
       Object.values(docs.current)
         .filter((doc) => doc.dirty && !doc.conflict && !doc.error)
@@ -310,7 +322,7 @@ export function useWorkspace() {
           }
           if (
             file &&
-            file.updated !== document.updated &&
+            (file.updated !== document.updated||state.changedPaths?.includes(document.path)) &&
             !document.dirty &&
             !document.saving
           ) {
@@ -324,7 +336,7 @@ export function useWorkspace() {
                 latest.version===document.version &&
                 !latest.dirty &&
                 !latest.saving &&
-                (disk.content !== latest.content || disk.updated!==latest.updated)
+                (disk.content !== latest.content || disk.updated!==latest.updated||disk.version!==latest.version)
               ) {
                 const content=disk.content;
                 update(document.path, { ...disk,content,savedContent: disk.content,dirty:content!==disk.content });
@@ -353,7 +365,7 @@ export function useWorkspace() {
       await settleHTMLResults({documents:paths});
       await Promise.all(paths.map(path=>pending.current.get(path)));
       if(request!==generation.current)return false;
-      if(api.desktop)for(const path of paths){const doc=docs.current[path];if(doc?.dirty&&/\.(md|markdown)$/i.test(path))await api.feature('code.normalize',{root:currentRoot.current,document:path,content:doc.content,next:idFloor(undefined,path)});if(request!==generation.current)return false;}
+      if(api.desktop&&api.platform!=='android')for(const path of paths){const doc=docs.current[path];if(doc?.dirty&&/\.(md|markdown)$/i.test(path))await api.feature('code.normalize',{root:currentRoot.current,document:path,content:doc.content,next:idFloor(undefined,path)});if(request!==generation.current)return false;}
       const dirty=paths.filter(path=>docs.current[path]?.dirty);
       if(!dirty.length){await settleHTMLResults({documents:paths,stop:true});return true;}
       let choice='save';
@@ -482,6 +494,7 @@ export function useWorkspace() {
     open,
     save,
     saveAll,
+    settleSaves:()=>Promise.all(pending.current.values()),
     change,
     refresh,
     replaceWorkspace,

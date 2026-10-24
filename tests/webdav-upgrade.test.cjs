@@ -42,6 +42,33 @@ test('An unchanged sync performs no GET, PUT or DELETE and does not rewrite its 
   const restarted=new WebDAVSync(vault,sync.config); const offset=server.requests.length; await restarted.sync(); assert(!server.requests.slice(offset).some(r=>r.method==='GET'));
 });
 
+for(const style of ['bare','mixed'])test('Unchanged '+style+' ETags need one listing per folder and no repeated file transfers after restart',async t=>{
+  const {vault,server,sync}=await fixture(t,{}, {etagStyle:style,numericETag:true});await vault.create('a.md','file','a');await sync.sync();const at=server.requests.length;await sync.sync();await new WebDAVSync(vault,sync.config).sync();const requests=server.requests.slice(at);assert.equal(requests.length,2);assert(requests.every(item=>item.method==='PROPFIND'&&item.headers.depth==='1'));
+});
+
+test('Resolving several conflicts touches only each selected file and its immediate parent',async t=>{
+  const {vault,server,sync}=await fixture(t);for(const name of ['a.md','b.md','unrelated/other.md']){if(name.includes('/'))await vault.create('unrelated','folder');await vault.create(name,'file','base');}await sync.sync();for(const name of ['a.md','b.md']){await edit(vault,name,'local '+name);server.files.set('/Moyu/'+name,Buffer.from('remote '+name));}
+  let conflicts=(await sync.sync()).conflicts;assert.equal(conflicts.length,2);let at=server.requests.length;await sync.sync();assert(!server.requests.slice(at).some(item=>item.method==='GET'),'unchanged conflicts reuse their previously verified body');
+  at=server.requests.length;await sync.resolve({...conflicts.find(item=>item.path==='a.md'),choice:'local'});let requests=server.requests.slice(at);assert(!requests.some(item=>item.path.includes('unrelated')||item.path.endsWith('/b.md')));assert.equal(requests.filter(item=>item.method==='GET').length,0);assert.equal(requests.filter(item=>item.method==='PUT').length,1);assert(requests.filter(item=>item.method==='PROPFIND').every(item=>item.path==='/Moyu/a.md'||item.path==='/Moyu'));
+  conflicts=(await sync.status()).conflicts;assert.deepEqual(conflicts.map(item=>item.path),['b.md']);at=server.requests.length;await new WebDAVSync(vault,sync.config).resolve({...conflicts[0],choice:'remote'});requests=server.requests.slice(at);assert(requests.every(item=>item.path==='/Moyu/b.md'));assert.equal(requests.filter(item=>item.method==='GET').length,1);assert.equal((await vault.read('b.md')).content,'remote b.md');
+});
+
+test('503 Retry-After stops all follow-up requests, even from a new sync instance on the same account',async t=>{
+  const {vault,server,sync}=await fixture(t,{retries:2});await vault.create('a.md','file','a');server.fail({method:'PROPFIND',path:'/Moyu',status:503,headers:{'Retry-After':'120'}});await assert.rejects(sync.sync(),error=>error.code==='RATE_LIMITED'&&error.retryAt>Date.now()+110000);const at=server.requests.length;assert.equal(at,1);await assert.rejects(new WebDAVSync(vault,sync.config).sync(),error=>error.code==='RATE_LIMITED');assert.equal(server.requests.length,at);
+});
+
+test('Repeated unlabelled 503s are bounded, then cool down instead of re-scanning',async t=>{
+  const {server,sync}=await fixture(t,{retries:1});server.fail({method:'PROPFIND',path:'/Moyu',status:503,times:20});await assert.rejects(sync.sync(),error=>error.code==='RATE_LIMITED');assert.equal(server.requests.length,2);assert(server.requests[1].at-server.requests[0].at>=1900);await assert.rejects(sync.sync(),error=>error.code==='RATE_LIMITED');assert.equal(server.requests.length,2);
+});
+
+test('Excluded remote subtrees are never traversed during synchronization',async t=>{
+  const {server,sync}=await fixture(t,{excludes:'excluded/'});server.directories.add('/Moyu');server.directories.add('/Moyu/excluded');server.directories.add('/Moyu/excluded/nested');server.files.set('/Moyu/excluded/nested/a.md',Buffer.from('private'));await sync.sync();assert(server.requests.every(item=>!item.path.includes('/excluded')));
+});
+
+test('Downloaded watcher paths match the committed local baseline and need no follow-up network scan',async t=>{
+  const {vault,server,sync}=await fixture(t);await vault.create('a.md','file','base');await sync.sync();server.files.set('/Moyu/a.md',Buffer.from('downloaded'));await sync.sync();const before=server.requests.length;sync.invalidateLocal('a.md');assert.equal(await sync.hasLocalChanges(new Set(['a.md'])),false);assert.equal(server.requests.length,before);await edit(vault,'a.md','user edit');assert.equal(await sync.hasLocalChanges(new Set(['a.md'])),true);assert.equal(server.requests.length,before);
+});
+
 test('Only changed remote contents are fetched and changed local contents are uploaded', async t => {
   const {vault,server,sync}=await fixture(t); for(const n of ['a','b','c'])await vault.create(n+'.md','file',n);await sync.sync();
   server.files.set('/Moyu/b.md',Buffer.from('remote b')); await edit(vault,'a.md','local a'); const start=server.requests.length;
@@ -113,10 +140,10 @@ test('Simultaneous sync requests cannot race a baseline and transient failures r
   const running=sync.sync();assert.throws(()=>sync.sync(),e=>e.code==='BUSY');await running;assert.equal(calls,2);
 });
 
-test('Scheduler defaults make no calls, removed pause is ignored and pending reviews block repetition', async () => {
+test('Scheduler defaults make no calls, removed pause is ignored and pending reviews block repetition', async t => {
   let calls=0,finished=0;const sync={job:{phase:'idle'},sync:async()=>{calls++;return{};}};
   const scheduler=new SyncScheduler(sync,async()=>finished++);scheduler.configure({url:'url',sync:{}});await scheduler.trigger();assert.equal(calls,1); // explicit trigger, no automatic timer
-  scheduler.configure({url:'url',sync:{paused:true}});assert.equal(scheduler.settings.paused,undefined);await scheduler.trigger();assert.equal(calls,2);
+  scheduler.lastStarted=-Infinity;scheduler.configure({url:'url',sync:{paused:true}});assert.equal(scheduler.settings.paused,undefined);await scheduler.trigger();assert.equal(calls,2);
   scheduler.configure({url:'url',sync:{}});sync.job.phase='awaiting';await scheduler.trigger();assert.equal(calls,2);assert.equal(finished,2);scheduler.close();
 });
 

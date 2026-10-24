@@ -1,0 +1,106 @@
+/* A shared label column aligns full-width fields and paired short controls. */
+.preferences :is(.regional-type-settings, .compact-type-settings) {
+  --compact-label-width: 80px;
+  --compact-control-height: 32px;
+}
+.preferences .compact-pref-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 28px;
+}
+.preferences .compact-grid-wide { grid-column: 1 / -1; }
+.preferences .compact-pref-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 0;
+}
+.preferences .compact-inline-field {
+  display: grid;
+  grid-template-columns: var(--compact-label-width) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.preferences .compact-inline-field > span { color: var(--text); }
+.preferences :is(.compact-pref-field, .compact-inline-field) small {
+  color: var(--secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.preferences :is(.regional-type-settings, .compact-type-settings) :is(input, select, textarea) {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--compact-control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 5px 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+}
+.preferences :is(.regional-type-settings, .compact-type-settings) :is(input, select) {
+  height: var(--compact-control-height);
+}
+.preferences :is(.regional-type-settings, .compact-type-settings) select { padding-right: 26px; }
+.preferences :is(.regional-type-settings, .compact-type-settings) .font-selector { min-width: 0; width: 100%; }
+.preferences :is(.regional-type-settings, .compact-type-settings) .font-selector input { width: 100%; padding-right: 30px; }
+.preferences .compact-number-unit { display: flex; align-items: center; gap: 6px; }
+.preferences :is(.regional-type-settings, .compact-type-settings) input[type='number'] { width: 78px; flex: 0 0 78px; }
+.preferences .compact-number-unit small { width: 16px; flex-shrink: 0; }
+
+.preferences .regional-type-settings {
+  --compact-label-width: 52px;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 18px;
+  padding: 12px;
+}
+.preferences .regional-type-settings nav { max-height: 270px; }
+.preferences .regional-type-settings nav button { padding: 6px; }
+.preferences .regional-type-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; margin-bottom: 12px; }
+.preferences .regional-type-heading h4 { margin: 0; }
+.preferences .regional-type-heading button { padding: 4px 0 4px 8px; white-space: nowrap; font-size: 11px; }
+.preferences .regional-type-heading button:disabled { color: var(--secondary); opacity: .5; cursor: default; }
+.preferences .regional-type-settings .compact-inline-field { align-items: start; }
+.preferences .regional-type-settings .compact-inline-field > span { padding-top: 6px; }
+.preferences .regional-type-metrics { margin-top: 14px; gap: 16px; }
+.preferences .regional-type-preview {
+  margin: 16px 0 0 calc(var(--compact-label-width) + 12px);
+  padding: 10px 12px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  overflow: auto;
+  max-height: 100px;
+  overflow-wrap: anywhere;
+}
+
+.preferences .terminal-preferences .pref-section { margin-top: 16px; padding-top: 16px; }
+.preferences .terminal-preferences .terminal-appearance-settings { margin-top: 0; padding-top: 0; border-top: 0; }
+.preferences .terminal-appearance-settings > h3 { margin-bottom: 16px; }
+.preferences .terminal-preferences h4 { margin: 0; }
+.preferences .terminal-preferences .compact-inline-field { min-height: 32px; }
+.preferences .terminal-preferences .compact-pref-grid select { width: 100px; }
+.preferences .terminal-preferences .toggle { justify-self: start; }
+.preferences .terminal-preferences .terminal-scrollback input { width: 100px; flex-basis: 100px; }
+.preferences .terminal-preferences .pref-section-heading { margin-bottom: 12px; }
+.preferences .terminal-launch-fields { display: grid; gap: 12px; }
+.preferences .terminal-launch-fields select { width: 100%; }
+.preferences .terminal-launch-fields .startup-program { min-width: 0; gap: 6px; align-items: center; }
+.preferences .terminal-launch-fields .startup-program input { width: 0; }
+.preferences .terminal-arguments-field { align-items: start; }
+.preferences .terminal-arguments-field > span { padding-top: 6px; }
+.preferences .terminal-arguments-field > span small { display: block; margin-top: 4px; }
+.preferences .terminal-arguments-field textarea { width: 100%; height: 76px; min-height: 76px; resize: vertical; }
+.preferences .terminal-preferences .muted-note { margin: 10px 0 0 calc(var(--compact-label-width) + 12px); padding: 0; font-size: 11px; }
+
+@media (max-width: 760px) {
+  .preferences .compact-type-settings { --compact-label-width: 72px; }
+  .preferences .terminal-preferences .compact-pref-grid { grid-template-columns: minmax(0, 1fr); }
+  .preferences .regional-type-settings { grid-template-columns: 106px minmax(0, 1fr); gap: 12px; padding: 10px; }
+  .preferences .regional-type-metrics { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .preferences .regional-type-metrics .compact-pref-field { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+}

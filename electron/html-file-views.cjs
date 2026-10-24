@@ -7,7 +7,7 @@ const policy="default-src 'none'; script-src moyu-preview: 'unsafe-inline' 'unsa
 class HTMLFileViews{
   constructor(current){this.current=current;this.views=new Map();}
   async open({path:relative,content}){
-    if(!/\.html?$/i.test(relative)||typeof content!=='string'||Buffer.byteLength(content)>20*1024*1024||isVaultData(relative))throw Error('HTML 文件无效。');
+    if(!/\.html?$/i.test(relative)||typeof content!=='string'||isVaultData(relative))throw Error('HTML 文件无效。');
     const vault=this.current();await vault.resolve(relative);
     const token=randomUUID();this.views.set(token,{vault,relative,content});
     while(this.views.size>8)this.views.delete(this.views.keys().next().value);
@@ -23,7 +23,7 @@ class HTMLFileViews{
       if(!mime||isVaultData(relative))throw Error();
       let bytes;
       if(relative===view.relative)bytes=Buffer.from(view.content);
-      else{const target=await view.vault.resolve(relative),stat=await fs.stat(target);if(!stat.isFile()||stat.size>20*1024*1024)throw Error();bytes=await fs.readFile(target);}
+      else{const target=await view.vault.resolve(relative),stat=await fs.stat(target);if(!stat.isFile())throw Error();bytes=await fs.readFile(target);}
       return new Response(bytes,{headers:{'Content-Type':mime,'Content-Security-Policy':policy,'Access-Control-Allow-Origin':'*','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     }catch{return new Response('文件不可用',{status:404});}
   }

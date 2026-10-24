@@ -136,11 +136,7 @@ for (const [kind, definition] of Object.entries(definitions)) {
       nodePaths: [path.join(fullSource, "node_modules")],
       plugins,
     });
-    manifest.adapterVersion = ["clang", "lua"].includes(kind)
-      ? 1
-      : kind === "bash"
-      ? adapters.BASH_ADAPTER_VERSION
-      : adapters.ADAPTER_VERSION;
+    manifest.adapterVersion = adapters.adapterVersion(kind);
     manifest.bundledAdapterHash = adapterHash;
     await fs.writeFile(path.join(directory, "manifest.json"), JSON.stringify(manifest, null, 2));
   }

@@ -10,7 +10,8 @@ const { readTree, saveTree } = require('./sync-tree.cjs');
 const { policy, excludedBy } = require('./sync-policy.cjs');
 const { fingerprint, info, digest, localFiles, download, apply, conflictCopy } = require('./sync-files.cjs');
 const limit = settings => settings.maxFileMB * 1024 * 1024;
-const { validator:etag, strong, sameToken } = require('./sync-validator.cjs');
+const { validator:etag, sameToken } = require('./sync-validator.cjs');
+const {requestBudget}=require('../shared/sync-requests.mjs');
 const localMeta = item => item ? { ...fingerprint(item), version: item.version } : null;
 const remoteMeta = item => item ? { etag: item.etag, size: item.size, version: item.version } : null;
 class WebDAVSync {
@@ -30,6 +31,7 @@ class WebDAVSync {
     if (!config.url) throw fault('请先配置 WebDAV 地址。');
     const { createClient } = await import('webdav');
     const client = createClient(config.url, { username: config.username, password: config.password });
+    this.budget=requestBudget(config.url,config.username);
     client.registerTagParser((name,value)=>name.endsWith('propstat.prop.getetag') ? undefined : value);
     return { client,
       root: config.directory || '/Moyu', settings: policy(config.sync),
@@ -40,13 +42,18 @@ class WebDAVSync {
     for (let attempt = 0;; attempt++) {
       this.controller?.signal.throwIfAborted();
       externalSignal?.throwIfAborted();
+      const wait=this.budget?.reserve()||0;
+      if(wait)await delay(wait,undefined,{signal:externalSignal?AbortSignal.any([externalSignal,...(this.controller?[this.controller.signal]:[])]):this.controller?.signal});
+      this.budget?.check();
       const signal = AbortSignal.any([AbortSignal.timeout(settings.timeout * 1000), ...(this.controller ? [this.controller.signal] : []),...(externalSignal?[externalSignal]:[])]);
-      try { return await action({ signal }); }
+      try { const result=await action({ signal });this.budget?.success();return result; }
       catch (error) {
         externalSignal?.throwIfAborted();
         if (this.controller?.signal.aborted) throw this.cancelRequested ? fault('同步已取消。', 'CANCELLED') : this.controller.signal.reason;
-        if (attempt >= settings.retries || error.status && ![408, 429, 500, 502, 503, 504].includes(error.status)) throw error;
-        await delay(400 * 2 ** attempt, undefined, { signal: externalSignal?AbortSignal.any([externalSignal,...(this.controller?[this.controller.signal]:[])]):this.controller?.signal });
+        const retryAfter=error.response?.headers?.get?.('retry-after');
+        if(error.status===429||error.status===503&&(retryAfter||attempt>=settings.retries))throw this.budget.limited(error.status,retryAfter);
+        if (attempt >= settings.retries || error.status && ![408, 500, 502, 503, 504].includes(error.status)) throw error;
+        await delay((error.status===503?2000:800) * 2 ** attempt, undefined, { signal: externalSignal?AbortSignal.any([externalSignal,...(this.controller?[this.controller.signal]:[])]):this.controller?.signal });
       }
     }
   }
@@ -60,13 +67,11 @@ class WebDAVSync {
   async test(externalSignal) {
     const { client, root, settings } = await this.client();
     try {
-      const exists = await this.request(o => client.exists(root, o), settings, externalSignal);
-      let directory = root;
-      while (!exists && !(await this.request(o => client.exists(directory, o), settings, externalSignal))) {
-        const parent = path.posix.dirname(directory); if (parent === directory) break; directory = parent;
+      let directory=root;
+      for(;;){
+        try{await this.request(o=>client.getDirectoryContents(directory,o),settings,externalSignal);return {message:directory===root?'连接成功':'连接成功，同步时将创建远端目录',exists:directory===root};}
+        catch(error){if(error.status!==404)throw error;const parent=path.posix.dirname(directory);if(parent===directory)throw error;directory=parent;}
       }
-      await this.request(o => client.getDirectoryContents(directory, o), settings, externalSignal);
-      return { message: exists ? '连接成功' : '连接成功，同步时将创建远端目录', exists };
     } catch (error) { throw this.explain(error); }
   }
   async ensureDirectory(client, directory, known, settings) {
@@ -75,6 +80,7 @@ class WebDAVSync {
       const parent = path.posix.dirname(directory);
       if (parent !== directory) await this.ensureDirectory(client, parent, known, settings);
       await this.request(o => client.createDirectory(directory, o), settings);
+      const relative=path.posix.relative(this.plan?.context.root||directory,directory);if(relative&&!relative.startsWith('..'))this.plan?.tree?.set(relative,{path:relative,type:'folder',size:0});
     }
     known.add(directory);
   }
@@ -93,12 +99,12 @@ class WebDAVSync {
     return { enabled: true, lastSync: state.lastSync, conflicts: state.conflicts || [], files,
       job: this.job, report: state.report || null, cloud: await readTree(await this.stateFile(identity)) };
   }
-  async remote(context, state, excluded, blocked, inspect = false) {
+  async remote(context, state, excluded, blocked, inspect = false, first) {
     const { client, root, settings } = context, files = Object.create(null), skipped = [], entries = [];
     let count = 0;
     const visit = async (dir, prefix = '', depth = 0) => {
       if (depth > 30) throw fault('远端目录层级超过 30 层。');
-      const listing = await this.request(o => client.getDirectoryContents(dir, {...o,details:true}), settings);
+      const listing = depth===0&&first ? first : await this.request(o => client.getDirectoryContents(dir, {...o,details:true}), settings);
       const items = listing.data;
       for (const item of items) {
         if (!item.basename || item.basename.includes('/')) throw fault('远端返回了无效文件名。');
@@ -113,7 +119,7 @@ class WebDAVSync {
           if (inspect && item.type === 'directory') await visit(path.posix.join(root,name),name+'/',depth+1);
           continue;
         }
-        if (item.type === 'directory') await visit(path.posix.join(root, name), name + '/', depth + 1);
+        if (item.type === 'directory') {if(!excluded(name)||inspect)await visit(path.posix.join(root, name), name + '/', depth + 1);}
         else {
           if (++count > 10000) throw fault('远端文件数量超过 10000。');
           if (excluded(name)) { skipped.push({ path: name, reason: '已排除' }); blocked.add(name); continue; }
@@ -121,7 +127,7 @@ class WebDAVSync {
           if (blocked.has(name)) continue;
           if (!Number.isFinite(item.size) || item.size < 0) throw fault('远端文件大小无效：' + name);
           const record = { size: item.size, etag: etag(item.props?.getetag), ...(Number.isFinite(modified) ? {modified} : {}) }, old = state.remote[name];
-          if (strong(record.etag) && record.etag === old?.etag && record.size === old.size) record.version = old.version;
+          if (sameToken(record.etag,old?.etag) && record.size === old.size) {record.version = old.version;record.etag=old.etag;}
           files[name] = record;
         }
       }
@@ -130,8 +136,9 @@ class WebDAVSync {
   }
   refreshTree() { return this.start(async () => {
     await this.cleanupPlan();
-    const context = await this.client(), exists = await this.request(o => context.client.exists(context.root,o),context.settings);
-    const remote = exists ? await this.remote(context,{remote:{}},excludedBy(context.settings),new Set(),true) : {entries:[]};
+    const context = await this.client();let first;
+    try{first=await this.request(o=>context.client.getDirectoryContents(context.root,{...o,details:true}),context.settings);}catch(error){if(error.status!==404)throw error;}
+    const remote = first ? await this.remote(context,{remote:{}},excludedBy(context.settings),new Set(),true,first) : {entries:[]};
     const tree = await saveTree(await this.stateFile(context.identity),context.root,remote.entries);
     this.progress({phase:'idle',current:''}); return tree;
   }, 'directory'); }
@@ -198,6 +205,7 @@ class WebDAVSync {
     if (this.running) throw fault('已有同步任务正在执行。', 'BUSY');
     this.controller = new AbortController();
     this.cancelRequested = false;
+    if(operation==='sync')this.lastStarted=Date.now();
     this.progress({ operation, phase: 'scan', current: '', completed: 0, total: 0, error: '', pending: undefined });
     this.running = (async () => {
       try { return await action(); }
@@ -215,23 +223,39 @@ class WebDAVSync {
     else { await this.cleanupPlan(); this.progress({ phase: 'cancelled', current: '', error: '', pending: undefined }); }
     return true;
   }
-  async prepare() {
+  async prepare(only) {
     const started = Date.now();
     await this.cleanupPlan();
     const context = await this.client(), { identity, settings, client, root } = context;
     const persistence = new SyncState(await this.stateFile(identity)), state = await persistence.read();
     if (persistence.pending) await persistence.compact(state);
-    const exists = await this.request(o => client.exists(root, o), settings);
+    let first,exists=true;
+    if(!only)try{first=await this.request(o=>client.getDirectoryContents(root,{...o,details:true}),settings);}catch(error){if(error.status!==404)throw error;exists=false;}
     if (!exists && (state.lastSync || Object.keys(state.base).length)) throw fault('远端同步目录不存在，请检查服务器或连接设置。');
     const directory = await internal(this.vault, 'sync/transfers');
     this.plan = { context, state, persistence, directory, exists };
     await this.cleanupPlan(); this.plan = { context, state, persistence, directory, exists, transferBytes:0 };
-    const excluded = excludedBy(settings), local = await localFiles(this.vault, excluded, limit(settings), this.localCache, this.controller.signal);
+    const excluded = excludedBy(settings);
+    let local,remote;
+    if(only){
+      if(!eligible(only)||excluded(only))throw fault('该文件不在同步范围内。');
+      const record=await info(this.vault,only);if(record&&record.size>limit(settings))throw fault('本地文件超过大小限制：'+only);
+      if(record)record.version=await digest(record.file,this.controller.signal);
+      local={files:record?{[only]:record}:{},skipped:[]};
+      const snapshot=await readTree(await this.stateFile(identity)),entries=new Map((snapshot?.entries||[]).map(entry=>[entry.path,entry]));let current;
+      try{const result=await this.request(o=>client.stat(path.posix.join(root,only),{...o,details:true}),settings),item=result.data;
+        if(item.type!=='file'||!Number.isFinite(item.size)||item.size<0||item.size>limit(settings))throw fault('远端文件类型或大小无效：'+only);
+        const modified=Date.parse(item.lastmod);current={size:item.size,etag:etag(item.props?.getetag),...(Number.isFinite(modified)?{modified}:{})};
+        const old=state.remote[only];if(sameToken(current.etag,old?.etag)&&current.size===old.size){current.version=old.version;current.etag=old.etag;}
+        entries.set(only,{path:only,type:'file',size:current.size,...(current.modified?{modified:current.modified}:{})});
+      }catch(error){if(error.status!==404)throw error;if(!await this.request(o=>client.exists(root,o),settings))throw fault('远端同步目录不存在，请检查服务器或连接设置。');entries.delete(only);}
+      remote={files:current?{[only]:current}:{},skipped:[],entries:[...entries.values()]};
+    }else local=await localFiles(this.vault, excluded, limit(settings), this.localCache, this.controller.signal);
     const blocked = new Set(local.skipped.map(x => x.path));
-    const remote = exists ? await this.remote(context, state, excluded, blocked) : { files: {}, skipped: [], entries: [] };
-    await saveTree(await this.stateFile(identity),root,remote.entries);
+    remote ||= exists ? await this.remote(context, state, excluded, blocked,false,first) : { files: {}, skipped: [], entries: [] };
+    if(!only)await saveTree(await this.stateFile(identity),root,remote.entries);
     for (const name of blocked) { delete local.files[name]; delete remote.files[name]; }
-    const names = [...new Set([...Object.keys(state.base), ...Object.keys(local.files), ...Object.keys(remote.files)])].sort();
+    const names = only?[only]:[...new Set([...Object.keys(state.base), ...Object.keys(local.files), ...Object.keys(remote.files)])].sort();
     if(process.platform==='win32'){
       const seen=new Map();for(const name of names){const key=name.toLowerCase(),previous=seen.get(key);if(previous&&previous!==name)throw fault('文件名在 Windows 上冲突，请在远端处理后重试：'+previous+' / '+name,'CONFLICT');seen.set(key,name);}
     }
@@ -284,6 +308,12 @@ class WebDAVSync {
     if(!name){this.localCache={};return;}
     for(const key of Object.keys(this.localCache))if(key===name||key.startsWith(name+'/'))delete this.localCache[key];
   }
+  async hasLocalChanges(paths) {
+    const {identity,settings}=await this.client(),state=await this.state(identity),excluded=excludedBy(settings);
+    const local=await localFiles(this.vault,excluded,limit(settings),this.localCache),blocked=new Set(local.skipped.map(item=>item.path));
+    const selected=name=>!paths?.size||paths.has('*')||[...paths].some(prefix=>name===prefix||name.startsWith(prefix+'/'));
+    return [...new Set([...Object.keys(state.base),...Object.keys(local.files)])].some(name=>selected(name)&&!excluded(name)&&!blocked.has(name)&&(local.files[name]?.version||null)!==(state.base[name]||null));
+  }
   async upload(plan, name, local, remote) {
     const { context, directory } = plan, { client, root, settings } = context;
     if (remote && !remote.etag) throw fault('服务器未提供 ETag，不能安全覆盖或删除远端文件：' + name);
@@ -324,6 +354,8 @@ class WebDAVSync {
   }
   async conflict(plan, operation, allowText = true) {
     const name = operation.path, local = plan.local[name], remote = plan.remote[name];
+    const previous=plan.state.conflicts?.find(item=>item.path===name&&item.local===operation.local&&item.remote===operation.remote);
+    if(previous&&(!remote||remote.version))return previous;
     let localText = null, remoteText = null;
     if (remote) {
       await this.fetched(plan.context, name, remote, plan.directory);
@@ -356,7 +388,7 @@ class WebDAVSync {
     const cached = input.token && this.plan?.token === input.token && this.plan.context.identity === current.identity
       && this.plan.context.configuration === current.configuration
       && Date.now() - this.plan.created < 120000;
-    const plan = cached ? this.plan : await this.prepare();
+    const plan = cached ? this.plan : await this.prepare(input.resolution?.path);
     const summary = this.summary(plan);
     const deletionApproval = !input.resolution && current.settings.deletion === 'confirm' && summary.deletions.length && input.token !== plan.token;
     if (deletionApproval || input.automatic && !plan.state.lastSync || input.token && input.token !== plan.token) {
@@ -364,7 +396,7 @@ class WebDAVSync {
       return { ...summary, needsConfirmation: true, lastSync: plan.state.lastSync, conflicts: plan.state.conflicts || [] };
     }
     this.progress({ phase: 'transfer', completed: 0, total: input.resolution ? 1 : summary.changes.length });
-    plan.directories = new Set();
+    plan.directories = new Set(plan.exists?[plan.context.root,...[...plan.tree.values()].filter(entry=>entry.type==='folder').map(entry=>path.posix.join(plan.context.root,entry.path))]:[]);
     if (!plan.exists) await this.ensureDirectory(plan.context.client, plan.context.root, plan.directories, current.settings);
     const conflicts = input.resolution ? (plan.state.conflicts || []).filter(c => c.path !== input.resolution.path) : [], changes = [];
     const cachedBefore = JSON.stringify({ local: plan.state.local, remote: plan.state.remote, conflicts: plan.state.conflicts });
@@ -378,7 +410,7 @@ class WebDAVSync {
         direction = input.resolution.choice === 'local' ? 'upload' : input.resolution.choice === 'remote' ? 'download' : 'both';
       }
       this.progress({ current: name });
-      if (direction === 'conflict') conflicts.push(await this.conflict(plan, operation, conflicts.length < 32));
+      if (direction === 'conflict') {conflicts.push(await this.conflict(plan, operation, conflicts.length < 32));if(plan.remote[name])plan.state.remote[name]=remoteMeta(plan.remote[name]);if(plan.local[name])plan.state.local[name]=localMeta(plan.local[name]);}
       else if (direction === 'same') {
         if (operation.local !== (plan.state.base[name] || null)) await this.commit(plan, name, plan.local[name], plan.remote[name], operation.local);
         else { if (plan.local[name]) plan.state.local[name] = localMeta(plan.local[name]); if (plan.remote[name]) plan.state.remote[name] = remoteMeta(plan.remote[name]); }
@@ -399,12 +431,18 @@ class WebDAVSync {
     plan.state.report = { changes: changes.slice(-200), skipped: plan.skipped.slice(0, 200), totalChanges: changes.length, totalSkipped: plan.skipped.length,
       duration:Date.now()-started+(cached ? plan.scanDuration : 0), bytes:plan.transferBytes, conflicts:conflicts.length,
       counts:Object.fromEntries(['上传','下载','删除本地','删除远端','保留两份'].map(action=>[action,changes.filter(c=>c.action===action).length])) };
-    // Read the server after transfers: a fresh timestamp on a patched scan is
-    // not a fresh directory (and cannot supply upload times or new folders).
-    if(changes.some(c=>['上传','删除远端','保留两份'].includes(c.action))){
-      const listing = await this.remote(plan.context, plan.state, excludedBy(current.settings), new Set(), true);
-      await saveTree(await this.stateFile(plan.context.identity),plan.context.root,listing.entries);
+    // Refresh only directly affected parents. Resolving one conflict must never
+    // recurse through unrelated folders or fetch other conflicting bodies.
+    const parents=new Set(changes.filter(c=>['上传','删除远端','保留两份'].includes(c.action)).map(c=>path.posix.dirname(c.path)));
+    for(const parent of parents){
+      const listing=await this.request(o=>plan.context.client.getDirectoryContents(path.posix.join(plan.context.root,parent),{...o,details:true}),current.settings),present=new Set();
+      for(const item of listing.data){if(!item.basename||/[\/\\\x00-\x1f]/.test(item.basename)||['.','..'].includes(item.basename))throw fault('远端返回了无效文件名。');
+        const name=parent==='.'?item.basename:parent+'/'+item.basename;present.add(name);const modified=Date.parse(item.lastmod),created=Date.parse(item.props?.creationdate);
+        plan.tree.set(name,{path:name,type:item.type==='directory'?'folder':'file',size:Number.isFinite(item.size)?item.size:0,...(Number.isFinite(modified)?{modified}:{}),...(Number.isFinite(created)?{created}:{}),...(excludedBy(current.settings)(name)?{excluded:'已排除'}:{})});
+      }
+      for(const name of plan.tree.keys())if(path.posix.dirname(name)===parent&&!present.has(name))for(const child of plan.tree.keys())if(child===name||child.startsWith(name+'/'))plan.tree.delete(child);
     }
+    if(parents.size||input.resolution)await saveTree(await this.stateFile(plan.context.identity),plan.context.root,[...plan.tree.values()],input.resolution?{preserveScan:true}:{});
     const cachedAfter = JSON.stringify({ local: plan.state.local, remote: plan.state.remote, conflicts });
     if (plan.persistence.pending || cachedAfter !== cachedBefore || !plan.state.revision) await plan.persistence.compact(plan.state);
     // An unchanged run updates a small timestamp/report, not the full baseline.

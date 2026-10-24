@@ -5,13 +5,34 @@ import { addColumnAfter, addRowAfter, deleteColumn, deleteRow, deleteTable } fro
 import type { EditorView } from '@milkdown/kit/prose/view';
 import type { BlockAction, EditorAction, EditorContext } from '../editorTypes';
 import { canInsertInlineDrawing } from './drawingInsertion';
-import { resourceBlockPosition } from './listContinuation';
+import { resourceBlockPosition,indentBlockIntoList,outdentBlockFromList } from './listContinuation';
 import { addQuoteLayer, removeQuoteLayer } from './quoteEditing';
 import { formatInline } from './inlineFormatting';
 import { richFormatState } from './richFormatState';
 import { inlineKinds } from './inlineFormatState';
+import { selectedFold, toggleFoldDefault } from './foldingQuoteEditing';
+import {adjacentParagraph} from './blockNavigation';
+import {setSourceHeading} from './headingSource';
+import {parseAttachment} from '../attachmentLinks';
+import {isPreviewResource} from '../resourcePreview';
+const visualResourceCache=new WeakMap<EditorState['doc'],boolean>();
+function visualResource(selection:EditorState['selection']){
+  const at=selection.$from,node=at.parent.type.name==='resource_link'?at.parent:at.nodeAfter?.type.name==='resource_link'?at.nodeAfter:at.nodeBefore?.type.name==='resource_link'?at.nodeBefore:null;
+  if(!node)return false;let visual=visualResourceCache.get(node);
+  if(visual===undefined){const raw=node.textContent,attachment=/^!\[/.test(raw)?null:parseAttachment(raw);visual=/^!\[/.test(raw)||!!attachment&&isPreviewResource(attachment.href);visualResourceCache.set(node,visual);}
+  return visual;
+}
+
+function selectionBlock(state:EditorState){
+  const {selection}=state;
+  if(selection instanceof NodeSelection&&['table','code_block','math_block','paragraph'].includes(selection.node.type.name))return selection.from;
+  for(let depth=selection.$from.depth;depth>0;depth--)if(['table','code_block','math_block'].includes(selection.$from.node(depth).type.name))return selection.$from.before(depth);
+  for(let depth=selection.$from.depth;depth>0;depth--)if(selection.$from.node(depth).type.name==='paragraph')return selection.$from.before(depth);
+  return undefined;
+}
 
 export const contextCommands: Partial<Record<EditorAction | BlockAction, Command>> = {
+  paragraph:setSourceHeading(0),
   bold: formatInline('strong'),
   italic: formatInline('emphasis'),
   strike: formatInline('delete'),
@@ -22,8 +43,13 @@ export const contextCommands: Partial<Record<EditorAction | BlockAction, Command
   link: formatInline('link'),
   quote: addQuoteLayer,
   unquote: removeQuoteLayer,
+  toggleFoldDefault,
+  paragraphBefore: adjacentParagraph('before'),
+  paragraphAfter: adjacentParagraph('after'),
   indent: (state, dispatch) => sinkListItem(state.schema.nodes.list_item)(state, dispatch),
   outdent: (state, dispatch) => liftListItem(state.schema.nodes.list_item)(state, dispatch),
+  indentBlock:(state,dispatch)=>{const pos=selectionBlock(state);return pos!==undefined&&indentBlockIntoList(state,pos,dispatch);},
+  outdentBlock:(state,dispatch)=>{const pos=selectionBlock(state);return pos!==undefined&&outdentBlockFromList(state,pos,dispatch);},
   rowAfter: addRowAfter,
   columnAfter: addColumnAfter,
   deleteRow,
@@ -48,7 +74,7 @@ export const contextCommands: Partial<Record<EditorAction | BlockAction, Command
   },
 };
 
-export function prepareRichContext(view: EditorView, target: HTMLElement, coords: { left: number; top: number }): EditorContext | null {
+export function prepareRichContext(view: EditorView, target: HTMLElement, coords?: { left: number; top: number }): EditorContext | null {
   const preview = target.closest<HTMLElement>('.attachment-overlay');
   if (!preview && !view.dom.contains(target)) return null;
   const doc = view.state.doc;
@@ -75,7 +101,7 @@ export function prepareRichContext(view: EditorView, target: HTMLElement, coords
       }
       const block = resourceBlockPosition(view, target);
       const border = target.closest('.milkdown-table-block,table') && !target.closest('td,th');
-      const point = preview ? (block === undefined ? undefined : block + 1) : view.posAtCoords(coords)?.pos;
+      const point = preview ? (block === undefined ? undefined : block + 1) : coords?view.posAtCoords(coords)?.pos:undefined;
       if (border && block !== undefined && doc.nodeAt(block)?.type.name === 'table') {
         selection = NodeSelection.create(doc, block);
       } else if (point !== undefined && (selection.empty || point < selection.from || point > selection.to)) {
@@ -83,6 +109,18 @@ export function prepareRichContext(view: EditorView, target: HTMLElement, coords
       }
     }
   } catch { return null; }
+  return richContext(view,selection);
+}
+export function richSelectionContext(view:EditorView):EditorContext|null{
+  const focused=view.dom.ownerDocument.activeElement;
+  if(focused instanceof HTMLElement&&view.dom.contains(focused)&&focused.closest('.cm-editor')){
+    const context=prepareRichContext(view,focused),code=CodeView.findFromDOM(focused),document=code?.state.doc;
+    return context&&document?{...context,textFor:type=>type==='code_block'?document.toString():context.textFor(type)}:context;
+  }
+  return richContext(view,view.state.selection);
+}
+function richContext(view:EditorView,selection:EditorState['selection']):EditorContext{
+  const doc=view.state.doc;
   // Query commands without dispatching transactions or revealing an attachment
   // just because its context menu opened. Reject stale menus after a doc edit.
   const query = EditorState.create({ doc, selection });
@@ -93,6 +131,8 @@ export function prepareRichContext(view: EditorView, target: HTMLElement, coords
     return true;
   };
   return {
+    resource:visualResource(selection),
+    ancestors:[...Array.from({length:selection.$from.depth},(_,index)=>selection.$from.node(index+1).type.name),...(selection instanceof NodeSelection?[selection.node.type.name]:[])],
     text: selection.empty ? '' : doc.textBetween(selection.from, selection.to, '\n'),
     textFor: type => {
       const matches = (name: string) => type === 'cell' ? ['table_cell', 'table_header'].includes(name) : name === type;
@@ -114,11 +154,11 @@ export function prepareRichContext(view: EditorView, target: HTMLElement, coords
       return type === 'heading' ? text.replace(/^#{1,6}\s+/, '') : text;
     },
     canInsertDrawing: canInsertInlineDrawing(query),
-    active: action=>!!inlineKinds[action]&&richFormatState(query,inlineKinds[action]).active,
-    can: action => !!contextCommands[action]?.(query),
+    active: action=>action === 'toggleFoldDefault' ? !!selectedFold(query)?.node.attrs.folding : !!inlineKinds[action]&&richFormatState(query,inlineKinds[action]).active,
+    can: action => view.editable&&!!contextCommands[action]?.(query),
     run: action => {
       const command = contextCommands[action];
-      if (!command?.(query) || !restore()) return false;
+      if (!view.editable||!command?.(query) || !restore()) return false;
       const result = command(view.state, view.dispatch);
       view.focus();
       return result;

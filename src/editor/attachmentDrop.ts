@@ -32,7 +32,6 @@ export async function droppedAttachmentLinks(data: DataTransfer, document: strin
   }
   const links: string[] = [];
   for (const file of files) {
-    if (file.size > 20 * 1024 * 1024) throw Error('附件超过 20 MB。');
     const bytes = new Uint8Array(await file.arrayBuffer());
     const link = api.desktop
       ? (await api.feature<{ link: string }>('attachment.upload', { root, document, name: file.name, bytes }))

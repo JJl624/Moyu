@@ -20,6 +20,7 @@ import { createAttachmentPreview } from './attachmentPreview';
 import { htmlInlineMarkdown } from './htmlInline';
 import { separateInlineText } from './inlineSourceEditing';
 import { inlineInputTransaction } from './inlineInput';
+import { foldingInput, leaveFoldHeading, unfoldAtStart } from './foldingQuoteEditing';
 import { indentText } from './textIndentation';
 import { readNativeSelection, syncInlineCaret } from './nativeSelection';
 
@@ -88,7 +89,7 @@ export const resourceSchema = $nodeSchema('resource_link', () => ({
 export const resourceInput = $prose(() =>
   new Plugin({props:{
     handleTextInput(view,from,to,text){
-      const tr=inlineInputTransaction(view.state,from,to,text);
+      const tr=foldingInput(view.state,from,to,text) || inlineInputTransaction(view.state,from,to,text);
       if (!tr) return false;
       view.dispatch(tr.scrollIntoView());return true;
     },
@@ -141,6 +142,9 @@ export const resourceKeys = $prose(ctx =>
             event.inputType === 'deleteContentBackward'
             || event.inputType === 'deleteContentForward'
           ) {
+            if (event.inputType === 'deleteContentBackward' && unfoldAtStart(view.state, view.dispatch)) {
+              event.preventDefault();return true;
+            }
             if (deleteInlineCharacter(view, event.inputType === 'deleteContentBackward')) {
               event.preventDefault();
               return true;
@@ -214,6 +218,12 @@ export const resourceKeys = $prose(ctx =>
             ].includes(event.key)
           ) {
             readNativeSelection(view);
+          }
+          if (event.key === 'Backspace' && unfoldAtStart(view.state, view.dispatch)) {
+            event.preventDefault();return true;
+          }
+          if (event.key === 'ArrowLeft' && !event.shiftKey && leaveFoldHeading(view.state, view.dispatch)) {
+            event.preventDefault();return true;
           }
           if (
             ['Backspace', 'Delete'].includes(event.key)

@@ -52,7 +52,7 @@ class ResultStore {
     const prepared = (artifacts || []).map(artifact => {
       const { data, rows, ...metadata } = artifact,
         size = artifact.kind === 'table' ? Buffer.byteLength(JSON.stringify(rows || [])) : Buffer.byteLength(data || '', 'base64');
-      if (size > Math.min(this.limit, 40 * 1024 * 1024)) throw fault("运行结果超过 40 MB。");
+      if (size > this.limit) throw fault("运行结果超过缓存上限。");
       total += size;
       if (total > this.limit) throw fault('运行结果超过缓存上限。');
       return { metadata, data, rows, size };
@@ -95,11 +95,10 @@ class ResultStore {
     if(!item.read)return this.bytes(token);
     const bytes=await item.read();
     this.get(token);
-    if(bytes.length>20*1024*1024)throw fault('HTML 结果超过 20 MB。');
     return bytes;
   }
   replaceBytes(token,bytes){
-    const item=this.get(token);if(bytes.length>40*1024*1024)throw fault('运行结果超过 40 MB。');
+    const item=this.get(token);
     while(this.size-item.size+bytes.length>this.limit){const oldest=[...this.values].find(([key,item])=>key!==token&&item.size>0)?.[0];if(!oldest)throw fault('运行结果超过缓存上限。');this.release([oldest]);}
     this.size+=bytes.length-item.size;item.bytes=bytes;item.size=bytes.length;
   }
@@ -148,7 +147,6 @@ class ResultStore {
       bytes = Buffer.from(
         [item.columns, ...item.rows].map(row => row.map(cell).join(",")).join("\r\n"),
       );
-    if (bytes.length > 20 * 1024 * 1024) throw fault("导出文件超过 20 MB。");
     return bytes;
   }
 }

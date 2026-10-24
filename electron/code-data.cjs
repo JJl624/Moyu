@@ -18,7 +18,6 @@ const canonical = language =>
     : /^(cs|csharp|c#)$/i.test(language) ? "C#" : /^java$/i.test(language) ? 'Java' : /^(ruby|rb)$/i.test(language) ? 'Ruby' : /^(bash|sh|shell)$/i.test(language) ? 'Bash' : /^lua$/i.test(language)
     ? "Lua"
     : "";
-const MAX = 40 * 1024 * 1024;
 const legacyDirectory = name => /^(Python|JavaScript|TypeScript|C|C\+\+|SQL|Lua)_([0-9a-f]{4})$/.exec(name);
 class CodeData {
   constructor(vault, attachments, references) {
@@ -81,7 +80,6 @@ class CodeData {
   }
   async entries(directory, withData = true) {
     const result = [];
-    let total = 0;
     const root = await this.vault.resolve(directory, true);
     if (!await fs.lstat(root).catch(() => null)) return result;
     const visit = async (relative, depth = 0) => {
@@ -96,10 +94,8 @@ class CodeData {
         if (entry.isDirectory()) await visit(name, depth + 1);
         else if (entry.isFile()) {
           const stat = await fs.stat(await this.vault.resolve(name));
-          if (stat.size > 20 * 1024 * 1024) throw fault("数据文件超过 20 MB。");
-          total += stat.size;
-          if (total > MAX || result.length >= 128) {
-            throw fault("单个代码块的数据最多 128 个文件、共 40 MB。");
+          if (result.length >= 128) {
+            throw fault("单个代码块的数据最多 128 个文件。");
           }
           const file = withData ? await snapshot(this.vault, name) : null;
           result.push({
@@ -139,7 +135,6 @@ class CodeData {
     if (!input.document || context.memory) return;
     return this.vault.mutate(async () => {
       if (!Array.isArray(files) || files.length > 128) throw fault("代码数据输出无效。");
-      let total = 0;
       const next = new Map();
       for (const file of files) {
         if (
@@ -147,9 +142,8 @@ class CodeData {
           || !/^[A-Za-z0-9+/]*={0,2}$/.test(file.data)
         ) throw fault("代码数据文件名或内容无效。");
         const bytes = Buffer.from(file.data, "base64");
-        total += bytes.length;
-        if (bytes.length > 20 * 1024 * 1024 || total > MAX || next.has(file.name)) {
-          throw fault("代码数据超过限制。");
+        if (next.has(file.name)) {
+          throw fault("代码数据文件名重复。");
         }
         next.set(file.name, bytes);
       }
@@ -235,13 +229,12 @@ class CodeData {
       );
       if (
         typeof input.name !== "string" || !eligible(input.name) || !ArrayBuffer.isView(input.bytes)
-        || input.bytes.byteLength > 20 * 1024 * 1024
-      ) throw fault("数据文件无效或超过 20 MB。");
+      ) throw fault("数据文件内容无效。");
       await this.vault.resolve(input.document);
       const directory = await this.target(input), old = await this.entries(directory, false);
       if (
-        old.length >= 128 || old.reduce((sum, f) => sum + f.size, 0) + input.bytes.byteLength > MAX
-      ) throw fault("代码数据超过 128 个文件或 40 MB。");
+        old.length >= 128
+      ) throw fault("代码数据超过 128 个文件。");
       const destination = path.posix.join(directory, input.name),
         absolute = await this.vault.resolve(destination, true);
       if (await fs.lstat(absolute).catch(() => null)) throw fault("数据文件已存在。", "EEXIST");

@@ -59,11 +59,12 @@ class DocumentHistory {
   }
   // Called inside the vault save queue after the Markdown write succeeds.
   async capture(before, saved) {
-    if (!this.options.enabled || !supported(saved.path) || Buffer.byteLength(saved.content) > MAX_TEXT) {
+    if (!this.options.enabled || !supported(saved.path) || before.content===saved.content) {
       return;
     }
     const now = this.clock(), leased = this.leases.get(saved.path);
     if (leased !== undefined && now - leased >= 0 && now - leased < this.interval) return;
+    if (Buffer.byteLength(saved.content) > MAX_TEXT) return;
     const last = await this.database.request("latest", this.query(saved.path));
     if (last && now - last.time >= 0 && now - last.time < this.interval) {
       this.lease(saved.path, last.time);

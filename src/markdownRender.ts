@@ -3,6 +3,7 @@ import {codeId} from '../shared/code-documents.mjs';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
+import remarkEmptyTasks from '../shared/remark-empty-tasks.mjs';
 import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
@@ -44,7 +45,7 @@ export async function renderMarkdown(
   options: { limitCodeHeight?: boolean; interactiveTabs?: boolean; sourceLocations?: boolean } = {},
 ) {
   const heights: (number | null)[] = [], metas: string[] = [];
-  return unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight).use(remarkUnderline).use(remarkFoldingQuotes).use(() => tree => {
+  return unified().use(remarkParse).use(remarkGfm).use(remarkEmptyTasks).use(remarkMath).use(remarkHighlight).use(remarkUnderline).use(remarkFoldingQuotes).use(() => tree => {
     const definitions = new Map<string, string>();
     const collect = (node: any) => {
       if (node.type === 'definition' && !definitions.has(node.identifier)) definitions.set(node.identifier, node.url);

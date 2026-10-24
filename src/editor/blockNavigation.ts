@@ -59,6 +59,19 @@ export function leaveCodeBlock(view: import('@milkdown/kit/prose/view').EditorVi
   view.focus();
   return true;
 }
+
+// Touch keyboards have no reliable ArrowDown/Mod-Enter. Insert a sibling in the
+// block's current container, so leaving a resource never breaks its list item.
+export const adjacentParagraph=(side:'before'|'after'):Command=>(state,dispatch)=>{
+  const at=state.selection.$from,selected=state.selection instanceof NodeSelection?state.selection.node:null;let depth=at.depth;
+  for(let index=at.depth;index>0;index--)if(['paragraph','heading'].includes(at.node(index).type.name)){depth=index;break;}
+  for(let index=at.depth;index>0;index--)if(['table','code_block','math_block'].includes(at.node(index).type.name)){depth=index;break;}
+  if(!selected&&!depth)return false;
+  const position=selected?(side==='before'?state.selection.from:state.selection.to):side==='before'?at.before(depth):at.after(depth),parent=selected?at.parent:at.node(depth-1),index=(selected?at.index():at.index(depth-1))+(side==='after'?1:0);
+  if(!parent.canReplaceWith(index,index,state.schema.nodes.paragraph))return false;
+  if(dispatch){const tr=state.tr.insert(position,state.schema.nodes.paragraph.create());dispatch(tr.setSelection(TextSelection.create(tr.doc,position+1)).scrollIntoView());}
+  return true;
+};
 export function codeExitKeys(ctx: Ctx) {
   const leave = (code: CodeView) => {
     if (!code.state.selection.main.empty) return false;

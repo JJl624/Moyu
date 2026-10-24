@@ -148,6 +148,7 @@ export default forwardRef<EditorHandle, EditorProps>(
               },
             }),
             EditorView.updateListener.of((update) => {
+              if(update.docChanged||update.selectionSet)callbacks.current.onContextChange?.();
               if (update.docChanged) {
                 edited.current = true;
                 callbacks.current.onChange(fileText(update.state));
@@ -157,7 +158,8 @@ export default forwardRef<EditorHandle, EditorProps>(
         }),
       });
       view.current = editor;
-      if (!props.readOnly) editor.focus();
+      callbacks.current.onContextChange?.();
+      if (!props.readOnly && props.autoFocus !== false) editor.focus();
       let frame = 0, disposed = false, applied = false, lastGeometry = "";
       const reveal = () => {
         editor.requestMeasure({
@@ -193,7 +195,7 @@ export default forwardRef<EditorHandle, EditorProps>(
         editor.destroy();
         view.current = null;
       };
-    }, [props.path, props.theme, props.readOnly]);
+    }, [props.path, props.theme, props.readOnly, props.autoFocus]);
     const insert = (text: string, wrap?: string) => {
       const editor = view.current;
       if (!editor || callbacks.current.readOnly) return;
@@ -215,6 +217,7 @@ export default forwardRef<EditorHandle, EditorProps>(
       editor.focus();
     };
     useImperativeHandle(ref, () => ({
+      selectionContext:()=>view.current?prepareCodeContext(view.current,view.current.contentDOM,undefined,true):null,
       prepareContext: (target, coords) => view.current ? prepareCodeContext(view.current, target, coords) : null,
       prepareAttachmentDelete(target, coords) {
         const v = view.current;
@@ -364,7 +367,7 @@ export default forwardRef<EditorHandle, EditorProps>(
           quote: "> ",
           task: "- [ ] ",
           table: "| 列一 | 列二 |\n| --- | --- |\n| 内容 | 内容 |\n",
-          codeblock: "```typescript\n\n```\n",
+          codeblock: "```\n\n```\n",
           divider: "\n---\n",
         };
         insert(blocks[action] ?? "");
@@ -379,7 +382,7 @@ export default forwardRef<EditorHandle, EditorProps>(
           selection: { anchor: heading.offset },
           effects: EditorView.scrollIntoView(heading.offset, { y: "start" }),
         });
-        v.focus();
+        if (callbacks.current.autoFocus !== false) v.focus();
       },
     }));
     return (

@@ -15,7 +15,7 @@ class PinnedHTML{
       this.entry(token);const folder=await this.folder(current,e.input.document,e.input.id),meta=await this.metadata(current,e.input);
       meta.items=meta.items.filter(item=>item.index!==e.index);
       if(pinned){
-        const item=this.results.store.get(token),bytes=await this.results.store.read(token);if(bytes.length>20*1024*1024)throw Error('HTML 结果超过 20 MB。');
+        const item=this.results.store.get(token),bytes=await this.results.store.read(token);
         await current.documents.ensureUnlocked(e.input.document);
         const target=await current.vault.resolve(folder,true);await fs.mkdir(target,{recursive:true});
         const file=String(e.index)+'.html';await atomicIfChanged(await current.vault.resolve(folder+'/'+file,true),bytes);
@@ -35,7 +35,7 @@ class PinnedHTML{
   }
   async load({document,markdown}){
     const current=this.current(),out=[];
-    if(typeof markdown!=='string'||markdown.length>20*1024*1024)throw Error('文档内容无效。');
+    if(typeof markdown!=='string')throw Error('文档内容无效。');
     const root=path.posix.join(await current.documents.directory(document),'results'),folders=new Set(await fs.readdir(await current.vault.resolve(root,true)).catch(e=>{if(e.code==='ENOENT')return [];throw e;}));
     if(!folders.size)return out;
     for(const block of parseBlocks(markdown)){
@@ -45,10 +45,10 @@ class PinnedHTML{
       const artifacts=[];
       for(const pin of meta.items){
         if(!/^\d+\.html$/.test(pin.file)||!Number.isInteger(pin.index))continue;
-        const folder=await this.folder(current,document,block.id),file=await current.vault.resolve(folder+'/'+pin.file,true),stat=await fs.stat(file).catch(e=>{if(e.code==='ENOENT')return null;throw e;});if(!stat||stat.size>20*1024*1024)continue;
+        const folder=await this.folder(current,document,block.id),file=await current.vault.resolve(folder+'/'+pin.file,true),stat=await fs.stat(file).catch(e=>{if(e.code==='ENOENT')return null;throw e;});if(!stat)continue;
         const artifact=this.results.store.retainDeferred({kind:'html',name:pin.name||'result.html',mime:'text/html',pinned:true,height:this.height(pin.height),size:stat.size,pinIndex:pin.index},async()=>{
           if(this.current()!==current)throw Error('知识库已切换。');
-          const source=await current.vault.resolve(folder+'/'+pin.file),info=await fs.stat(source);if(info.size>20*1024*1024)throw Error('HTML 结果超过 20 MB。');
+          const source=await current.vault.resolve(folder+'/'+pin.file);
           return fs.readFile(source);
         });
         const input={document,id:block.id,language:pin.language,code:pin.code};

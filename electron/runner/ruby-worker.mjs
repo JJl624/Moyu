@@ -6,7 +6,7 @@ let module,vm,tree,output='',errorOutput='',code;
 const entry='.moyu-code.rb';
 function collect(dir,prefix='',result=[],depth=0){
   if(depth>12)throw Error('数据目录层级过深。');
-  for(const [name,node]of dir.contents){if(!prefix&&name===entry)continue;const logical=nameOf(prefix+name);if(node instanceof Directory)collect(node,logical+'/',result,depth+1);else{if(node.data.length>20*1024*1024||result.length>=128||result.reduce((n,f)=>n+f.data.length*.75,0)+node.data.length>40*1024*1024)throw Error('代码数据超过限制。');result.push({name:logical,data:encode(node.data)});}}
+  for(const [name,node]of dir.contents){if(!prefix&&name===entry)continue;const logical=nameOf(prefix+name);if(node instanceof Directory)collect(node,logical+'/',result,depth+1);else{if(result.length>=128)throw Error('代码数据超过限制。');result.push({name:logical,data:encode(node.data)});}}
   return result;
 }
 self.onmessage=async({data:input})=>{

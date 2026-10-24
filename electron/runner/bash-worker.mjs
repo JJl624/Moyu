@@ -7,7 +7,7 @@ function collect(fs,directory='/data',prefix='',result=[],depth=0){
   if(depth>12)throw Error('数据目录层级过深。');
   for(const item of fs.ls(directory)){const name=item.split('/').filter(Boolean).at(-1),target=directory+'/'+name,logical=nameOf(prefix+name);let bytes;
     try{bytes=fs.readFileBytes(target);}catch(e){collect(fs,target,logical+'/',result,depth+1);continue;}
-    if(bytes.length>20*1024*1024||result.length>=128||result.reduce((n,f)=>n+f.data.length*.75,0)+bytes.length>40*1024*1024)throw Error('代码数据超过限制。');result.push({name:logical,data:encode(bytes)});
+    if(result.length>=128)throw Error('代码数据超过限制。');result.push({name:logical,data:encode(bytes)});
   }return result;
 }
 self.onmessage=async({data:input})=>{
