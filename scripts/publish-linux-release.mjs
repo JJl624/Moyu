@@ -21,8 +21,8 @@ await walk(path.resolve('linux-artifact'));
 if(files.size!==3)throw Error('Linux packages are incomplete.');
 const checksums=new Map((await fsp.readFile(files.get('SHA256SUMS-linux.txt'),'utf8')).trim().split(/\r?\n/).map(line=>{const match=line.match(/^([a-f0-9]{64})\s+\*?(?:\.\/)?([^/]+)$/);if(!match)throw Error('Invalid checksums.');return[match[2],match[1]];}));
 async function digest(file){const hash=createHash('sha256');for await(const bytes of fs.createReadStream(file))hash.update(bytes);return hash.digest('hex');}
-const release=await api('/releases/tags/'+encodeURIComponent(tag));
-if(!release.draft)throw Error('Only an unpublished draft can receive packages.');
+const release=(await api('/releases?per_page=100')).find(item=>item.tag_name===tag);
+if(!release?.draft)throw Error('Only an unpublished draft can receive packages.');
 for(const name of names){
   const file=files.get(name),hash=await digest(file),size=(await fsp.stat(file)).size;
   if(checksums.get(name)!==hash)throw Error('Linux checksum differs: '+name);
