@@ -40,6 +40,7 @@ nsis.NsisTarget.prototype.computeFinalScript = async function(raw, ...args) {
   return previous.call(this, raw, ...args);
 };
 await build({
+  publish: 'never',
   projectDir: root,
   ...(prepackaged ? { prepackaged } : {}),
   targets: Platform.WINDOWS.createTarget(['portable'], Arch.x64),
