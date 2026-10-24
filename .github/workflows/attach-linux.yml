@@ -1,0 +1,37 @@
+name: Attach verified Linux packages
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+jobs:
+  attach:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify build source and result
+        run: node scripts/publish-linux-release.mjs --verify-run
+      - uses: actions/download-artifact@v4
+        with:
+          name: Moyu-linux-x64
+          path: linux-artifact
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify and attach packages to draft
+        run: node scripts/publish-linux-release.mjs
