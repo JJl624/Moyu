@@ -1,0 +1,23 @@
+.modal:has(.formula-assistant){max-width:100%;padding:20px}
+.modal:has(.formula-assistant) .modal-footer{margin-top:16px;padding-top:12px}
+.formula-assistant{min-width:0}
+.formula-field{min-height:112px;display:flex;align-items:center;border:1px solid var(--border);border-radius:7px;background:var(--bg)}
+.formula-field:focus-within{border-color:var(--accent)}
+.formula-field math-field{display:block;width:100%;max-height:220px;overflow:auto;padding:14px;border:0;background:transparent;color:var(--text);font-size:25px;--caret-color:var(--accent);--selection-background-color:var(--selected);--contains-highlight-background-color:var(--hover)}
+.formula-field math-field:focus-within{outline:none}
+.formula-field math-field::part(virtual-keyboard-toggle),.formula-field math-field::part(menu-toggle){color:var(--secondary)}
+.formula-source{margin-top:12px;font-size:12px;color:var(--secondary)}
+.formula-source summary{display:flex;align-items:center;gap:6px;width:max-content;min-height:28px;cursor:pointer;list-style:none;border-radius:4px}
+.formula-source summary::-webkit-details-marker{display:none}
+.formula-source summary:hover{color:var(--text)}
+.formula-source summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.formula-source summary svg:last-child{margin-left:2px;transition:transform .12s}
+.formula-source[open] summary svg:last-child{transform:rotate(90deg)}
+.formula-source textarea{display:block;resize:vertical;box-sizing:border-box;width:100%;min-height:76px;max-height:200px;margin-top:6px;border:1px solid var(--border);border-radius:5px;padding:8px 10px;color:var(--text);background:var(--bg);font:13px/1.5 var(--font-code,monospace)}
+.formula-keyboard{position:relative;--keyboard-zindex:20;--keyboard-background:var(--bg);--keycap-background:var(--surface);--keycap-text:var(--text);--keycap-secondary-background:var(--hover);--keycap-secondary-text:var(--secondary)}
+.formula-keyboard[data-open=true]{margin-top:12px}
+.formula-error{color:var(--danger);font-size:12px;margin:8px 0 0}
+.formula-assist-trigger{display:inline-flex;align-items:center;padding:4px 8px;border:0;border-radius:4px;color:var(--secondary);background:transparent;font:12px var(--font-ui);white-space:nowrap;cursor:pointer}
+.formula-assist-trigger:hover{background:var(--hover);color:var(--accent)}
+.formula-assist-trigger:disabled{opacity:.45;cursor:default;background:transparent;color:var(--secondary)}
+@media(prefers-reduced-motion:reduce){.formula-source summary svg:last-child{transition:none}}

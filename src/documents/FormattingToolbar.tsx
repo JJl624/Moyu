@@ -8,6 +8,7 @@ import {
   ListTodo,
   PencilLine,
   Music2,
+  SquareFunction,
   Plus,
   Quote,
   Redo2,
@@ -26,9 +27,10 @@ interface FormattingToolbarProps {
   drawingAllowed: boolean;
   onDrawing(): void;
   onScore(): void;
+  onFormula():void;
 }
 
-export function FormattingToolbar({ menu, setMenu, doAction, drawingAllowed, onDrawing, onScore }: FormattingToolbarProps) {
+export function FormattingToolbar({ menu, setMenu, doAction, drawingAllowed, onDrawing, onScore,onFormula }: FormattingToolbarProps) {
   return (
     <div className='formatbar'>
       <div className='popover-anchor'>
@@ -133,6 +135,7 @@ export function FormattingToolbar({ menu, setMenu, doAction, drawingAllowed, onD
               <Code2 size={16} />
               代码块
             </button>
+            <button title="公式辅助输入" aria-label="公式辅助输入" onMouseDown={event=>event.preventDefault()} onClick={()=>{setMenu(null);onFormula();}}><SquareFunction size={16}/>公式</button>
             <button
               disabled={!drawingAllowed}
               title={drawingAllowed ? '插入空白绘图' : '在正文中插入绘图链接'}

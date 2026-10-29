@@ -12,6 +12,8 @@ import { lineOffset } from '../shared/search-location.mjs';
 import { isComposingKey } from './keyboardComposition';
 import { useTerminalPane } from './terminal/useTerminalPane';
 import { FormattingToolbar } from './documents/FormattingToolbar';
+import FormulaAssistant from './FormulaAssistant';
+import {requestFormula} from './formulaSession';
 import { DocumentBoundary } from './documents/DocumentBoundary';
 import { Logo } from './ui/Logo';
 import { IconButton } from './ui/IconButton';
@@ -1595,7 +1597,7 @@ export default function App() {
                     </div>
                   </div>
                   {formatbar && mode !== 'read' && (
-                    <FormattingToolbar menu={menu} setMenu={setMenu} doAction={doAction} drawingAllowed={drawingAllowed} onDrawing={() => void safe(() => createDrawing(true))} onScore={() => void safe(createScore)}/>
+                    <FormattingToolbar menu={menu} setMenu={setMenu} doAction={doAction} drawingAllowed={drawingAllowed} onDrawing={() => void safe(() => createDrawing(true))} onScore={() => void safe(createScore)} onFormula={()=>{const draft=editor.current?.prepareFormula?.();if(draft)requestFormula(draft);else notify('请将光标放在正文或公式中。');}}/>
                   )}
                   {activeDoc.conflict && (
                     <div className='conflict-banner'>
@@ -2083,6 +2085,7 @@ export default function App() {
         </Modal>
       )}
       <AppUpdates ready={ws.ready} />
+      <FormulaAssistant/>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { readableHref, relativeLink } from '../markdownLinks';
 import { isPreviewResource, resourcePath } from '../resourcePreview';
 import { displayName, type FileNode } from '../types';
 import type { CodeRuns } from '../useCodeRuns';
+import {requestFormula} from '../formulaSession';
 
 interface Dependencies {
  editor: RefObject<EditorHandle | null>;
@@ -200,6 +201,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
             });
           }
         } else if (math) {
+          if(editableRich)actions.push({id:'formula.edit',label:'公式辅助输入',action:()=>requestFormula(editor.current?.prepareFormula?.(target))});
           actions.push({ id: 'copy', label: '复制公式', action: () => write(selected || math.querySelector('annotation[encoding="application/x-tex"]')?.textContent || math.querySelector('.cm-content')?.textContent || '') });
         } else if (linkedAttachment || resource) {
           if (rich && resource && !resource.classList.contains('editing')) {
@@ -273,6 +275,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
             });
           }
         } else if (code) {
+          if(editableRich&&/^(latex|math)$/i.test(code.language))actions.push({id:'formula.edit',label:'公式辅助输入',action:()=>requestFormula(editor.current?.prepareFormula?.(target))});
           const c = code;
           const formatting = c.tab || c;
           actions.push({ id: 'copy', label: '复制代码', action: () => write(formatting.code) });

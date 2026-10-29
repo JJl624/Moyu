@@ -3,6 +3,9 @@ import { Plugin, TextSelection } from "@milkdown/kit/prose/state";
 import { $nodeSchema, $prose, $view } from "@milkdown/kit/utils";
 import { codeLanguage } from "../highlight";
 import { readNativeSelection } from "./selectionOwnership";
+import {codeBlockSelection} from './codeBlockSelection';
+import {formulaControls} from './formulaControls';
+import {api} from '../bridge';
 
 // Display math is Markdown math, not a persisted programming-language fence.
 export const displayMathSchema = $nodeSchema("math_block", () => ({
@@ -39,7 +42,8 @@ export const displayMathView = $view(displayMathSchema.node, ctx => {
     const block = new CodeMirrorBlock(node, view, getPos, loader, config);
     block.dom.classList.add("math-block");
     block.dom.dataset.mathBlock = "true";
-    return block;
+    if(api.platform==='win32')formulaControls(block);
+    return codeBlockSelection(block);
   };
 });
 export const displayMathInput = $prose(() =>
