@@ -222,9 +222,9 @@ test('Older cached cloud structure remains readable but its unverified local tim
  await fs.writeFile(file+'.tree.json',JSON.stringify({root:'/Moyu',scannedAt:100,entries:[{path:'a.md',type:'file',size:1,modified:100}]}));
  const before=await fs.readFile(file+'.tree.json'),tree=await readTree(file);assert.equal(tree.entries[0].path,'a.md');assert.equal(tree.entries[0].modified,undefined);assert.deepEqual(await fs.readFile(file+'.tree.json'),before);
 });
-test('directory refresh has its own job identity and completed synchronization lists the actual post-transfer server structure',async t=>{
+test('directory refresh has its own job identity and successful writes update the tree without another listing',async t=>{
  const {sync,server,vault}=await fixture(t);server.directories.add('/Moyu');const jobs=[];sync.options.onProgress=j=>jobs.push({...j});await sync.refreshTree();assert(jobs.some(j=>j.operation==='directory'&&j.phase==='scan'));
- await vault.create('nested','folder');await vault.create('nested/new.md','file','new');const before=server.requests.length;await sync.sync();const requests=server.requests.slice(before),lastPut=requests.findLastIndex(r=>r.method==='PUT');assert(lastPut>=0);assert(requests.slice(lastPut+1).some(r=>r.method==='PROPFIND'));const tree=(await sync.status()).cloud;assert(tree.entries.some(e=>e.path==='nested/new.md'));assert(tree.entries.some(e=>e.path==='nested'&&e.type==='folder'));assert.equal(sync.job.operation,'sync');
+ await vault.create('nested','folder');await vault.create('nested/new.md','file','new');const before=server.requests.length;await sync.sync();const requests=server.requests.slice(before),lastPut=requests.findLastIndex(r=>r.method==='PUT');assert(lastPut>=0);assert(!requests.slice(lastPut+1).some(r=>r.method==='PROPFIND'));const tree=(await sync.status()).cloud;assert(tree.entries.some(e=>e.path==='nested/new.md'));assert(tree.entries.some(e=>e.path==='nested'&&e.type==='folder'));assert.equal(sync.job.operation,'sync');
 });
 
 

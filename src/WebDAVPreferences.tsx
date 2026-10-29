@@ -94,7 +94,7 @@ export const WebDAVPreferences = forwardRef<WebDAVPreferencesHandle, { root: str
         <p className='muted-note'>每行一条，支持 *、** 和 ?。</p>
         <details className='dav-advanced'><summary>高级</summary>
           {number('请求超时','timeout',5,600,'秒')}{number('失败重试次数','retries',0,5)}
-          {number('下载并发数','concurrency',1,4)}{number('单文件大小上限','maxFileMB',1,1024,'MB')}
+          {number('单文件大小上限','maxFileMB',1,1024,'MB')}
         </details>
       </fieldset>
       {(error || draft.error) && <p className='feature-error' role='alert'>{error || draft.error}</p>}

@@ -260,19 +260,12 @@ class WebDAVSync {
       const seen=new Map();for(const name of names){const key=name.toLowerCase(),previous=seen.get(key);if(previous&&previous!==name)throw fault('文件名在 Windows 上冲突，请在远端处理后重试：'+previous+' / '+name,'CONFLICT');seen.set(key,name);}
     }
     this.progress({ total: names.length });
-    let index = 0;
-    // The bounded pool fetches only changed remote revisions; bodies stay on disk.
-    const workers = Array.from({ length: settings.concurrency }, async () => {
-      while (index < names.length) { const name = names[index++];
-        if (remote.files[name] && !remote.files[name].version) {
-          try { await this.fetched(context, name, remote.files[name], directory); }
-          catch (error) { this.controller.abort(error); throw error; }
-        }
-      }
-    });
-    const settled = await Promise.allSettled(workers), failure = settled.find(r => r.status === 'rejected');
-    if (failure) throw failure.reason;
+    for (const name of names) if (remote.files[name] && !remote.files[name].version) {
+      await this.fetched(context, name, remote.files[name], directory);
+    }
     const operations = [], skipped = [...new Map([...local.skipped, ...remote.skipped].map(x => [x.path, x])).values()];
+    const skippedPaths=new Set(skipped.map(item=>item.path));
+    for(const name of Object.keys(state.base))if(excluded(name)&&!skippedPaths.has(name))skipped.push({path:name,reason:'已排除'});
     for (const name of names) {
       if (excluded(name) || blocked.has(name)) continue;
       const l = local.files[name], r = remote.files[name], before = state.base[name] || null;
@@ -310,7 +303,7 @@ class WebDAVSync {
   }
   async hasLocalChanges(paths) {
     const {identity,settings}=await this.client(),state=await this.state(identity),excluded=excludedBy(settings);
-    const local=await localFiles(this.vault,excluded,limit(settings),this.localCache),blocked=new Set(local.skipped.map(item=>item.path));
+    const local=await localFiles(this.vault,excluded,limit(settings),this.localCache,undefined,paths),blocked=new Set(local.skipped.map(item=>item.path));
     const selected=name=>!paths?.size||paths.has('*')||[...paths].some(prefix=>name===prefix||name.startsWith(prefix+'/'));
     return [...new Set([...Object.keys(state.base),...Object.keys(local.files)])].some(name=>selected(name)&&!excluded(name)&&!blocked.has(name)&&(local.files[name]?.version||null)!==(state.base[name]||null));
   }
@@ -431,18 +424,9 @@ class WebDAVSync {
     plan.state.report = { changes: changes.slice(-200), skipped: plan.skipped.slice(0, 200), totalChanges: changes.length, totalSkipped: plan.skipped.length,
       duration:Date.now()-started+(cached ? plan.scanDuration : 0), bytes:plan.transferBytes, conflicts:conflicts.length,
       counts:Object.fromEntries(['上传','下载','删除本地','删除远端','保留两份'].map(action=>[action,changes.filter(c=>c.action===action).length])) };
-    // Refresh only directly affected parents. Resolving one conflict must never
-    // recurse through unrelated folders or fetch other conflicting bodies.
-    const parents=new Set(changes.filter(c=>['上传','删除远端','保留两份'].includes(c.action)).map(c=>path.posix.dirname(c.path)));
-    for(const parent of parents){
-      const listing=await this.request(o=>plan.context.client.getDirectoryContents(path.posix.join(plan.context.root,parent),{...o,details:true}),current.settings),present=new Set();
-      for(const item of listing.data){if(!item.basename||/[\/\\\x00-\x1f]/.test(item.basename)||['.','..'].includes(item.basename))throw fault('远端返回了无效文件名。');
-        const name=parent==='.'?item.basename:parent+'/'+item.basename;present.add(name);const modified=Date.parse(item.lastmod),created=Date.parse(item.props?.creationdate);
-        plan.tree.set(name,{path:name,type:item.type==='directory'?'folder':'file',size:Number.isFinite(item.size)?item.size:0,...(Number.isFinite(modified)?{modified}:{}),...(Number.isFinite(created)?{created}:{}),...(excludedBy(current.settings)(name)?{excluded:'已排除'}:{})});
-      }
-      for(const name of plan.tree.keys())if(path.posix.dirname(name)===parent&&!present.has(name))for(const child of plan.tree.keys())if(child===name||child.startsWith(name+'/'))plan.tree.delete(child);
-    }
-    if(parents.size||input.resolution)await saveTree(await this.stateFile(plan.context.identity),plan.context.root,[...plan.tree.values()],input.resolution?{preserveScan:true}:{});
+    // Successful conditional writes already updated the cached tree. Other
+    // clients' changes are discovered by the next scan or an explicit refresh.
+    if(changes.length||input.resolution)await saveTree(await this.stateFile(plan.context.identity),plan.context.root,[...plan.tree.values()],{preserveScan:true});
     const cachedAfter = JSON.stringify({ local: plan.state.local, remote: plan.state.remote, conflicts });
     if (plan.persistence.pending || cachedAfter !== cachedBefore || !plan.state.revision) await plan.persistence.compact(plan.state);
     // An unchanged run updates a small timestamp/report, not the full baseline.

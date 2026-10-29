@@ -30,8 +30,11 @@ async function digest(file, signal) {
   for await (const chunk of stream) h.update(chunk);
   return h.digest('hex');
 }
-async function localFiles(vault, excluded, limit, cache = {}, signal) {
+async function localFiles(vault, excluded, limit, cache = {}, signal, paths) {
   const files = {}, skipped = [];
+  const selected = paths?.size && !paths.has('*') ? [...paths] : null;
+  const inside = name => !selected || selected.some(prefix => name === prefix || name.startsWith(prefix + '/'));
+  const intersects = name => inside(name) || selected.some(prefix => prefix.startsWith(name + '/'));
   let count = 0;
   async function visit(dir, prefix = '', depth = 0) {
     signal?.throwIfAborted();
@@ -39,14 +42,20 @@ async function localFiles(vault, excluded, limit, cache = {}, signal) {
     for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
       const name = prefix + entry.name;
       if (!eligible(name) || entry.name.startsWith('moyu-tmp-') || entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) await visit(path.join(dir, entry.name), name + '/', depth + 1);
+      if (entry.isDirectory()) {
+        if (!intersects(name)) continue;
+        if (excluded(name)) { skipped.push({ path: name, reason: '已排除' }); continue; }
+        await visit(path.join(dir, entry.name), name + '/', depth + 1);
+      }
       else if (entry.isFile()) {
+        if (!inside(name)) continue;
         if (++count > 10000) throw fault('单次同步最多支持 10000 个文件。');
+        if (excluded(name)) { skipped.push({ path: name, reason: '已排除' }); continue; }
         const record = await info(vault, name);
         if (!record) continue;
-        if (excluded(name)) { skipped.push({ path: name, reason: '已排除' }); continue; }
         if (record.size > limit) { skipped.push({ path: name, reason: '超过单文件限制' }); continue; }
         record.version = same(record, cache[name]) ? cache[name].version : await digest(record.file, signal);
+        cache[name] = { ...fingerprint(record), version: record.version };
         files[name] = record;
       }
     }

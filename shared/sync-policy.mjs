@@ -2,7 +2,7 @@ const fault=message=>Object.assign(new Error(message),{code:'INVALID_PATH'});
 const defaults = Object.freeze({
   onOpen: false, afterSave: false, interval: 0,
   includeCodeData: true, excludes: '', deletion: 'confirm',
-  timeout: 60, retries: 2, concurrency: 2, maxFileMB: 128,
+  timeout: 60, retries: 2, concurrency: 1, maxFileMB: 128,
 });
 function policy(input = {}) {
   const value = { ...defaults };
