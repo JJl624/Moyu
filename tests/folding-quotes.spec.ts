@@ -1,6 +1,7 @@
 import {_electron as electron,expect,test} from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {expectFoldAligned} from './helpers/fold-layout';
 const project=path.resolve(import.meta.dirname,'..');
 const markdown='> 普通引用\n\n> [-] 一级折叠\n> 一级内容\n>\n> > [+] 二级折叠\n> > 二级内容\n> >\n> > - 项目 A\n> > - 项目 B\n>\n> 一级内容继续\n\n> [+] 默认展开\n> 默认可见内容\n\n末尾\n';
 async function fixture(){
@@ -105,13 +106,33 @@ test('Quote marker drafts survive saving and mode switches; Backspace unfolds an
 });
 
 
+test('Folding title icons stay aligned across desktop sizes, modes and nested quotes',async()=>{
+ const{app,page,errors}=await fixture();
+ try{
+  for(const size of [10,16,24,32]){
+   await page.locator('.ProseMirror').evaluate((element,size)=>{element.style.fontSize=size+'px';},size);
+   const outer=page.locator('.ProseMirror > .folding-quote').first();
+   await expectFoldAligned(outer.locator(':scope > p').first(),size);
+   await outer.getByRole('button').first().click();
+   await expectFoldAligned(outer.locator('.folding-quote > p').first(),size);
+   await page.getByRole('button',{name:'阅读',exact:true}).click();
+   await page.locator('.reading-view').evaluate((element,size)=>{element.style.fontSize=size+'px';},size);
+   const reading=page.locator('.reading-view > .folding-quote').first();
+   await expectFoldAligned(reading.locator(':scope > summary'),size);await reading.locator(':scope > summary').click();
+   await expectFoldAligned(reading.locator('.folding-quote > summary'),size);
+   await page.getByRole('button',{name:'预览编辑',exact:true}).click();
+  }
+  expect(errors).toEqual([]);
+ }finally{await app.evaluate(({app})=>app.exit(0));}
+});
+
 test('Empty folding titles keep a visible caret on click and keyboard navigation',async()=>{
  const{app,page,errors}=await fixture();
  try{
   await page.evaluate(()=>window.moyu!.create('光标.md','file','> [+]\n\n> [-]\n> 内容\n\n> [+] 有标题\n> 内容\n\n末尾\n'));
   await page.locator('.tree-item[title="光标.md"]').dblclick();
   const title=page.locator('.ProseMirror > blockquote > p').first();
-  await title.click({position:{x:24,y:12}});await page.keyboard.press('Home');
+  await title.click({position:{x:await title.evaluate(p=>parseFloat(getComputedStyle(p).paddingLeft)+4),y:12}});await page.keyboard.press('Home');
   const caret=await page.evaluate(()=>{const s=document.getSelection()!,r=s.getRangeAt(0),b=r.getBoundingClientRect();return{height:b.height,left:b.left,top:b.top,node:s.anchorNode?.nodeName,offset:s.anchorOffset,markup:document.querySelector('.ProseMirror > blockquote > p')?.innerHTML};});
   expect(caret.height,JSON.stringify(caret)).toBeGreaterThan(10);
   await page.keyboard.press('ArrowLeft');
@@ -121,9 +142,9 @@ test('Empty folding titles keep a visible caret on click and keyboard navigation
   await expect(page.locator('.ProseMirror > blockquote').first()).not.toHaveClass(/folding-quote/);
   await expect(title).toHaveText('[+标题');
   const closed=page.locator('.ProseMirror > blockquote').nth(1),empty=closed.locator('p').first();
-  for(const size of [14,20,28]){
+  for(const size of [10,14,20,28]){
    await empty.evaluate((p,size)=>{p.style.fontSize=size+'px';},size);
-   await empty.click({position:{x:24,y:12}});await page.keyboard.press('Home');
+   await empty.click({position:{x:await empty.evaluate(p=>parseFloat(getComputedStyle(p).paddingLeft)+4),y:12}});await page.keyboard.press('Home');
    const bounds=await empty.evaluate(p=>({marker:p.querySelector('.folding-quote-marker')!.getBoundingClientRect().width,caret:document.getSelection()!.getRangeAt(0).getBoundingClientRect().height}));
    expect(bounds.caret,JSON.stringify(bounds)).toBeGreaterThan(10);expect(Math.abs(bounds.marker),JSON.stringify(bounds)).toBeLessThan(1);
    await expect(closed).toHaveAttribute('data-fold-open','false');

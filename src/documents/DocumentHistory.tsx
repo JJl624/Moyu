@@ -1,5 +1,5 @@
 import { isComposingKey } from '../keyboardComposition';
-import { Clock3, RotateCcw, RotateCw, X } from "lucide-react";
+import { Clock3, Info, RotateCcw, RotateCw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../bridge";
@@ -119,10 +119,12 @@ export function DocumentHistory({ root, document, version, content, readOnly, fl
     }
   };
   const main = document ? window.document.querySelector(".main-area") : null;
+  const policy=listing?(listing.enabled?`保存时记录，间隔 ${listing.interval/60000} 分钟。`:'不记录保存版本。')+`最多 ${listing.limit} 个版本，保留 ${listing.retentionDays} 天。`:'';
   return (
     <div className="document-history">
       <div className="history-owner">
         <strong title={document}>{document.split("/").pop() || "未打开文档"}</strong>
+        {supported&&policy&&<span className="history-policy" role="img" aria-label={policy} title={policy}><Info size={14}/></span>}
         <button
           className="icon-button"
           aria-label="刷新文档历史"
@@ -164,16 +166,10 @@ export function DocumentHistory({ root, document, version, content, readOnly, fl
               : !supported
               ? "此文件不支持文档历史"
               : listing
-              ? "保存修改后显示历史版本"
+              ? listing.enabled?"暂无历史版本":"历史记录已关闭"
               : "正在读取…"}
           </p>
         )}
-      {supported && listing && (
-        <p className="history-policy">
-          {listing.enabled ? <>保存时记录，间隔 {listing.interval / 60000} 分钟。</> : "不记录保存版本。"} 最多{" "}
-          {listing.limit} 个版本，保留 {listing.retentionDays} 天。
-        </p>
-      )}
       {selection && main
         && createPortal(
           <section

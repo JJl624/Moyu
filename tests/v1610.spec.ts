@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import { _electron as electron, expect, type Page, test } from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -137,13 +138,15 @@ test('Editor context menu retains the caret and image right click keeps the prev
       await preview.click({ position: { x: 4, y: 4 } });
       await expect(page.getByRole('menu')).toHaveCount(0);
       await expect(preview).not.toHaveClass(/context-target/);
+      await expect(page.locator('.visual-attachment .syntax-raw').nth(index)).toBeHidden();
+      await editPreviewReference(page,preview);
       await expect(page.locator('.visual-attachment .syntax-raw').nth(index)).toBeVisible();
       await expect(page.locator('.ProseMirror')).toBeFocused();
       await paragraph.click();
       await page.keyboard.press('Home');
       await expect(preview).toBeVisible();
     }
-    await page.locator('.attachment-overlay').first().click();
+    await editPreviewReference(page,page.locator('.attachment-overlay').first());
     await expect(page.locator('.visual-attachment .syntax-raw').first()).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
@@ -177,14 +180,15 @@ test('Backspace and Delete join image paragraphs without deleting links, includi
               ? '- 图片\n\n  ' + first + '\n\n  ' + second + '\n\n末尾'
               : first + '\n\n' + second + '\n\n末尾',
           );
+          await page.locator('.ProseMirror p').last().click();
           await expect(page.locator('.attachment-overlay :is(img,svg)')).toHaveCount(2);
-          await page.locator('.attachment-overlay').nth(key === 'Backspace' ? 1 : 0).click();
+          await editPreviewReference(page,page.locator('.attachment-overlay').nth(key === 'Backspace' ? 1 : 0));
           await page.keyboard.press(key === 'Backspace' ? 'Home' : 'End');
           await page.keyboard.press(key);
-          await expect(page.locator('.visual-attachment.editing .syntax-raw')).toBeVisible();
-          await expect(page.locator('.visual-attachment')).toHaveCount(2);
+          await expect(page.locator('.attachment-link.editing .syntax-raw').first()).toBeVisible();
+          await expect(page.locator('.attachment-link')).toHaveCount(2);
           expect(
-            await page.locator('.visual-attachment').evaluateAll(nodes =>
+            await page.locator('.attachment-link').evaluateAll(nodes =>
               nodes[0].parentElement === nodes[1].parentElement
             ),
           ).toBe(true);
@@ -193,23 +197,9 @@ test('Backspace and Delete join image paragraphs without deleting links, includi
             first + second,
           );
           await page.locator('.ProseMirror p').last().click();
-          await expect(page.locator('.attachment-overlay :is(img,svg)')).toHaveCount(2);
-          await expect(page.locator('.attachment-overlay img').first()).toBeVisible();
-          for (const preview of await page.locator('.attachment-overlay').all()) await expect(preview).toBeVisible();
-          await expect.poll(() => page.locator('.attachment-overlay').evaluateAll(nodes => {
-            const a=nodes[0].getBoundingClientRect(), b=nodes[1].getBoundingClientRect();
-            return b.left >= a.right-1 && Math.abs(b.top+b.height/2-a.top-a.height/2)<2;
-          })).toBe(true);
-          const rects = await page.locator('.attachment-overlay').evaluateAll(nodes =>
-            nodes.map(n => {
-              const b = n.getBoundingClientRect();
-              return { x: b.x, y: b.y, w: b.width, h: b.height };
-            })
-          );
-          expect(rects[1].x).toBeGreaterThanOrEqual(rects[0].x + rects[0].w - 1);
-          expect(Math.abs(rects[1].y + rects[1].h / 2 - rects[0].y - rects[0].h / 2)).toBeLessThan(
-            2,
-          );
+          // Joined references share a paragraph, so both become name links.
+          await expect(page.locator('.attachment-overlay :is(img,svg)')).toHaveCount(0);
+          await expect(page.locator('.attachment-link a')).toHaveText(['第一张',mixed?'绘图':'第二张']);
           await page.keyboard.press('Control+z');
           await expect(page.locator('.visual-attachment')).toHaveCount(2);
           expect(

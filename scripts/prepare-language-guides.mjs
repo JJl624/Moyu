@@ -244,5 +244,5 @@ Shell 是解释命令的程序。“偏好设置 → 终端”选择默认 Shell
 
 Bashkit 终端支持内置命令、管道、重定向和脚本，文件位于该会话的虚拟目录。每条命令遵循 Bash 设置中的时限、命令数、循环和内存限制。
 `));
-await fs.writeFile(path.join(root,'代码示例/索引.md'),'# 代码示例\n\n按语言阅读运行、设置、模块和文件用法。每篇附带代码、输入文件和设置说明，默认运行环境随程序提供。\n\n'+records.map(r=>'- ['+path.basename(r.doc,'.md')+']('+path.basename(r.doc)+')').join('\n')+'\n');
+await fs.writeFile(path.join(root,'代码示例/索引.md'),'# 代码示例\n\n按语言查阅代码、输入文件和设置说明。HTML 小窗口可在电脑和手机上使用，其余运行示例在电脑版执行。\n\n- [HTML 小窗口](HTML.md)\n- [二叉树遍历：四种顺序](../数据结构/二叉树遍历.md)\n'+records.map(r=>'- ['+path.basename(r.doc,'.md')+']('+path.basename(r.doc)+')').join('\n')+'\n');
 export const languageGuideRecords=records;

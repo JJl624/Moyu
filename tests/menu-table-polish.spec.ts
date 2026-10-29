@@ -29,6 +29,7 @@ test('Single click edits any table cell; cell dragging and explicit table/row/co
     }
     const target=tables.first().locator('td').first();await target.click({button:'right'});
     await page.getByRole('menuitem',{name:'选中表格',exact:true}).click();await expect(page.locator('.ProseMirror-selectednode')).toHaveCount(1);
+    await expect(page.locator('.ProseMirror')).toHaveCSS('caret-color','rgba(0, 0, 0, 0)');
     await tables.first().locator('td').last().click();await expect(page.locator('.ProseMirror-selectednode')).toHaveCount(0);
     await page.keyboard.insertText('空格');await expect(tables.first().locator('td').last()).toHaveText('空格');await page.keyboard.press('Control+z');
     const a=(await target.boundingBox())!,b=(await tables.first().locator('td').last().boundingBox())!;

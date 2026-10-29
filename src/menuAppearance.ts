@@ -9,6 +9,8 @@ const spec={
   quote:{Icon:Quote,section:'structure'},'quote.default':{Icon:Quote,section:'structure'},unquote:{Icon:Quote,section:'structure'},indent:{Icon:IndentIncrease,section:'structure'},outdent:{Icon:IndentDecrease,section:'structure'},
   'code.run':{Icon:Play,section:'code'},'code.arguments':{Icon:Play,section:'code'},'code.format':{Icon:Code2,section:'code'},'code.data':{Icon:FolderOpen,section:'code'},
   open:{Icon:ExternalLink,section:'resource'},rename:{Icon:FilePenLine,section:'resource'},reveal:{Icon:FolderOpen,section:'resource'},delete:{Icon:Trash2,section:'resource',danger:true},
+  'link.edit':{Icon:PencilLine,section:'resource'},
+  'formula.edit':{Icon:SquareFunction,section:'structure'},
   link:{Icon:Link,section:'copy'},'copy.secondary':{Icon:Copy,section:'copy'},save:{Icon:Download,section:'save'},selectAll:{Icon:ListChecks,section:'selection',shortcut:'A'},close:{Icon:X,section:'document'},
   'insert.drawing':{Icon:PencilLine,section:'insert'},
 } as const;

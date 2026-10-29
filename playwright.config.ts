@@ -4,6 +4,7 @@ export default defineConfig({
   testMatch: "**/*.spec.ts",
   testIgnore: "**/mobile-*.spec.ts",
   workers: 1,
+  outputDir: 'test-results/desktop',
   timeout: 60000,
   reporter: "list",
   use: { trace: "retain-on-failure" },

@@ -2,7 +2,7 @@ import { codeBlockConfig, CodeMirrorBlock } from "@milkdown/kit/component/code-b
 import { Plugin, TextSelection } from "@milkdown/kit/prose/state";
 import { $nodeSchema, $prose, $view } from "@milkdown/kit/utils";
 import { codeLanguage } from "../highlight";
-import { readNativeSelection } from "./nativeSelection";
+import { readNativeSelection } from "./selectionOwnership";
 
 // Display math is Markdown math, not a persisted programming-language fence.
 export const displayMathSchema = $nodeSchema("math_block", () => ({

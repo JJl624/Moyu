@@ -5,6 +5,11 @@
 !/.gitattributes
 !/README.md
 !/AGENTS.md
+!/docs/
+/docs/*
+!/docs/editor-contracts.md
+!/docs/attachment-previews.md
+!/docs/document-storage.md
 !/LICENSE
 !/THIRD_PARTY_NOTICES.md
 !/package.json
@@ -29,9 +34,12 @@
 /android/local.properties
 /android/emulator.local.json
 /android/app/build/
+/android/app/build-gecko-*/
+/android/app/build-webview/
 /android/build/
 /android/app/src/main/assets/web/
 /android/app/src/main/assets/guides/
+/android/app/src/main/assets/examples/
 /android/keystore.properties
 /android/*.jks
 /android/signing/
@@ -63,6 +71,7 @@ node_modules/
 /resources/formatters/sql.wasm
 /public/excalidraw/fonts/
 /public/pdfjs/
+/public/vendor/
 /electron/runner/clang-runtime.mjs
 /electron/runner/sql-runtime.mjs
 /electron/runner/lua-runtime.mjs

@@ -1,7 +1,38 @@
 import { _electron as electron, expect, test } from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {attachmentFixture} from './helpers/attachment-fixture';
 const project = path.resolve(import.meta.dirname, '..');
+
+test('An empty tabs fence starts in source view and typing a complete declaration remains editable',async()=>{
+  const f=await attachmentFixture();try{
+    await f.note('输入标签代码.md','前文\n\n结尾');const paragraph=f.page.locator('.ProseMirror > p').last();await paragraph.click();await f.page.keyboard.press('Home');await f.page.keyboard.press('Shift+End');await f.page.keyboard.press('Backspace');await f.page.keyboard.type('```tabs ');
+    const block=f.page.locator('.tabbed-code'),cm=block.locator('.cm-content');await expect(block).toHaveAttribute('data-tabs-display','source');await expect(cm).toBeVisible();await cm.click();await f.page.keyboard.type(':::js First');await f.page.keyboard.press('Enter');await f.page.keyboard.type('const value = 1;');await expect(cm).toContainText(':::js First');await block.getByRole('button',{name:'显示标签页',exact:true}).click();await expect(block.getByRole('tab',{name:'First',exact:true})).toBeVisible();await expect(cm).toHaveText('const value = 1;');
+  }finally{await f.close();}
+});
+
+test('First typing in a newly declared empty page stays after the typed characters, including undo and switching pages',async()=>{
+  const f=await attachmentFixture();try{
+    await f.note('首次输入.md','```tabs\n:::js First\none\n:::text New\n```');const block=f.page.locator('.tabbed-code'),cm=block.locator('.cm-content');await block.getByRole('tab',{name:'New',exact:true}).click();await cm.click();await f.page.keyboard.type('abc',{delay:30});await expect(cm).toHaveText('abc');await expect.poll(()=>cm.evaluate(()=>getSelection()?.focusOffset)).toBe(3);await f.page.keyboard.press('Control+z');await f.page.keyboard.press('Control+y');await expect(cm).toHaveText('abc');await block.getByRole('tab',{name:'First',exact:true}).click();await block.getByRole('tab',{name:'New',exact:true}).click();await f.page.keyboard.type('d');await expect(cm).toHaveText('abcd');
+    await block.getByRole('button',{name:'新建代码标签页',exact:true}).click();await block.getByLabel('标签页标题',{exact:true}).fill('Added');await f.page.keyboard.press('Enter');await cm.click();await f.page.keyboard.type('xyz',{delay:30});await expect(cm).toHaveText('xyz');await expect.poll(()=>cm.evaluate(()=>getSelection()?.focusOffset)).toBe(3);
+  }finally{await f.close();}
+});
+test('Undo restoring an empty tabs block exposes source and accepts typing without clicking again',async()=>{
+  const data=await fs.mkdtemp(path.resolve(project,'../../work/tabs-empty-history-'));
+  await fs.writeFile(path.join(data,'settings.json'),JSON.stringify({version:1,values:{'moyu-save-policy':'manual','moyu-formatbar':'true'}}));
+  const env={...process.env,MOYU_USER_DATA:data,MOYU_TEST:'1',MOYU_DEMO:'1',MOYU_TEST_OFFSCREEN:'1'};delete env.ELECTRON_RUN_AS_NODE;
+  const app=await electron.launch(process.env.MOYU_E2E_EXECUTABLE?{executablePath:process.env.MOYU_E2E_EXECUTABLE,args:[],env}:{args:[project],env});
+  try{
+    const page=await app.firstWindow();await expect(page.locator('.ProseMirror')).toBeVisible();
+    await page.evaluate(()=>window.moyu!.create('空块撤销.md','file','```tabs\n:::text 第一页\n11\n```'));
+    await page.locator('.tree-item[title="空块撤销.md"]').dblclick();
+    const block=page.locator('.milkdown-code-block'),code=block.locator('.cm-content');await block.getByRole('button',{name:'显示源码',exact:true}).click();await code.click();
+    await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('Backspace');await expect(code).toHaveText('');
+    await page.waitForTimeout(600);await page.keyboard.press('Backspace');await expect(block).toHaveCount(0);
+    await page.getByRole('button',{name:'撤销',exact:true}).click();await expect(code).toBeVisible();await expect(code).toBeFocused();
+    await page.keyboard.insertText('7');await expect(code).toHaveText('7');
+  }finally{await app.evaluate(({app})=>app.exit(0));}
+});
 test('Tabbed fences edit the original Markdown, manage pages, and keep cursor and unified height', async () => {
   test.setTimeout(120000);
   const base = path.resolve(project, '../../work/e2e');
@@ -251,6 +282,7 @@ test('Empty tabs and source declarations switch safely; nested diagram previews 
     await page.locator('.tree-item[title="空标签.md"]').dblclick();
     const block = page.locator('.ProseMirror .tabbed-code'), cm = block.locator('.cm-content');
     await expect(block.getByRole('tab')).toHaveCount(0);
+    await expect(block).toHaveAttribute('data-tabs-display','source');await block.getByRole('button',{name:'显示标签页',exact:true}).click();
     await block.getByRole('button', { name: '新建代码标签页' }).click();
     await expect(block.getByRole('tab')).toHaveCount(1);
     await expect(block.getByRole('textbox', { name: '标签页标题' })).toHaveValue('标签页 1');
@@ -270,6 +302,8 @@ test('Empty tabs and source declarations switch safely; nested diagram previews 
     await block.getByRole('tab', { name: '空', exact: true }).click();
     await expect(cm.locator('.cm-line')).toHaveCount(1);
     await block.getByRole('button', { name: '管理代码标签页' }).click();
+    await expect(block.getByRole('button', { name: '管理代码标签页' })).toHaveAttribute('aria-pressed','true');
+    await expect(block.getByRole('button', { name: '管理代码标签页' })).not.toHaveCSS('background-color','rgba(0, 0, 0, 0)');
     await block.getByRole('textbox', { name: '标签页标题' }).fill('');
     await page.keyboard.press('Enter');
     await expect(block.getByRole('tab', { name: '纯文本', exact: true })).toHaveAttribute(

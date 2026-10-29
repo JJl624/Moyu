@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import { _electron as electron, expect, type Page, test } from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -46,7 +47,7 @@ async function open(page: Page, name: string, content: string) {
   await expect(page.locator('.editor-host')).not.toHaveAttribute('data-editor-pending', 'true');
 }
 
-test('Large image and drawing clicks always focus the link; preview spacers occupy inline positions and adjacent text remains independent', async () => {
+test('Large image and drawing context commands consistently focus the link; preview spacers occupy inline positions and adjacent text remains independent', async () => {
   const { app, page, root, errors } = await fixture();
   try {
     await fs.writeFile(
@@ -74,7 +75,7 @@ test('Large image and drawing clicks always focus the link; preview spacers occu
       for (const index of [0, 1]) {
         const preview = page.locator('.attachment-overlay').nth(index),
           source = page.locator('.visual-attachment').nth(index);
-        await preview.locator('img,svg').click();
+        await editPreviewReference(page,preview);
         await expect(source.locator('.syntax-raw')).toBeVisible();
         await expect(preview).toBeHidden();
         await expect(source.locator('.attachment-space')).toBeHidden();
@@ -88,7 +89,7 @@ test('Large image and drawing clicks always focus the link; preview spacers occu
           const caret = sel.getRangeAt(0).getBoundingClientRect();
 
           return {
-            paragraph: p?.getBoundingClientRect().height || 0,
+            paragraph: p?.getBoundingClientRect().height || 0, lineTop: p?.getBoundingClientRect().top || 0,
             caret: caret.height,
             caretTop: caret.top,
           };
@@ -124,27 +125,31 @@ test('Enter after an image creates a real paragraph; clicking its empty line or 
       '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="220"><rect width="400" height="220"/></svg>',
     );
     await open(page, '新行.md', '![图](图.svg)');
-    await expect(page.locator('.visual-attachment .syntax-raw')).toBeHidden();
+    // The first caret of a new image-only note is already in its reference.
+    // Create the real following paragraph before checking preview hit testing.
+    await expect(page.locator('.visual-attachment .syntax-raw')).toBeVisible();
     await expect(page.locator('.moyu-caret-line')).toHaveCount(0);
     expect(
       await page.locator('.visual-attachment').evaluate(el =>
         el.closest('p')!.getBoundingClientRect().height
       ),
     ).toBeGreaterThan(0);
-    await page.locator('.attachment-overlay img').click();
+    await page.locator('.visual-attachment .syntax-raw').click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
     const below = page.locator('.ProseMirror p').last(),
       raw = page.locator('.visual-attachment .syntax-raw');
     await expect(page.locator('.ProseMirror p')).toHaveCount(2);
     await expect(raw).toBeHidden();
-    const imageBox = (await page.locator('.attachment-overlay img').boundingBox())!;
-    expect((await below.boundingBox())!.y).toBeGreaterThanOrEqual(imageBox.y + imageBox.height);
+    await expect.poll(async()=>{
+      const imageBox=(await page.locator('.attachment-overlay img').boundingBox())!;
+      return (await below.boundingBox())!.y-imageBox.y-imageBox.height;
+    }).toBeGreaterThanOrEqual(0);
     await below.click({ position: { x: 5, y: 10 } });
     await expect(raw).toBeHidden();
     await page.keyboard.insertText('123');
     await expect(below).toHaveText('123');
-    await page.locator('.attachment-overlay img').click();
+    await editPreviewReference(page,page.locator('.attachment-overlay'));
     await below.click({ position: { x: 10, y: 10 } });
     await expect(raw).toBeHidden();
     await app.evaluate(({ Menu }) =>
@@ -192,7 +197,7 @@ test('Every first visible frame after document and mode changes has the restored
     });
     const sample = async (mode: 'rich' | 'source' | 'read', action: () => Promise<void>) => {
       await page.evaluate(({ mode }) => {
-        const data: { top: number; height: number; anchorTop: number | null }[] = [];
+        const data: { top: number; height: number; anchorTop: number | null; [key:string]:unknown }[] = [];
         (window as any).moyuFrames = { data, stop: false };
         const state = (window as any).moyuFrames;
         const frame = () => {
@@ -221,6 +226,10 @@ test('Every first visible frame after document and mode changes has the restored
                   top: scope.scrollTop,
                   height: scope.scrollHeight,
                   anchorTop: anchor?.getBoundingClientRect().top ?? null,
+                  first:editor.querySelector('p')?.textContent,
+                  editing:[...editor.querySelectorAll('.block-attachment.editing')].map(node=>node.getAttribute('data-syntax-raw')),
+                  loading:editor.querySelectorAll('[data-preview-loading]').length,
+                  focus:getSelection()?.focusNode?.textContent,
                 });
               }
             }
@@ -254,6 +263,7 @@ test('Every first visible frame after document and mode changes has the restored
         state.stop = true;
         return state.data;
       });
+      await test.info().attach('viewport-'+mode,{body:Buffer.from(JSON.stringify(frames,null,2)),contentType:'application/json'});
       expect(frames[0].top).toBeCloseTo(frames.at(-1).top, 0);
       for (const frame of frames) {
         expect(frame.anchorTop).not.toBeNull();

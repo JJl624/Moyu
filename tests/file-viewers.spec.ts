@@ -115,43 +115,17 @@ test('CodeMirror edits supported text filenames, preserves line endings, preview
     await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
   }
 });
-test('PDF.js renders selectable text, page navigation and zoom in a unified tab', async () => {
-  const { app, page, root, errors } = await fixture();
-  try {
-    await fs.writeFile(path.join(root, '两页.pdf'), pdfFixture());
-    await open(page, '两页.pdf');
-    await expect(page.locator('.pdf-page .textLayer')).toContainText('First page');
-    await expect(page.locator('.pdf-page')).toBeVisible();
+test('EmbedPDF renders PDF pages, supports navigation and zoom in a unified tab', async () => {
+  const {app,page,root,errors}=await fixture();try {
+    await fs.writeFile(path.join(root,'两页.pdf'),pdfFixture());await open(page,'两页.pdf');
+    const image=page.locator('.embedpdf-host img').first();await expect(image).toBeVisible({timeout:30000});
+    await expect.poll(()=>image.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(100);
     await expect(page.locator('.mode-switch')).toHaveCount(0);
-    expect(await page.locator('.pdf-page canvas').evaluate((c: HTMLCanvasElement) => c.width))
-      .toBeGreaterThan(100);
-    const number=page.getByLabel('PDF 页码',{exact:true});
-    await number.fill('');await expect(number).toHaveValue('');
-    await expect(page.locator('.pdf-page .textLayer')).toContainText('First page');
-    await number.fill('2');await number.press('Enter');
-    await expect(page.locator('.pdf-page .textLayer')).toContainText('Second page');
-    await number.fill('');await number.blur();await expect(number).toHaveValue('2');
-    await number.fill('999');await number.press('Enter');await expect(number).toHaveValue('2');
-    await number.fill('0');await number.press('Enter');await expect(number).toHaveValue('1');
-    await page.getByLabel('PDF 下一页').click();
-    await expect(page.locator('.pdf-page .textLayer')).toContainText('Second page');
-    await page.getByLabel('放大 PDF').click();
-    await expect(page.locator('.pdf-page .textLayer')).toContainText('Second page');
-    await page.getByLabel('PDF 上一页').click();
-    await expect(page.locator('.pdf-page .textLayer')).toContainText('First page');
-    expect(
-      await page.locator('.pdf-page .textLayer span').first().evaluate((s: HTMLElement) =>
-        s.getBoundingClientRect().height
-      ),
-    ).toBeGreaterThan(15);
-    expect(await page.locator('.sidebar').evaluate((s: HTMLElement) => getComputedStyle(s).color)).toBe(
-      'rgb(213, 215, 222)',
-    );
-    await page.screenshot({ path: path.join(base, 'pdf-viewer-v1711.png') });
-    expect(errors).toEqual([]);
-  } finally {
-    await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
-  }
+    await page.getByRole('button',{name:'下一页',exact:true}).click();await expect(page.locator('.embedpdf-host input:not([type=file])').last()).toHaveValue('2');
+    await page.getByRole('button',{name:'上一页',exact:true}).click();await expect(page.locator('.embedpdf-host input:not([type=file])').last()).toHaveValue('1');
+    const zoom=page.getByRole('textbox',{name:'Set zoom'});const before=await zoom.inputValue();await page.getByRole('button',{name:'放大',exact:true}).click();await expect(zoom).not.toHaveValue(before);
+    expect(await fs.readFile(path.join(root,'两页.pdf'),'utf8')).toBe(pdfFixture());expect(errors).toEqual([]);
+  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
 });
 test('SQLite viewer lists objects, paginates queries, prevents writes and leaves database bytes unchanged', async () => {
   const { app, page, root, errors } = await fixture(undefined,true);
@@ -268,7 +242,7 @@ test('Chromium handles extra image extensions and rejects corrupt/binary inputs 
     }
     await fs.writeFile(path.join(root, '损坏.pdf'), 'not a pdf');
     await open(page, '损坏.pdf');
-    await expect(page.locator('.pdf-viewer [role=alert]')).toBeVisible();
+    await expect(page.locator('.pdf-viewer').getByRole('heading',{name:'文件加载出错'})).toBeVisible();
     await fs.writeFile(path.join(root, '二进制.bin'), Buffer.from([0, 1, 2]));
     await open(page, '二进制.bin');
     await expect(page.getByRole('status')).toContainText('二进制');

@@ -28,7 +28,7 @@ const esbuildSource=path.join(root,'node_modules/esbuild'),esbuildTarget=path.jo
 await fs.mkdir(path.join(esbuildTarget,'lib'),{recursive:true});
 for(const name of ['package.json','lib/main.js','LICENSE.md'])await fs.copyFile(path.join(esbuildSource,name),path.join(esbuildTarget,name));
 await build({entryPoints:[path.join(root,'electron/format-worker.cjs')],outfile:path.join(stage,'electron/format-worker.cjs'),bundle:true,platform:'node',format:'cjs',target:'node24',external:['node:*'],minify:true,legalComments:'eof'});
-for(const item of ['dist','resources','THIRD_PARTY_NOTICES.md'])await fs.cp(path.join(root,item),path.join(stage,item),{recursive:true});
+for(const item of ['dist','resources','THIRD_PARTY_NOTICES.md'])await fs.cp(path.join(root,item),path.join(stage,item),{recursive:true,filter:source=>path.resolve(source)!==path.join(root,'dist/pdfjs')});
 // Keep only the small header catalogue before users install an engine.
 for(const kind of ['clang','sql','lua']){
  const folder=path.join(stage,'resources',kind);

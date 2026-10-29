@@ -2,7 +2,7 @@ import {HistoryPreferences} from './documents/HistoryPreferences';
 import {TerminalPreferences} from "./terminal/TerminalPreferences";
 import './preferenceLayout.css';
 import './typeTerminalPreferences.css';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { version } from '../package.json';
 import { CodePreferences, codeLanguages, type CodeLanguage, type CodePreferencesHandle } from './CodePreferences';
 import { DataPreferences } from './DataPreferences';
@@ -12,6 +12,7 @@ import { NumberField } from './NumberField';
 import { WebDAVPreferences, type WebDAVPreferencesHandle } from './WebDAVPreferences';
 import { flushPreferences, resetPreference } from './preferenceDraft';
 import { settingsStore } from './settingsStore';
+import {attachmentCaptions,setAttachmentCaptions} from './attachments/preferences';
 import { themes } from './themes';
 export const fontRoles = [
   ['source', '源码界面'],
@@ -172,6 +173,7 @@ interface Props {
   setWide(v: boolean): void;
 }
 export function Preferences(p: Props) {
+  const [captionNames,setCaptionNames]=useState(attachmentCaptions);
   const webdavPreferences = useRef<WebDAVPreferencesHandle>(null);
   const codePreferences = useRef<CodePreferencesHandle>(null);
   const initialLanguage = codeLanguages.find(([key, label]) => key === p.initialCategory || label === p.initialCategory)?.[0];
@@ -179,6 +181,8 @@ export function Preferences(p: Props) {
   const [category, setCategory] = useState(initialLanguage ? '代码' : p.initialCategory || '字体与排版'),
     [fonts, setFonts] = useState<FontChoice[]>([]),
     [fontError, setFontError] = useState('');
+  const content=useRef<HTMLDivElement>(null);
+  useLayoutEffect(()=>{content.current?.scrollTo({top:0});},[category]);
   const [region, setRegion] = useState<(typeof fontRoles)[number][0]>('source');
   const regionLabel = fontRoles.find(([key]) => key === region)![1];
   const mono = region === 'source' || region === 'readingCode',
@@ -274,18 +278,19 @@ export function Preferences(p: Props) {
   );
   return (
     <div className='preferences'>
-      <nav className='pref-tabs'>
+      <nav className='pref-tabs' aria-label='设置分类'>
         {['字体与排版', '界面', '编辑', 'WebDAV', '终端', '代码', '数据与运行环境'].map(c => (
           <button
             key={c}
             className={category === c ? 'active' : ''}
+            aria-current={category===c?'page':undefined}
             onClick={() => void flushPreferences().then(() => setCategory(c)).catch(() => {})}
           >
             {c}
           </button>
         ))}
       </nav>
-      <div className={'pref-content' + (category === '代码' ? ' code-pref-content' : '')}>
+      <div ref={content} className={'pref-content' + (category === '代码' ? ' code-pref-content' : '')}>
         {category === '字体与排版' && (
           <>
             <div className='pref-section-heading'>
@@ -360,7 +365,7 @@ export function Preferences(p: Props) {
                   </div>
                   <div className='compact-inline-field regional-font-field'>
                     <span>字体</span>
-                    <div className='compact-pref-field'>
+                    <div className='compact-pref-field' title={regionValue.family?'自定义字体':'跟随'+regionBase}>
                       <FontSelector
                         label={regionLabel + '字体'}
                         value={regionValue.family || ''}
@@ -368,13 +373,12 @@ export function Preferences(p: Props) {
                         fonts={fonts}
                         change={family => regionChange({ family })}
                       />
-                      <small>{regionValue.family ? '自定义' : '跟随' + regionBase}</small>
                     </div>
                   </div>
                   <div className='compact-pref-grid regional-type-metrics'>
                     <div className='compact-inline-field'>
                       <span>{heading ? '标题比例' : '字号'}</span>
-                      <div className='compact-pref-field'>
+                      <div className='compact-pref-field' title={p.value.roleFonts[region]?.[heading?'scale':'size']?'自定义':'跟随'+inheritedSize}>
                         <div className='compact-number-unit'>
                           <NumberField
                             label={regionLabel + (heading ? '比例' : '字号')}
@@ -386,8 +390,6 @@ export function Preferences(p: Props) {
                           />
                           <small>{heading ? '倍' : 'px'}</small>
                         </div>
-                        <small>{(heading ? p.value.roleFonts[region]?.scale : p.value.roleFonts[region]?.size)
-                          ? '自定义' : '跟随' + inheritedSize}</small>
                       </div>
                     </div>
                     <div className='compact-inline-field'>
@@ -404,8 +406,6 @@ export function Preferences(p: Props) {
                           />
                           <small>倍</small>
                         </div>
-                        <small>{p.value.roleFonts[region]?.lineHeight ? '自定义'
-                          : region.startsWith('reading') ? '跟随正文行高' : '默认 1.7'}</small>
                       </div>
                     </div>
                   </div>
@@ -416,7 +416,7 @@ export function Preferences(p: Props) {
                       fontSize: heading ? regionValue.size * regionValue.scale : regionValue.size,
                       lineHeight: regionValue.lineHeight }}
                   >
-                    中文字体预览<br />Aa Bb 0123456789
+                    中文 Aa Bb 0123456789
                   </div>
                 </div>
               </div>
@@ -525,6 +525,7 @@ export function Preferences(p: Props) {
             {toggle('宽屏写作', p.wide, p.setWide)}
             {toggle('显示文件扩展名', p.value.showExtensions, v =>
               change('showExtensions', v))}
+            {toggle('显示附件预览名称',captionNames,value=>{setCaptionNames(value);setAttachmentCaptions(value);})}
           </>
         )}
         {category === '编辑' && (
@@ -563,7 +564,7 @@ export function Preferences(p: Props) {
             if (category === 'WebDAV') { webdavPreferences.current?.reset(); return; }
             if (category === '代码') { void codePreferences.current?.reset().catch(() => {}); return; }
             if (category === '编辑') { p.setFormatbar(false); p.setSavePolicy('realtime');p.setSaveDelay(900);void resetPreference('history').catch(() => {});return; }
-            if (category === '界面') { p.change({...p.value,preset:appearanceDefaults.preset,accent:'',sidebarWidth:appearanceDefaults.sidebarWidth,infoWidth:appearanceDefaults.infoWidth,showExtensions:false});p.setTheme('dark');p.setWide(false);return; }
+            if (category === '界面') { setCaptionNames(true);setAttachmentCaptions(true);p.change({...p.value,preset:appearanceDefaults.preset,accent:'',sidebarWidth:appearanceDefaults.sidebarWidth,infoWidth:appearanceDefaults.infoWidth,showExtensions:false});p.setTheme('dark');p.setWide(false);return; }
             p.change({ ...p.value, ...Object.fromEntries(Object.entries(appearanceDefaults).filter(([key]) => !['preset','accent','sidebarWidth','infoWidth','showExtensions'].includes(key))), roleFonts: {} });
             p.setFontSize(16);
             p.setLineHeight(1.75);

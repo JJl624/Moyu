@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import {_electron as electron, expect, test, type Page, type Locator} from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -35,7 +36,7 @@ test('Selection context menu inserts editable Markdown; ordinary link clicks rev
    await expect(page.locator('.inline-syntax.editing .syntax-raw')).toBeVisible();
    await page.locator('.ProseMirror > p').last().click();
   }
-  const image=page.locator('.attachment-overlay').filter({has:page.locator('img')});await expect(image).toBeVisible();await image.click();
+  const image=page.locator('.attachment-overlay').filter({has:page.locator('img')});await expect(image).toBeVisible();await editPreviewReference(page,image);
   await expect(page.locator('.visual-attachment.editing .syntax-raw')).toHaveText('![图](图.svg)');
   await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title','链接.md');
   await page.locator('.ProseMirror > p').last().click();
@@ -54,7 +55,7 @@ test('Selection context menu inserts editable Markdown; ordinary link clicks rev
   expect(await page.evaluate(()=>(window as any).__links.map((v:any)=>v.href))).toEqual(['目标.md','图.svg']);
   await page.locator('.tab-name[title="链接.md"]').click();
   await page.locator('.ProseMirror > p').last().click();
-  await page.locator('.attachment-overlay').filter({has:page.locator('svg')}).click();
+  await editPreviewReference(page,page.locator('.attachment-overlay').filter({has:page.locator('svg')}));
   await expect(page.locator('.inline-syntax.editing .syntax-raw')).toHaveText('[绘图](图.excalidraw)');
   await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title','链接.md');
   await page.locator('.ProseMirror > p').last().click();

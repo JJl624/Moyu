@@ -1,4 +1,5 @@
 import { indentConfig } from '@milkdown/kit/plugin/indent';
+import { caretRangeAt } from '../domCaret';
 import { joinBackward, joinForward } from '@milkdown/kit/prose/commands';
 import { Fragment } from '@milkdown/kit/prose/model';
 import { EditorState, Plugin, TextSelection } from '@milkdown/kit/prose/state';
@@ -7,22 +8,25 @@ import { $nodeSchema, $prose, $remark, $view } from '@milkdown/kit/utils';
 import katex from 'katex';
 import remarkHighlight from '../../shared/remark-highlight.mjs';
 import remarkUnderline from '../../shared/remark-underline.mjs';
-import { applyAttachmentSize, attachmentSize } from '../attachmentLayout';
-import { attachmentMarkdown, isAttachmentLink } from '../attachmentLinks';
+import { attachmentSize } from '../attachmentLayout';
+import { attachmentMarkdown, isAttachmentLink, attachmentLabel } from '../attachmentLinks';
 import {
   type InlineAst,
   inlineLinkAt,
+  inlineLinkLabelOffset,
   parseInline,
   sourceInlineTree,
 } from '../inlineSyntax';
-import { drawingSvg, isPreviewResource, resourcePath,resourceImageURL } from '../resourcePreview';
+import { isPreviewResource, resourcePath } from '../resourcePreview';
 import { createAttachmentPreview } from './attachmentPreview';
+import {previewKind,mountAttachmentPreview,disposePreviews,updateAttachmentPreviewLabel} from '../attachments/previewRegistry';
 import { htmlInlineMarkdown } from './htmlInline';
 import { separateInlineText } from './inlineSourceEditing';
 import { inlineInputTransaction } from './inlineInput';
 import { foldingInput, leaveFoldHeading, unfoldAtStart } from './foldingQuoteEditing';
 import { indentText } from './textIndentation';
-import { readNativeSelection, syncInlineCaret } from './nativeSelection';
+import {enterAdjacentCode} from './blockNavigation';
+import { readNativeSelection, syncInlineCaret, focusEditorSelection, reconcileAttachmentCaret } from './selectionOwnership';
 
 // Keep the whole outer inline region as standard Markdown. Nested emphasis,
 // links and formulas share one editable source instead of invisible PM marks.
@@ -112,6 +116,7 @@ export const resourceKeys = $prose(ctx =>
       return {update:(_view,previous)=>{
         if(!previous.selection.eq(view.state.selection)||previous.doc!==view.state.doc)
           view.dom.dispatchEvent(new Event('moyu-inline-selection'));
+        if(previous.doc!==view.state.doc)reconcileAttachmentCaret(view);
       },destroy(){view.dom.removeEventListener('moyu-attachment-selection-settle',settle);}};
     },
     appendTransaction(transactions, old, state) {
@@ -134,6 +139,12 @@ export const resourceKeys = $prose(ctx =>
       return tr;
     },
     props: {
+      // Gecko IMEs can mutate the DOM without beforeinput. ProseMirror then
+      // synthesizes Backspace through handleKeyDown, not handleDOMEvents.
+      handleKeyDown(view,event){
+        if(event.shiftKey||event.ctrlKey||event.metaKey||event.altKey||event.isComposing||!['Backspace','Delete'].includes(event.key))return false;
+        return enterAdjacentCode(view,event.key==='Backspace');
+      },
       handleDOMEvents: {
         beforeinput(view, event) {
           if (view.composing || event.isComposing) return false;
@@ -142,6 +153,9 @@ export const resourceKeys = $prose(ctx =>
             event.inputType === 'deleteContentBackward'
             || event.inputType === 'deleteContentForward'
           ) {
+            if(enterAdjacentCode(view,event.inputType==='deleteContentBackward')){
+              event.preventDefault();return true;
+            }
             if (event.inputType === 'deleteContentBackward' && unfoldAtStart(view.state, view.dispatch)) {
               event.preventDefault();return true;
             }
@@ -222,6 +236,9 @@ export const resourceKeys = $prose(ctx =>
           if (event.key === 'Backspace' && unfoldAtStart(view.state, view.dispatch)) {
             event.preventDefault();return true;
           }
+          if(['Backspace','Delete'].includes(event.key)&&!event.shiftKey&&enterAdjacentCode(view,event.key==='Backspace')){
+            event.preventDefault();return true;
+          }
           if (event.key === 'ArrowLeft' && !event.shiftKey && leaveFoldHeading(view.state, view.dispatch)) {
             event.preventDefault();return true;
           }
@@ -264,7 +281,7 @@ export const resourceKeys = $prose(ctx =>
             if (
               first?.type.name === 'resource_link'
               && parseInline(first.textContent)?.nodes.some(n =>
-                n.type === 'image' || isPreviewResource(n.url || '')
+                !!previewKind(n.url||'',n.type==='image',adjacent!.node.type.name==='paragraph'&&adjacent!.node.childCount===1&&parseInline(first.textContent)?.nodes.length===1)
               )
             ) {
               pos = adjacent!.pos + 2;
@@ -430,7 +447,7 @@ function deleteInlineCharacter(
         return (backward ? joinBackward : joinForward)(state, tr => {
           const head = inlineDeletionPosition(tr.doc, tr.selection.head, backward);
           view.dispatch(tr.setSelection(TextSelection.create(tr.doc, head)).scrollIntoView());
-          view.focus();
+          focusEditorSelection(view, 'edit');
           syncInlineCaret(view);
         });
       }
@@ -481,40 +498,47 @@ export const resourceView = (path: string) =>
     const contentDOM = document.createElement('span');
     contentDOM.className = 'syntax-raw';
     dom.append(contentDOM, preview);
-    const media = createAttachmentPreview(dom, preview, view.dom, () => {
+    const media = createAttachmentPreview(dom, preview, view.dom, (edit=false) => {
       const pos = getPos();
-      if (pos === undefined || view.isDestroyed) return;
+      if (pos === undefined || view.isDestroyed || !view.editable) return;
+      const name = pos + 1 + inlineLinkLabelOffset(node.textContent);
       const selection = TextSelection.create(
         view.state.doc,
-        pos + 1,
-        pos + 1,
+        edit?name:pos,
+        edit?name:pos + node.nodeSize,
       );
       if (!view.state.selection.eq(selection)) view.dispatch(view.state.tr.setSelection(selection));
-      view.focus();
+      focusEditorSelection(view, edit?'edit':'node-update');
       sync();
     });
-    let generation = 0,
-      lastRaw = '',
-      valid = false,
+    let lastRaw = '', lastStandalone = false,
+      valid = false, blockPreview = false,
       visualKey = '',
-      visualAlt = '',
-      visualRevision = 0;
+      visualAlt = '';
     const paths = new Set<string>();
     const sync = () => {
       const pos = getPos(), s = view.state.selection;
+      const overlaps=pos!==undefined&&s.from<pos+node.nodeSize&&s.to>pos;
+      const paragraph=pos!==undefined?view.state.doc.resolve(pos):null;
+      const caretInBlock=!!paragraph&&s.empty&&s.head>=paragraph.start()&&s.head<=paragraph.end();
       const editing = !valid
-        || pos !== undefined && (media.external
+        || (blockPreview ? caretInBlock : pos !== undefined && (media.external
             ? s.from < pos + node.nodeSize && s.to > pos
-            : s.from <= pos + node.nodeSize && s.to >= pos);
-      dom.classList.toggle('editing', media.setEditing(editing));
+            : s.from <= pos + node.nodeSize && s.to >= pos));
+      const visibleSource=media.setEditing(editing);
+      dom.classList.toggle('editing',visibleSource);
+      preview.classList.toggle('range-selected',blockPreview&&overlaps&&!s.empty&&!visibleSource);
     };
+    const standalone=()=>{const pos=getPos();if(pos===undefined||pos<0||pos>view.state.doc.content.size||view.state.doc.nodeAt(pos)!==node)return false;const parent=view.state.doc.resolve(pos).parent;const parsed=parseInline(node.textContent);return parent.type.name==='paragraph'&&parsed?.nodes.length===1&&['link','image'].includes(parsed.nodes[0].type)&&parent.textContent.trim()===node.textContent.trim();};
+    const kind=(ast:InlineAst)=>previewKind(ast.url||'',ast.type==='image',lastStandalone);
     const render = (force = false) => {
-      if (!force && lastRaw === node.textContent) {
+      const isolated=standalone();
+      if (!force && lastRaw === node.textContent && lastStandalone===isolated) {
         sync();
         return;
       }
-      lastRaw = node.textContent;
-      const current = ++generation, parsed = parseInline(lastRaw);
+      lastRaw = node.textContent;lastStandalone=isolated;
+      const parsed = parseInline(lastRaw);
       valid = !!parsed?.decorated;
       paths.clear();
       dom.dataset.syntaxRaw = lastRaw;
@@ -525,15 +549,17 @@ export const resourceView = (path: string) =>
       const single = parsed?.nodes.length === 1 ? parsed.nodes[0] : null,
         attachment = single && isAttachmentLink(single);
       const visual = (ast: InlineAst): boolean =>
-        ast.type === 'image' || isPreviewResource(ast.url || '') || !!ast.children?.some(visual);
+        !!kind(ast) || !!ast.children?.some(visual);
+      blockPreview=!!single&&!!kind(single);
       const hasVisual = !!parsed?.nodes.some(visual);
       dom.classList.toggle('visual-attachment', hasVisual);
+      dom.classList.toggle('block-attachment',blockPreview);
       media.setVisual(hasVisual);
       dom.classList.toggle('attachment-link', !!attachment);
       dom.dataset.resourceRaw = attachment ? lastRaw : '';
       dom.dataset.resourceLink = attachment ? single.url || '' : '';
       dom.dataset.resourceLabel = attachment
-        ? (single.alt || single.children?.map(n => n.value || '').join('') || '')
+        ? attachmentLabel(single)
         : '';
       dom.dataset.resourcePath = attachment ? resourcePath(path, single.url || '') : '';
       preview.className = 'syntax-preview' + (media.external ? ' attachment-overlay' : '')
@@ -547,68 +573,32 @@ export const resourceView = (path: string) =>
       const resourceData = (element: HTMLElement, ast: InlineAst) => {
         element.dataset.linkOffset = String(ast.position?.start.offset || 0);
         element.dataset.resourceLink = ast.url || '';
-        element.dataset.resourceLabel = ast.alt || ast.children?.map(n => n.value || '').join('')
-          || '';
+        element.dataset.resourceLabel = attachmentLabel(ast);
         element.dataset.resourceImage = String(ast.type === 'image');
         element.dataset.resourceRaw = lastRaw.slice(
           ast.position?.start.offset,
           ast.position?.end.offset,
         );
       };
-      const key = single && (single.type === 'image' || isPreviewResource(single.url || ''))
+      const key = single && (!!kind(single))
         ? JSON.stringify([single.type, single.url])
         : '';
-      visualAlt = single?.alt || single?.children?.map(n => n.value || '').join('') || '';
+      visualAlt = single?attachmentLabel(single):'';
       if (key && key === visualKey && !force) {
-        const image = preview.querySelector('img'),
-          svg = preview.querySelector('svg'),
-          link = preview.querySelector('.resource-preview');
-        if (image || link) resourceData((image || link) as HTMLElement, single!);
-        if (image) {
-          const resolved=resourcePath(path,single!.url||'');if(resolved)paths.add(resolved);
-          image.alt = attachmentSize(visualAlt).label;
-          applyAttachmentSize(image, visualAlt, image.naturalWidth);
-        }
-        if (svg) {
-          applyAttachmentSize(
-            svg,
-            visualAlt,
-            Number((svg.getAttribute('viewBox') || '').split(/[ ,]+/)[2]) || 400,
-          );
-        }
-        if (link) {
-          paths.add(resourcePath(path, single!.url || ''));
-          if (!svg) link.textContent = attachmentSize(visualAlt).label || '绘图';
-        }
-        if (single!.type === 'image') preview.classList.add('attachment-image');
-        sync();
-        return;
+        const card=preview.querySelector<HTMLElement>('.resource-preview');
+        if(card){resourceData(card,single!);paths.add(resourcePath(path,single!.url||''));updateAttachmentPreviewLabel(card,visualAlt);}
+        sync();return;
       }
       visualKey = key;
-      const mediaRevision = ++visualRevision;
-      preview.replaceChildren();
+      disposePreviews(preview);preview.replaceChildren();
       const paint = (ast: InlineAst, parent: HTMLElement) => {
-        if (['link', 'image'].includes(ast.type) && isPreviewResource(ast.url || '')) {
-          const resolved = resourcePath(path, ast.url || ''), link = document.createElement('a');
-          link.className = 'resource-preview';
-          resourceData(link, ast);
-          link.dataset.linkOffset = String(ast.position?.start.offset || 0);
-          link.setAttribute('href', ast.url || '');
-          link.textContent = attachmentSize(
-            ast.alt || ast.children?.map(n => n.value || '').join('') || '绘图',
-          ).label;
-          link.dataset.previewLoading = 'true';
-          parent.append(link);
-          paths.add(resolved);
-          void drawingSvg(resolved).then(svg => {
-            if (ast === single ? mediaRevision !== visualRevision : current !== generation) return;
-            const width = Number((svg.getAttribute('viewBox') || '').split(/[ ,]+/)[2]) || 400;
-            applyAttachmentSize(svg, ast === single ? visualAlt : ast.alt || '', width);
-            link.replaceChildren(svg);
-          }).catch(() => {}).finally(() => {
-            delete link.dataset.previewLoading;
-            media.schedule();
-          });
+        const renderer=['link','image'].includes(ast.type)?kind(ast):null;
+        if(renderer) {
+          const resolved=resourcePath(path,ast.url||''),link=document.createElement('span');
+          link.className='resource-preview';resourceData(link,ast);
+          link.textContent=attachmentSize(attachmentLabel(ast)||'附件').label;
+          parent.append(link);paths.add(resolved);
+          void mountAttachmentPreview(link,renderer,path,ast.url||'',attachmentLabel(ast),()=>media.schedule(),{editReference:view.editable});
           return;
         }
         if (ast.type === 'text') {
@@ -625,36 +615,7 @@ export const resourceView = (path: string) =>
           parent.append(math);
           return;
         }
-        if (ast.type === 'image') {
-          const image = document.createElement('img');
-          resourceData(image, ast);
-          image.draggable = false;
-          image.dataset.previewLoading = 'true';
-          const resolved=resourcePath(path,ast.url||'');if(resolved)paths.add(resolved);
-          image.src = resourceImageURL(path, ast.url || '');
-          image.alt = attachmentSize(ast.alt || '').label;
-          applyAttachmentSize(image, ast.alt || '', image.naturalWidth);
-          image.addEventListener('load', () => {
-            delete image.dataset.previewLoading;
-            image.width = image.naturalWidth;
-            image.height = image.naturalHeight;
-            if (ast === single ? mediaRevision === visualRevision : current === generation) {
-              applyAttachmentSize(
-                image,
-                ast === single ? visualAlt : ast.alt || '',
-                image.naturalWidth,
-              );
-              media.schedule();
-            }
-          }, { once: true });
-          image.addEventListener('error', () => {
-            delete image.dataset.previewLoading;
-            media.schedule();
-          }, { once: true });
-          image.dataset.linkOffset = String(ast.position?.start.offset || 0);
-          parent.append(image);
-          return;
-        }
+        if((ast.type==='image'||ast.type==='link'&&isAttachmentLink(ast))&&!renderer){const link=document.createElement('a');link.href=ast.url||'';link.textContent=attachmentSize(attachmentLabel(ast)||'附件').label;resourceData(link,ast);parent.append(link);return;}
         if (ast.type === 'break') {
           parent.append(document.createElement('br'));
           return;
@@ -693,7 +654,7 @@ export const resourceView = (path: string) =>
       };
       parsed?.nodes.forEach(ast => paint(ast, preview));
       if (attachment && single.type === 'image') preview.classList.add('attachment-image');
-      else if (attachment && !isPreviewResource(single.url || '')) {
+      else if (attachment && !kind(single)) {
         preview.classList.add('attachment-file');
       }
       sync();
@@ -722,7 +683,7 @@ export const resourceView = (path: string) =>
         return;
       }
       if (contentDOM.contains(event.target as globalThis.Node)) {
-        const caret = document.caretRangeFromPoint(event.clientX, event.clientY);
+        const caret = caretRangeAt(document,event.clientX,event.clientY);
         if (caret && contentDOM.contains(caret.startContainer) && !event.shiftKey) {
           const position=view.posAtDOM(caret.startContainer,caret.startOffset);
           view.dispatch(
@@ -733,7 +694,7 @@ export const resourceView = (path: string) =>
               ),
             ),
           );
-          view.focus();
+          focusEditorSelection(view, 'edit');
           return;
         }
         return;
@@ -745,7 +706,7 @@ export const resourceView = (path: string) =>
       const leaf = (event.target as Element).closest<HTMLElement>('[data-source-offset]');
       if (leaf) {
         offset = Number(leaf.dataset.sourceOffset);
-        const caret = document.caretRangeFromPoint(event.clientX, event.clientY);
+        const caret = caretRangeAt(document,event.clientX,event.clientY);
         if (caret && leaf.contains(caret.startContainer)) {
           const range = document.createRange();
           range.setStart(leaf, 0);
@@ -759,7 +720,7 @@ export const resourceView = (path: string) =>
           TextSelection.create(view.state.doc, pos + 1 + Math.min(offset, node.content.size)),
         ),
       );
-      view.focus();
+      focusEditorSelection(view, 'edit');
       sync();
     };
     const refresh = (event: Event) => {
@@ -779,7 +740,8 @@ export const resourceView = (path: string) =>
     preview.addEventListener('mousedown', previewDown);
     preview.addEventListener('click', preventNavigation);
     dom.addEventListener('mousedown', enter);
-    view.dom.addEventListener('moyu-inline-selection', sync);
+    const selectionChanged=()=>render();
+    view.dom.addEventListener('moyu-inline-selection', selectionChanged);
     window.addEventListener('moyu-resources-changed', refresh);
     window.addEventListener('moyu-diagram-theme', themeChanged);
     render();
@@ -801,13 +763,11 @@ export const resourceView = (path: string) =>
           && (contentDOM.contains(event.target as globalThis.Node) || (event as MouseEvent).ctrlKey
             || (event as MouseEvent).metaKey),
       destroy() {
-        generation++;
-        visualRevision++;
         preview.removeEventListener('mousedown', previewDown);
         preview.removeEventListener('click', preventNavigation);
-        media.destroy();
+        disposePreviews(preview);media.destroy();
         dom.removeEventListener('mousedown', enter);
-        view.dom.removeEventListener('moyu-inline-selection', sync);
+        view.dom.removeEventListener('moyu-inline-selection', selectionChanged);
         window.removeEventListener('moyu-resources-changed', refresh);
         window.removeEventListener('moyu-diagram-theme', themeChanged);
       },

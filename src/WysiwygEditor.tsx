@@ -1,4 +1,4 @@
-import {codeId} from '../shared/code-documents.mjs';
+import {codeId,withAttribute} from '../shared/code-documents.mjs';
 import { foldingQuoteRemark, foldingQuoteSchema, foldingQuotes } from './editor/foldingQuotes';
 import {stableCodeIds, codeIdTransaction, exhaustedIdsMessage} from './editor/codeIds';
 import { EditorView as CodeView } from '@codemirror/view';
@@ -28,6 +28,7 @@ import {
   insertImageCommand,
   insertImageInputRule,
   paragraphSchema,
+  syncListOrderPlugin,
   strongInputRule,
   turnIntoTextCommand,
   updateImageCommand,
@@ -40,13 +41,14 @@ import { insertTableCommand, strikethroughInputRule } from '@milkdown/kit/preset
 import { type Node, Slice } from '@milkdown/kit/prose/model';
 import { NodeSelection, TextSelection } from '@milkdown/kit/prose/state';
 import { callCommand, insert, $remark } from '@milkdown/kit/utils';
-import remarkEmptyTasks from '../shared/remark-empty-tasks.mjs';
-const emptyTaskRemark=$remark('emptyTasks',()=>remarkEmptyTasks);
+import remarkDocumentStructure from '../shared/remark-document-structure.mjs';
+const documentStructure=$remark('moyuDocumentStructure',()=>remarkDocumentStructure);
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
 import katex from 'katex';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { parseCodeTabs, replaceTabCode } from './codeTabs';
 import { codeExitKeys, tableDeleteKeys } from './editor/blockNavigation';
+import {codeBoundaryIme} from './editor/codeBoundaryIme';
 import { codeAttributes, resizeCodeBlocks } from './editor/codeHeight';
 import { codeContextAt } from './editor/codeIndex';
 import { canInsertInlineDrawing } from './editor/drawingInsertion';
@@ -69,13 +71,14 @@ import { formatInline, inlineFormatting, installInlineCommands } from './editor/
 import {mathRemark} from './editor/inlineMath';
 import {displayMathSchema,displayMathView,displayMathInput} from './editor/displayMath';
 import { inlinePresentation } from './editor/inlinePresentation';
-import { inlineMarkdownHandlers } from './editor/inlineSerialization';
-import { MarkdownSource } from './editor/markdownSource';
+import { inlineMarkdownHandlers,emptyParagraphJoin } from './editor/inlineSerialization';
+import { DocumentSession } from './editor/documentSession';
 import { insertMenu } from './editor/insertMenu';
 import {
   headingListItems,
   stableListItemView,
   syncListTextSelection,
+  consistentListOrder,
 } from './editor/listExtensions';
 import {
   resourceInput,
@@ -86,7 +89,12 @@ import {
 } from './editor/resources';
 import { tabbedCodeView } from './editor/tabbedCode';
 import { captureRichSelection, restoreRichSelection } from './editor/viewSelection';
-import { fromMarkdownSelection } from './editor/selection';
+import {focusEditorSelection} from './editor/selectionOwnership';
+import {resourceSelection} from './editor/resourceSelection';
+import {prepareFormula} from './editor/formulaEditing';
+import {structuralViewport} from './editor/structuralViewport';
+import {mobileHistorySelection} from './editor/mobileHistorySelection';
+import { fromMarkdownSelection,toMarkdownSelection } from './editor/selection';
 import type { EditorHandle, EditorProps } from './editorTypes';
 import type { CodeContext } from './editorTypes';
 import { codeHighlight, languages } from './highlight';
@@ -108,7 +116,7 @@ const ordinaryEmptyParagraphs = paragraphSchema.extendSchema(previous => ctx => 
     toMarkdown: {
       ...schema.toMarkdown,
       runner(state, node) {
-        if (!node.content.size) {
+        if (!node.content.size && state.top()?.type === 'root') {
           state.openNode('paragraph');
           state.closeNode();
         } else schema.toMarkdown.runner(state, node);
@@ -120,28 +128,13 @@ const ordinaryEmptyParagraphs = paragraphSchema.extendSchema(previous => ctx => 
 const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
   const callbacks = useRef(props);
   callbacks.current = props;
-  const lastDocument = useRef<Node | null>(null);
-  const sourceSnapshot = useRef<{ markdown: MarkdownSource; savedValue?: string } | null>(null);
-  const publishedSource = useRef<{ source: string; document: Node } | null>(null);
-  const createSnapshot = (ctx: Ctx, source: string, document: Node) => new MarkdownSource(
-    source, document, ctx.get(parserCtx), ctx.get(serializerCtx),
-    source => ctx.get(remarkCtx).parse(source).children.flatMap(node => {
-      const from = node.position?.start.offset, to = node.position?.end.offset;
-      return from === undefined || to === undefined ? [] : [{ from, to }];
-    }),
+  const documentSession = useRef<DocumentSession | null>(null);
+  const documentMarkdown = (ctx: Ctx, current: Node) =>
+    documentSession.current?.read(current, callbacks.current.savedValue) ?? ctx.get(serializerCtx)(current);
+  const publishDocument = (ctx: Ctx) => documentSession.current?.publish(
+    ctx.get(editorViewCtx).state.doc, callbacks.current.savedValue,
+    callbacks.current.value, callbacks.current.onChange,
   );
-  const documentMarkdown = (ctx: Ctx, current: Node) => {
-    const snapshot = sourceSnapshot.current, savedValue = callbacks.current.savedValue;
-    // Keep the original source until a real save advances the baseline. Parsing
-    // is needed only for a new saved snapshot, never on every keystroke.
-    if (snapshot && savedValue !== undefined && savedValue !== snapshot.savedValue) {
-      const document = publishedSource.current?.source === savedValue ? publishedSource.current.document : ctx.get(parserCtx)(savedValue);
-      sourceSnapshot.current = { markdown: createSnapshot(ctx, savedValue, document), savedValue };
-    }
-    const source = sourceSnapshot.current?.markdown.write(current) ?? ctx.get(serializerCtx)(current);
-    publishedSource.current = { source, document: current };
-    return source;
-  };
   const identityReady = useRef(false);
   const stopRestore = useRef<() => void>(() => {});
   useEffect(() => () => stopRestore.current(), []);
@@ -150,6 +143,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
   const { get, loading } = useEditor(
     (root) => {
       identityReady.current = false;
+      documentSession.current = null;
       const crepe = new Crepe({
         root,
         defaultValue: props.value,
@@ -197,6 +191,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         wrapInHeadingInputRule,
         codeBlockView,
         indentPlugin,
+        syncListOrderPlugin,
       ]);
       crepe.editor
         .config(ctx =>
@@ -205,6 +200,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
             options => ({
               ...options,
               handlers: inlineMarkdownHandlers(options.handlers),
+              join:[...(options.join||[]),emptyParagraphJoin],
             }),
           )
         )
@@ -225,19 +221,21 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           }));
         })
         .use(codeAttributes).use(stableCodeIds(props.root,props.path,()=>identityReady.current,message=>callbacks.current.onError(message))).use(tabbedCodeView).use(resizeCodeBlocks).use(
-          insertMenu(() => callbacks.current.onDrawing?.()),
+          insertMenu(() => callbacks.current.onDrawing?.(), () => callbacks.current.onScore?.()),
         ).use(asyncDrawingInsert)
-        .use(mathRemark).use(displayMathSchema).use(displayMathView).use(displayMathInput).use(resourceSources).use(htmlCommentSchema).use(htmlCommentKeys).use(resourceSchema).use(
+        .use(mathRemark).use(displayMathSchema).use(displayMathView).use(displayMathInput).use(documentStructure).use(resourceSources).use(htmlCommentSchema).use(htmlCommentKeys).use(resourceSchema).use(
           resourceView(props.path),
         ).use(resourceKeys).use(resourceInput).use(toolbarLinkCommand).use(inlineFormatting).use(inlinePaste)
         .use(imagePaste(props.path, props.root, message => callbacks.current.onError(message)))
         .use(sourceHeadings).use(sourceHeadingInputRule).use(headingSource).use(inlinePresentation)
-        .use(ordinaryEmptyParagraphs).use(emptyTaskRemark)
+        .use(ordinaryEmptyParagraphs)
         .use(foldingQuoteRemark).use(foldingQuoteSchema).use(foldingQuotes)
         .use(headingListItems)
         .use(stableListItemView)
         .use(syncListTextSelection)
-        .use(tableDeleteKeys)
+        .use(consistentListOrder)
+        .use(mobileHistorySelection).use(structuralViewport)
+        .use(tableDeleteKeys).use(codeBoundaryIme)
         .use(editingTableView)
         .use(documentTail).use(selectionGesture);
       crepe.on((listener) => {
@@ -246,11 +244,13 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           identityReady.current = true;
           installInlineCommands(ctx);
           installHeadingCommands(ctx);
-          lastDocument.current = ctx.get(editorViewCtx).state.doc;
-          sourceSnapshot.current = {
-            markdown: createSnapshot(ctx, props.value, lastDocument.current),
-            savedValue: callbacks.current.savedValue,
-          };
+          documentSession.current = new DocumentSession(props.value, ctx.get(editorViewCtx).state.doc, {
+            parse: ctx.get(parserCtx), serialize: ctx.get(serializerCtx),
+            spans: source => ctx.get(remarkCtx).parse(source).children.flatMap(node => {
+              const from = node.position?.start.offset, to = node.position?.end.offset;
+              return from === undefined || to === undefined ? [] : [{ from, to }];
+            }),
+          }, callbacks.current.savedValue);
           const view = ctx.get(editorViewCtx), selected = callbacks.current.selection;
           if (selected) {
             stopRestore.current();
@@ -266,15 +266,8 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         listener.updated(ctx => {
           callbacks.current.onContextChange?.();
           callbacks.current.onDrawingAllowed?.(drawingAllowed(ctx.get(editorViewCtx)));
-          const current = ctx.get(editorViewCtx).state.doc;
-          if (lastDocument.current && !lastDocument.current.eq(current)) {
-            // Milkdown debounces a transaction snapshot. Non-history transactions
-            // can advance the live document before that snapshot is published.
-            // Never acknowledge a live document while emitting an older string.
-            const latest = documentMarkdown(ctx, current);
-            if (latest !== callbacks.current.value) callbacks.current.onChange(latest);
-          }
-          lastDocument.current = current;
+          try { publishDocument(ctx); }
+          catch (error) { callbacks.current.onError(error instanceof Error ? error.message : String(error)); }
           window.dispatchEvent(new Event('moyu-code-dom'));
         });
       });
@@ -333,10 +326,39 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         if (loading) return null;
         return get()?.action(ctx => prepareDrawingInsert(ctx.get(editorViewCtx))) || null;
       },
-      scrollToOffset(offset) {
+      prepareFormula(target){return !loading?get()?.action(ctx=>prepareFormula(ctx.get(editorViewCtx),target))||null:null;},
+      visibleOffset(){
+        if(loading)return;
+        return get()?.action(ctx=>{
+          const v=ctx.get(editorViewCtx),scope=v.dom.closest('.document-scroll');if(!scope)return;
+          const box=scope.getBoundingClientRect();let found:number|undefined;
+          v.state.doc.descendants((node,pos)=>{
+            if(found!==undefined)return false;if(!node.isTextblock)return true;
+            const dom=v.nodeDOM(pos);if(!(dom instanceof HTMLElement))return false;
+            const rect=dom.getBoundingClientRect();if(rect.bottom<=box.top+24||rect.top>=box.bottom)return false;
+            const point=v.posAtCoords({left:rect.left+parseFloat(getComputedStyle(dom).paddingLeft)+4,top:Math.max(box.top+24,rect.top+2)});
+            found=toMarkdownSelection(callbacks.current.value,v.state.doc,point?.pos??pos+1);return false;
+          });return found;
+        });
+      },
+      scrollToOffset(offset,options) {
         if(loading)return;
         get()?.action(ctx=>{const v=ctx.get(editorViewCtx),source=callbacks.current.value,pos=fromMarkdownSelection(source,v.state.doc,offset);
-          v.dispatch(v.state.tr.setSelection(TextSelection.between(v.state.doc.resolve(pos),v.state.doc.resolve(pos))).scrollIntoView());v.focus();
+          stopRestore.current();
+          const attachment=options?.selectAttachment?resourceSelection(v.state.doc,pos):null;
+          const tr=v.state.tr.setSelection(attachment||TextSelection.between(v.state.doc.resolve(pos),v.state.doc.resolve(pos)));
+          if(attachment){
+            v.dispatch(tr);
+            const source=v.nodeDOM(attachment.from) as HTMLElement|null;
+            const preview=source?.dataset.attachmentPreview;
+            (preview?v.dom.ownerDocument.getElementById(preview):source)?.scrollIntoView({block:'center'});
+          }
+          else if(options?.top===undefined)v.dispatch(tr.scrollIntoView());
+          else{
+            v.dispatch(tr);const scope=v.dom.closest('.document-scroll');
+            const point=v.coordsAtPos(v.state.selection.head);if(scope)scope.scrollTop+=point.top-scope.getBoundingClientRect().top-options.top;
+          }
+          if(options?.focus!==false)focusEditorSelection(v, 'edit');
         });
       },
       scrollToCode(id) {
@@ -352,12 +374,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
               const dom = v.nodeDOM(pos) as HTMLElement | null;
               v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, pos + 1)));
               dom?.scrollIntoView({ block: 'center' });
-              const content = dom?.querySelector<HTMLElement>('.cm-content'),
-                code = content ? CodeView.findFromDOM(content) : null;
-              if (code) {
-                code.dispatch({ selection: { anchor: 0 } });
-                code.focus();
-              } else v.focus();
+              focusEditorSelection(v, 'edit');
             });
           });
         }
@@ -367,13 +384,11 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         if (!editor || loading) return null;
         return editor.action(ctx => {
           const v = ctx.get(editorViewCtx),
-            md = lastDocument.current?.eq(v.state.doc)
-              ? callbacks.current.value
-              : documentMarkdown(ctx, v.state.doc);
+            md = documentMarkdown(ctx, v.state.doc);
           return captureRichSelection(v, md);
         });
       },
-      restoreSelection(selected) {
+      restoreSelection(selected,options) {
         if (!loading) {
           get()?.action(ctx => {
             stopRestore.current();
@@ -381,6 +396,8 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
               ctx.get(editorViewCtx),
               callbacks.current.value,
               selected,
+              options?.focus!==false,
+              options?.viewport!==false,
             );
           });
         }
@@ -394,7 +411,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
             v.state.doc.descendants((node, pos) => {
               if (node.type.name === 'resource_link' && v.nodeDOM(pos) === attachment) {
                 v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, pos + 1)));
-                v.focus();
+                focusEditorSelection(v, 'edit');
                 return false;
               }
             });
@@ -408,7 +425,7 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
               v.dispatch(
                 v.state.tr.setSelection(TextSelection.near(v.state.doc.resolve(point.pos))),
               );
-              v.focus();
+              focusEditorSelection(v, 'edit');
             }
           });
           return;
@@ -463,6 +480,19 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
         }
         return result;
       },
+      setCodeAttributes(target,expected,patch) {
+        let changed=false;
+        if(!loading)get()?.action(ctx=>{
+          const view=ctx.get(editorViewCtx);
+          view.state.doc.descendants((node,pos)=>{
+            if(changed||node.type.name!=='code_block'||node.textContent!==expected)return;
+            const dom=view.nodeDOM(pos);if(!dom||!(dom===target||dom.contains(target)))return;
+            let meta=node.attrs.meta||'';for(const [key,value]of Object.entries(patch))meta=withAttribute(meta,key,value);
+            if(meta!==node.attrs.meta){view.dispatch(view.state.tr.setNodeMarkup(pos,undefined,{...node.attrs,meta}));changed=true;}
+          });
+        });
+        return changed;
+      },
       replaceCode(target, code, expected, tabIndex) {
         let changed = false;
         if (!loading) {
@@ -497,49 +527,40 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
       ensureCodeIds() {
         const editor = get();
         if (!editor || loading) return callbacks.current.value;
-        let changed = false;
         editor.action(ctx => {
           const view = ctx.get(editorViewCtx);
           const result = codeIdTransaction(view.state, props.root, props.path);
           if(result.exhausted)callbacks.current.onError(exhaustedIdsMessage);
-          if(result.transaction.docChanged) {changed=true;view.dispatch(result.transaction);}
+          if(result.transaction.docChanged) view.dispatch(result.transaction);
 
         });
-        if(!changed && lastDocument.current?.eq(editor.action(ctx => ctx.get(editorViewCtx).state.doc))) return callbacks.current.value;
         const value = editor.action(ctx => documentMarkdown(ctx, ctx.get(editorViewCtx).state.doc));
-        lastDocument.current = editor.action(ctx => ctx.get(editorViewCtx).state.doc);
         return value;
       },
       flush() {
         const editor = get();
         if (!editor || loading) return;
-        editor.action((ctx) => {
-          const current = ctx.get(editorViewCtx).state.doc;
-          if (lastDocument.current && !lastDocument.current.eq(current)) {
-            callbacks.current.onChange(documentMarkdown(ctx, current));
-            lastDocument.current = current;
-          }
-        });
+        editor.action(publishDocument);
       },
       canIndentIntoList(target){
         if(loading)return false;
         return get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);return pos!==undefined&&indentBlockIntoList(view.state,pos);})||false;
       },
       indentIntoList(target){
-        get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);if(pos!==undefined&&indentBlockIntoList(view.state,pos,view.dispatch))view.focus();});
+        get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);if(pos!==undefined&&indentBlockIntoList(view.state,pos,view.dispatch,view))focusEditorSelection(view, 'edit');});
       },
       canOutdentFromList(target) {
         if(loading)return false;
         return get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);return pos!==undefined&&outdentBlockFromList(view.state,pos);})||false;
       },
       outdentFromList(target) {
-        get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);if(pos!==undefined&&outdentBlockFromList(view.state,pos,view.dispatch))view.focus();});
+        get()?.action(ctx=>{const view=ctx.get(editorViewCtx),pos=resourceBlockPosition(view,target);if(pos!==undefined&&outdentBlockFromList(view.state,pos,view.dispatch,view))focusEditorSelection(view, 'edit');});
       },
       action(action,options) {
         const editor = get();
         if (!editor || loading) return;
         if (contextCommands[action]) {
-          editor.action(ctx => { const view = ctx.get(editorViewCtx); contextCommands[action]!(view.state, view.dispatch); if(options?.focus!==false)view.focus(); });
+          editor.action(ctx => { const view = ctx.get(editorViewCtx); contextCommands[action]!(view.state, view.dispatch, view); if(options?.focus!==false)focusEditorSelection(view, 'edit'); });
           return;
         }
         const actions: Partial<Record<Parameters<EditorHandle['action']>[0], () => void>> = {
@@ -568,9 +589,9 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
           h3: () => editor.action(callCommand(wrapInHeadingCommand.key, 3)),
         };
         actions[action]?.();
-        if(options?.focus!==false)editor.action((ctx) => ctx.get(editorViewCtx).focus());
+        if(options?.focus!==false)editor.action((ctx) => focusEditorSelection(ctx.get(editorViewCtx), 'edit'));
       },
-      insert(text) {
+      insert(text,options) {
         const editor = get();
         if (!editor || loading) return;
         if (
@@ -594,10 +615,10 @@ const Inner = forwardRef<EditorHandle, EditorProps>(function Inner(props, ref) {
             );
           } else insert(text)(ctx);
         });
-        editor.action((ctx) => ctx.get(editorViewCtx).focus());
+        if(options?.focus!==false)editor.action((ctx) => focusEditorSelection(ctx.get(editorViewCtx), 'edit'));
       },
       focus() {
-        if (!loading) get()?.action((ctx) => ctx.get(editorViewCtx).focus());
+        if (!loading) get()?.action((ctx) => focusEditorSelection(ctx.get(editorViewCtx), 'edit'));
       },
       scrollToHeading(index) {
         document

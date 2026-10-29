@@ -21,6 +21,7 @@ let syncScheduler;
 const { Drawings } = require('./drawings.cjs');
 const { Attachments } = require('./attachments.cjs');
 const { References } = require('./references.cjs');
+const {canWriteUiClipboard}=require('./ui-permissions.cjs');
 const { CodeData } = require('./code-data.cjs');
 const {DocumentFiles}=require('./document-files.cjs');
 let documentFiles;
@@ -223,7 +224,7 @@ const handle = (name, action) =>
       return {
         ok: false,
         error: {
-          message: error.code === 'EEXIST' ? '这个名称已经存在。' : error.message,
+          message: error.code === 'EEXIST' && error.syscall ? '这个名称已经存在。' : error.message,
           code: error.code,
           current: error.current,
         },
@@ -642,6 +643,7 @@ app
           path.join(__dirname, '../resources/demo-vault'),
           defaultRoot,
         );
+        await copySeed(path.join(__dirname,'../resources/workspace-guide/数据结构'),path.join(defaultRoot,'数据结构'));
       }
       return defaultRoot;
     };
@@ -665,7 +667,7 @@ app
         const url = new URL(request.url);
         if (url.host !== 'vault') throw new Error('Invalid asset');
         const relative = decodeURIComponent(url.pathname.slice(1));
-        if (!/\.(png|apng|jpe?g|jfif|pjpeg|pjp|gif|webp|avif|svg|bmp|ico|cur|pdf|ttf|otf|woff2?)$/i.test(relative)) {
+        if (!/\.(png|apng|jpe?g|jfif|pjpeg|pjp|gif|webp|avif|svg|bmp|ico|cur|pdf|alphatex|atex|musicxml|mxl|gp[345]?|gpx|ttf|otf|woff2?)$/i.test(relative)) {
           throw new Error('Invalid asset');
         }
         const response = await net.fetch(pathToFileURL(await vault.resolve(relative)).href);
@@ -690,12 +692,10 @@ app
       if(scheme&&!details.url.startsWith(scheme)&&!details.url.startsWith('data:')&&!details.url.startsWith('blob:'))return callback({cancel:true});
       callback({cancel:false});
     });
-    uiSession.setPermissionRequestHandler((contents, permission, callback) =>
-      callback(contents === window?.webContents && permission === 'local-fonts')
-    );
-    uiSession.setPermissionCheckHandler((contents, permission) =>
-      contents === window?.webContents && permission === 'local-fonts'
-    );
+    const uiUrl=!app.isPackaged&&process.env.MOYU_DEV_URL?process.env.MOYU_DEV_URL:'moyu://app';
+    const allowed=(contents,permission,details)=>(contents===window?.webContents&&permission==='local-fonts')||canWriteUiClipboard(contents,window?.webContents,permission,details,uiUrl);
+    uiSession.setPermissionRequestHandler((contents,permission,callback,details)=>callback(allowed(contents,permission,details)));
+    uiSession.setPermissionCheckHandler((contents,permission,_origin,details)=>allowed(contents,permission,details));
     registerIPC();
     setMenu();
     await createWindow();

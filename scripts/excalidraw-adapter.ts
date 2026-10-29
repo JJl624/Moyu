@@ -7,10 +7,19 @@ import { externalizeFontWasm } from './excalidraw-wasm.ts';
 export function excalidrawAdapter():Plugin {
   const root=path.resolve('node_modules/@excalidraw/excalidraw/dist/dev').replaceAll('\\','/');
   const entry=root+'/index.js', locale=path.resolve('resources/excalidraw-zh-CN.json').replaceAll('\\','/');
+  const version=JSON.parse(fs.readFileSync(path.resolve('node_modules/@excalidraw/excalidraw/package.json'),'utf8')).version;
+  if(version!=='0.18.1')throw new Error('Excalidraw '+version+' requires adapter and regression review before upgrading');
+  const required=['DEV: true','urls.push(new URL(assetUrl, _ExcalidrawFontFace.ASSETS_FALLBACK_URL));',
+    'return `${fontFamilyString}${getFontFamilyFallbacks(id).map((x) => `, ${x}`).join("")}`;',
+    "return `format('${parts.pop()}')`;"];
+  const seen=new Set<string>();let building=false;
   if(!fs.existsSync(locale))throw new Error('Missing bundled Chinese Excalidraw locale');
-  return {name:'moyu-excalidraw',enforce:'pre',resolveId(id){if(id==='moyu-excalidraw')return entry;},transform(code,id){
+  return {name:'moyu-excalidraw',enforce:'pre',configResolved(config){building=config.command==='build';},buildStart(){seen.clear();},
+    buildEnd(error){if(building&&!error)for(const pattern of required)if(!seen.has(pattern))throw new Error('Excalidraw pinned integration missing: '+pattern);},
+    resolveId(id){if(id==='moyu-excalidraw')return entry;},transform(code,id){
     const normalized=id.replaceAll('\\','/');
     if(normalized.startsWith(root+'/chunk-')) {
+      for(const pattern of required)if(code.includes(pattern))seen.add(pattern);
       const next=code.replace('DEV: true','DEV: false').replace('urls.push(new URL(assetUrl, _ExcalidrawFontFace.ASSETS_FALLBACK_URL));','/* All font resources are bundled locally. */').replace('return `${fontFamilyString}${getFontFamilyFallbacks(id).map((x) => `, ${x}`).join("")}`;','return `${JSON.stringify(fontFamilyString)}${getFontFamilyFallbacks(id).map((x) => `, ${JSON.stringify(x)}`).join("")}`;').replace("return `format('${parts.pop()}')`;", "const extension=parts.pop().toLowerCase();return `format('${extension==='ttf'?'truetype':extension==='otf'?'opentype':extension}')`;");
       return externalizeFontWasm(next,(name,source)=>this.emitFile({type:'asset',name,source}));
     }

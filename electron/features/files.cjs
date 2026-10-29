@@ -2,6 +2,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 function createFilesOperations(services) {
   return {
+    'attachment.views-read': input => require('../attachment-views.cjs').readAttachmentViews(services,input),
+    'attachment.views-update': input => require('../attachment-views.cjs').updateAttachmentViews(services,input),
     'history.configure': async input => {
       const options = require('../../shared/history-options.mjs').historyOptions(input.settings);
       await services.dataStore.set({key:'moyu-history', value:JSON.stringify(options)});
@@ -35,6 +37,7 @@ function createFilesOperations(services) {
     },
     'file.binary-read': (input) => require('../file-viewers.cjs').binaryRead(services.vault, input.path),
     'file.html-open': (input) => services.htmlFileViews.open(input),
+    'file.html-inline-open': (input) => services.htmlFileViews.openInline(input),
     'file.html-close': (input) => services.htmlFileViews.close(input.token),
     'file.sqlite-bytes': (input) => require('../file-viewers.cjs').binaryRead(services.vault, input.path, true),
     'image.read': (input) => {

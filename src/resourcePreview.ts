@@ -1,4 +1,5 @@
 import { api,assetURL } from './bridge';
+import {attachmentPreviewKind} from '../shared/attachment-previews.mjs';
 const imageRevisions=new Map<string,number>();let imageSequence=0,imageScope='';
 export function invalidateResourceImages(root:string,paths:string[]){
   if(root!==imageScope){imageScope=root;imageRevisions.clear();imageSequence++;}
@@ -10,8 +11,8 @@ export function resourceImageURL(document:string,href:string){
   if(!url.startsWith('moyu-asset:') && !(api.platform==='android' && url.startsWith('https://appassets.androidplatform.net/vault/')))return url;
   const fresh=new URL(url);fresh.searchParams.set('revision',String(imageRevisions.get(resourcePath(document,href))??imageSequence));return fresh.href;
 }
-export const isPreviewResource = (href: string) =>
-  !/^([a-z][\w+.-]*:|\/)/i.test(href) && /\.excalidraw(?:[#?].*)?$/i.test(href);
+// Compatibility predicate for legacy drawing-specific operations, not dispatch.
+export const isPreviewResource = (href: string) => attachmentPreviewKind(href,{standalone:true})==='drawing';
 export function resourcePath(document: string, href: string): string {
   let decoded;
   try {

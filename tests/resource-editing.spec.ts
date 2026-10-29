@@ -199,8 +199,9 @@ test("Dragging across multiple attachments keeps geometry stable until release i
       await expect(images.first()).toBeVisible();
       expect(await images.first().boundingBox()).toEqual(before);
       await page.mouse.up();
-      await expect(page.locator(".visual-attachment.editing")).toHaveCount(2);
-      await expect(images.first()).toBeHidden();
+      await expect(page.locator(".visual-attachment.editing")).toHaveCount(0);
+      await expect(images.first()).toBeVisible();
+      await expect(page.locator('.attachment-overlay.range-selected')).toHaveCount(2);
       expect(await page.evaluate(() => getSelection()?.toString())).toContain("中间");
     }
     expect(errors).toEqual([]);

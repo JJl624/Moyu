@@ -41,7 +41,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
         const target = event.target as HTMLElement;
         if (target.closest('.tree-row,.excalidraw,.element-menu')) return;
         if (target.closest('button,select') && !target.closest('.tab')) return;
-        const preview = target.closest<HTMLElement>('.attachment-overlay');
+        const preview = target.closest<HTMLElement>('.attachment-overlay,.reading-view .attachment-card');
         const actions: MenuAction[] = [],
           field = target.closest('input,textarea') as HTMLInputElement | HTMLTextAreaElement | null;
         const editorContext = editor.current?.prepareContext?.(target, { left: event.clientX, top: event.clientY });
@@ -95,7 +95,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
           : mode !== 'read'
           ? editor.current?.attachmentAt?.(target, { left: event.clientX, top: event.clientY })
           : null;
-        const math = target.closest('.math-block,.reading-view .katex-display');
+        const math = target.closest('.math-block,.inline-math,.syntax-preview .katex,.reading-view .katex-display');
         const image = target.closest('img');
         const anchor = target.closest('a'),
           table = target.closest('table')
@@ -211,6 +211,7 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
               path = linkedAttachment.wiki
                 ? wikiPath(ws.active, href, files)
                 : resourcePath(ws.active, href);
+            if(editableRich&&preview)actions.push({id:'link.edit',label:'编辑引用',action:()=>editor.current?.selectAt?.(preview)});
             if (path && isPreviewResource(href)) {
               actions.push({
                 id: 'open', label: '编辑绘图',
@@ -218,7 +219,9 @@ export function createElementContextMenu({editor, ws, mode, files, markdownValue
               });
             } else if (path) {
               actions.push({
-                id:'open', label: linkedAttachment.image || isImage(path)
+                id:'open', label: /\.pdf$/i.test(path) ? '查看 PDF'
+                  : /\.(alphatex|atex|musicxml|mxl|gp[345]?|gpx)$/i.test(path) ? '查看乐谱'
+                  : linkedAttachment.image || isImage(path)
                   ? '查看图片'
                   : /\.(md|markdown)$/i.test(path)
                   ? '打开链接'

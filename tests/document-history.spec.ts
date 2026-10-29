@@ -207,7 +207,7 @@ test("History preferences apply on blur, persist across reopening, and disable r
     });
     await page.locator(".tree-item[title=\"设置历史.md\"]").dblclick();
     await page.getByRole("button", { name: "文档历史", exact: true }).click();
-    await expect(page.locator(".history-policy")).toContainText("不记录保存版本");
+    await expect(page.locator(".history-policy")).toHaveAttribute("title", /不记录保存版本/);
     await expect(page.locator(".history-entries button")).toHaveCount(0);
     await page.getByRole("button", { name: "偏好设置", exact: true }).click();
     await selectPreference(page,"编辑");
@@ -221,7 +221,7 @@ test("History preferences apply on blur, persist across reopening, and disable r
       await window.moyu!.save("设置历史.md", "recorded", before.data.version);
     });
     await expect(page.locator(".history-entries button")).toHaveCount(2);
-    await expect(page.locator(".history-policy")).toContainText("5 分钟");
+    await expect(page.locator(".history-policy")).toHaveAttribute("title", /5 分钟/);
   } finally {
     await app.evaluate(({ app }) => app.exit(0));
   }

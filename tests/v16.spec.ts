@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import { _electron as electron, expect, type Page, test } from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -102,7 +103,7 @@ test('Repeated empty-height clicks and resets never create NaN; dragging replace
     await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
   }
 });
-test('Visual previews live outside contenteditable; clicks focus their source link, source caret stays text-height and dimensions remain live', async () => {
+test('Visual previews live outside contenteditable; context commands focus their source link, source caret stays text-height and dimensions remain live', async () => {
   const { app, page, root, errors } = await fixture();
   try {
     await fs.writeFile(
@@ -114,7 +115,7 @@ test('Visual previews live outside contenteditable; clicks focus their source li
     await expect(preview.locator('img')).toHaveCSS('width', '160px');
     expect(await preview.evaluate(el => el.closest('[contenteditable=true]'))).toBe(null);
     await caret(page, '.ProseMirror p:first-child', '上方', 1);
-    await preview.locator('img').click();
+    await editPreviewReference(page,preview);
     await expect(page.locator('.visual-attachment .syntax-raw')).toBeVisible();
     await expect(preview).toBeHidden();
     expect(
@@ -183,17 +184,18 @@ test('Real clipboard PNG is copied once to attachments in both modes, replaces s
         ]);
       }, (await fs.readFile(path.join(project, 'resources/icon.png'))).toString('base64'));
       await page.evaluate(() => window.moyu!.feature('editing.command', { command: 'paste' }));
-      await expect(page.locator('.attachment-overlay img')).toHaveCount(1);
+      await expect(page.locator('.ProseMirror .attachment-link')).toHaveCount(1);
+      await expect(page.locator('.attachment-overlay img')).toHaveCount(0);
       await expect.poll(async () => {
-        const names = await fs.readdir(path.join(root, 'attachments'));
+        const names = await fs.readdir(path.join(root, '粘贴.assets/attachments'));
         return names.filter(n => /\.png$/.test(n)).length;
       }).toBe(1);
       await save(app);
       await expect.poll(() => fs.readFile(path.join(root, '粘贴.md'), 'utf8')).toMatch(
-        /左!\[.*\]\(attachments\/.*\.png\)右/,
+        /左!\[.*\]\(粘贴\.assets\/attachments\/.*\.png\)右/,
       );
       const md = await fs.readFile(path.join(root, '粘贴.md'), 'utf8');
-      expect(md).toMatch(/左!\[.*\]\(attachments\/.*\.png\)右/);
+      expect(md).toMatch(/左!\[.*\]\(粘贴\.assets\/attachments\/.*\.png\)右/);
       expect(md).not.toMatch(/blob:|data:image|unavailable/);
       await page.getByRole('button', { name: '源码', exact: true }).click();
       await page.locator('.source-editor .cm-content').click();
@@ -204,7 +206,10 @@ test('Real clipboard PNG is copied once to attachments in both modes, replaces s
       await save(app);
       await expect.poll(() => fs.readFile(path.join(root, '粘贴.md'), 'utf8')).toContain('-1.png');
       await page.getByRole('button', { name: '预览编辑', exact: true }).click();
-      await expect(page.locator('.attachment-overlay img')).toHaveCount(2);
+      await caret(page,'.ProseMirror p:first-child','左',0);
+      await expect(page.locator('.attachment-overlay img')).toHaveCount(0);
+      await expect(page.locator('.ProseMirror .attachment-link')).toHaveCount(2);
+      await expect(page.locator('.ProseMirror p:first-child a')).toHaveCount(1);
       expect(errors).toEqual([]);
     } finally {
       await app.evaluate(async ({ clipboard }) => {
@@ -328,7 +333,8 @@ test('HTML clipboard images and file drops share the same link editor; reopening
         new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
       );
     }, png);
-    await expect(page.locator('.attachment-overlay img')).toHaveCount(1);
+    await expect(page.locator('.ProseMirror .attachment-link')).toHaveCount(1);
+    await expect(page.locator('.attachment-overlay img')).toHaveCount(0);
     const drop = async (selector: string, name: string) => {
       await page.locator(selector).evaluate((el, { png, name }) => {
         const data = new DataTransfer();
@@ -350,7 +356,8 @@ test('HTML clipboard images and file drops share the same link editor; reopening
       }, { png, name });
     };
     await drop('.ProseMirror p:last-child', '中文图片.png');
-    await expect(page.locator('.attachment-overlay img')).toHaveCount(2);
+    await expect(page.locator('.ProseMirror .attachment-link')).toHaveCount(2);
+    await expect(page.locator('.attachment-overlay img')).toHaveCount(0);
     await page.getByRole('button', { name: '源码', exact: true }).click();
     await page.locator('.source-editor .cm-content').click();
     await page.evaluate(() =>
@@ -369,15 +376,16 @@ test('HTML clipboard images and file drops share the same link editor; reopening
     await page.locator('.tab.active .tab-close').click();
     await page.locator('.tree-item[title="导入.md"]').dblclick();
     await page.getByRole('button', { name: '预览编辑', exact: true }).click();
-    await expect(page.locator('.attachment-overlay img')).toHaveCount(3);
+    await caret(page,'.ProseMirror p:first-child','开始',0);
+    await expect(page.locator('.ProseMirror .attachment-link')).toHaveCount(3);
+    await expect(page.locator('.attachment-overlay img')).toHaveCount(0);
     await expect(page.locator('.ProseMirror img,.ProseMirror-selectednode')).toHaveCount(0);
     for (let i = 0; i < 3; i++) {
-      const preview = page.locator('.attachment-overlay').nth(i);
-      await editAttachment(page, page.locator('.visual-attachment').nth(i));
-      await expect(page.locator('.visual-attachment').nth(i).locator('.syntax-raw')).toBeVisible();
+      await editAttachment(page, page.locator('.attachment-link').nth(i));
+      await expect(page.locator('.attachment-link').nth(i).locator('.syntax-raw')).toBeVisible();
       await page.locator('.ProseMirror p').first().click({ position: { x: 3, y: 5 } });
     }
-    expect((await fs.readdir(path.join(root, 'attachments'))).filter(name => name.endsWith('.png')))
+    expect((await fs.readdir(path.join(root, '导入.assets/attachments'))).filter(name => name.endsWith('.png')))
       .toHaveLength(3);
     expect(errors).toEqual([]);
   } finally {

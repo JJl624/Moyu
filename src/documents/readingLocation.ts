@@ -1,10 +1,12 @@
 import { lineOffset } from '../../shared/search-location.mjs';
 
-export function revealReadingLocation(block: HTMLElement, source: string, offset: number) {
+export function revealReadingLocation(block: HTMLElement, source: string, offset: number,options?:{top?:number;focus?:boolean}) {
+  for(let parent:HTMLElement|null=block;parent;parent=parent.parentElement)if(parent instanceof HTMLDetailsElement)parent.open=true;
   const tabs = block.querySelector<HTMLElement>('[data-tabbed-code]');
   if (tabs && tabs.dataset.tabsDisplay !== 'source') tabs.querySelector<HTMLButtonElement>('[data-tabs-toggle]')?.click();
   const code = block.matches('code') ? block : block.querySelector<HTMLElement>('pre:not([hidden]) code');
   block.scrollIntoView({ block: 'center' });
+  if(options?.top!==undefined){const scroll=block.closest('.document-scroll');if(scroll)scroll.scrollTop+=block.getBoundingClientRect().top-scroll.getBoundingClientRect().top-options.top;}
   if (code) {
     const start = Number(block.dataset.sourceFrom),
       firstLine = source.indexOf('\n', start) + 1,
@@ -24,10 +26,19 @@ export function revealReadingLocation(block: HTMLElement, source: string, offset
           container.scrollTop += range.getBoundingClientRect().top - container.getBoundingClientRect().top - container.clientHeight / 2;
         }
       }
-      if (scroll) scroll.scrollTop += range.getBoundingClientRect().top - scroll.getBoundingClientRect().top - scroll.clientHeight / 2;
+      if (scroll) scroll.scrollTop += range.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (options?.top??scroll.clientHeight / 2);
       break;
     }
+  }else if(options?.top!==undefined){
+    const from=Number(block.dataset.sourceFrom),to=Number(block.dataset.sourceTo),walker=document.createTreeWalker(block,NodeFilter.SHOW_TEXT);
+    let cursor=from,node:Node|null,found=false;
+    while(!found&&(node=walker.nextNode())){
+      const text=node.textContent||'';
+      for(let index=0;index<text.length;index++){
+        const match=source.indexOf(text[index],cursor);if(match<0||match>=to)break;cursor=match+1;
+        if(match>=offset){const range=document.createRange();range.setStart(node,index);range.setEnd(node,index+1);const scroll=block.closest('.document-scroll'),box=range.getBoundingClientRect();if(scroll&&box.height)scroll.scrollTop+=box.top-scroll.getBoundingClientRect().top-options.top;found=true;break;}
+      }
+    }
   }
-  block.tabIndex = -1;
-  block.focus({ preventScroll: true });
+  if(options?.focus!==false){block.tabIndex = -1;block.focus({ preventScroll: true });}
 }

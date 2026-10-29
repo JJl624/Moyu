@@ -8,12 +8,14 @@ export function Modal({
   onClose,
   wide = false,
   initialFocus,
+  restoreFocus = true,
 }: {
   title: string;
   children: ReactNode;
   onClose(): void;
   wide?: boolean;
   initialFocus?: string;
+  restoreFocus?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -52,7 +54,7 @@ export function Modal({
     document.addEventListener("keydown", keydown);
     return () => {
       document.removeEventListener("keydown", keydown);
-      previous?.focus();
+      if(restoreFocus)previous?.focus();
     };
   }, []);
   return (

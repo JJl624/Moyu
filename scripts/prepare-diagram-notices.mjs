@@ -7,6 +7,6 @@ async function visit(directory){if(seen.has(directory))return;seen.add(directory
   notices.push(pkg.name+' '+pkg.version+' ('+(pkg.license||'see notice')+')\n'+(texts.join('\n')||'Source and license: '+(pkg.repository?.url||pkg.repository||pkg.homepage||'')));
   for(const name of Object.keys(pkg.dependencies||{}))await visit(await locate(directory,name));
 }
-for(const name of ['mermaid','@mermaid-js/layout-elk','pdfjs-dist'])await visit(await locate(root,name));
+for(const name of ['mermaid','@mermaid-js/layout-elk','@embedpdf/snippet','@coderline/alphatab','mathlive'])await visit(await locate(root,name));
 await fs.mkdir(path.join(root,'resources/licenses'),{recursive:true});await fs.writeFile(path.join(root,'resources/licenses/DIAGRAM-DEPENDENCIES.txt'),notices.sort().join('\n\n----------------------------------------\n\n'));
 console.log('Diagram dependency notices: '+seen.size+' packages.');

@@ -1,12 +1,15 @@
 // The preview layer owns DOM geometry and the native pointer gesture. It has
 // no ProseMirror positions, transactions or document model.
+import {touchSettings} from '../touchSettings';
+import {attachmentControlTarget} from '../attachments/controlTarget';
+import {caretRangeAt} from '../domCaret';
 let previewId = 0;
 type Entry = {
   source: HTMLElement;
   preview: HTMLElement;
   space: HTMLElement;
   initialEditing: boolean;
-  activate: () => void;
+  activate: (edit?:boolean) => void;
 };
 const layers = new WeakMap<HTMLElement, ReturnType<typeof createLayer>>();
 function createLayer(editor: HTMLElement, host: HTMLElement) {
@@ -16,8 +19,10 @@ function createLayer(editor: HTMLElement, host: HTMLElement) {
     const px = value + "px";
     if (element.style[name] !== px) element.style[name] = px;
   };
-  let origin: { x: number; y: number } | undefined, clicked: Entry | undefined;
+  let origin: { x: number; y: number; touch:boolean; at:number } | undefined, clicked: Entry | undefined;
+  let activation: 'select'|'edit'|undefined;
   let dragAnchor: { node: Node; offset: number } | undefined;
+  let driven=false;
   const markSelection = () => {
     const selection = editor.ownerDocument.getSelection();
     if (!selecting) return;
@@ -28,43 +33,107 @@ function createLayer(editor: HTMLElement, host: HTMLElement) {
     }
   };
   const down = (event: PointerEvent) => {
-    if (event.button !== 0 || (event.target as Element).closest("button,input,.cm-editor")) return;
+    if (event.button !== 0 || attachmentControlTarget(event.target) || (event.target as Element).closest("button:not(.attachment-preview-caption),input,select,.cm-editor")) return;
     dragging = true;
     selecting = false;
     clicked = undefined;
+    activation = undefined;
     dragAnchor = undefined;
-    origin = { x: event.clientX, y: event.clientY };
+    driven=false;
+    origin = { x: event.clientX, y: event.clientY, touch:event.pointerType==='touch', at:performance.now() };
     for (const entry of entries) {
       entry.initialEditing = entry.preview.hidden;
       entry.preview.classList.remove("drag-selected");
     }
+    const gap=!event.ctrlKey&&!event.metaKey&&!event.shiftKey?paragraphGap(event):undefined;
+    if(gap){event.preventDefault();clicked=gap;}
+  };
+  // Paragraph margins are not editable empty paragraphs. A native click there
+  // can resolve to either edge of the hidden reference and unfold the preview.
+  // Keep that click inert; a real neighbouring paragraph retains native input.
+  const paragraphGap=(event:MouseEvent)=>{
+    const target=event.target as Element;
+    if(!editor.contains(target)||target.closest('.syntax-preview,.syntax-raw,.cm-editor'))return;
+    const point=target.closest('p')?undefined:caretRangeAt(editor.ownerDocument,event.clientX,event.clientY);
+    const element=point?.startContainer.nodeType===1?point.startContainer as Element:point?.startContainer.parentElement;
+    const paragraph=target.closest('p')||element?.closest('p');
+    if(!paragraph)return;
+    return [...entries].find(entry=>!entry.preview.hidden&&entry.source.closest('p')===paragraph);
+  };
+  const gapDown=(event:MouseEvent)=>{
+    if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey)return;
+    const gap=paragraphGap(event);
+    if(gap){event.preventDefault();event.stopPropagation();clicked=gap;}
   };
   const move = (event: PointerEvent) => {
     if (!dragging || !(event.buttons & 1) || !origin) return;
-    if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) <= 2) return;
+    if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) <= (origin.touch?touchSettings().touchSlop:2)) return;
     selecting = true;
+    if(origin.touch)return; // A touch pan belongs to the native scroller.
     const selection = editor.ownerDocument.getSelection();
-    if (!dragAnchor && selection?.anchorNode && editor.contains(selection.anchorNode)) {
+    if(!dragAnchor&&clicked?.source.parentNode){
+      const parent=clicked.source.parentNode;
+      dragAnchor={node:parent,offset:[...parent.childNodes].indexOf(clicked.source)};
+    } else if (!dragAnchor && selection?.anchorNode && editor.contains(selection.anchorNode)) {
       dragAnchor = { node: selection.anchorNode, offset: selection.anchorOffset };
     }
     markSelection();
   };
+  const extendTo=(node:Node,offset:number)=>{
+    if(!dragAnchor||!editor.contains(dragAnchor.node))return;
+    const selection=editor.ownerDocument.getSelection();
+    if(selection?.anchorNode!==dragAnchor.node||selection.anchorOffset!==dragAnchor.offset||selection.focusNode!==node||selection.focusOffset!==offset)
+      selection?.setBaseAndExtent(dragAnchor.node,dragAnchor.offset,node,offset);
+    markSelection();
+  };
+  const extendEntry=(entry:Entry)=>{
+    if(!dragAnchor)return;
+    const parent=entry.source.parentNode;if(!parent)return;
+    const at=[...parent.childNodes].indexOf(entry.source),point=editor.ownerDocument.createRange();
+    point.setStart(dragAnchor.node,dragAnchor.offset);point.collapse(true);
+    driven=true;extendTo(parent,at+(point.comparePoint(parent,at)<0?0:1));
+  };
+  // Setting a range across a noneditable overlay ends Chromium's native drag.
+  // Continue that same DOM gesture through subsequent overlays and back into
+  // text, without asking renderers or the geometry layer for model positions.
+  const mouseMove=(event:MouseEvent)=>{
+    if(!dragging||!selecting||origin?.touch||!(event.buttons&1)||!dragAnchor)return;
+    const entry=[...entries].find(entry=>!entry.preview.hidden&&entry.preview.contains(event.target as Node));
+    if(entry){event.preventDefault();extendEntry(entry);return;}
+    if(!driven)return;
+    const range=caretRangeAt(editor.ownerDocument,event.clientX,event.clientY);
+    if(range&&editor.contains(range.startContainer)&&!((range.startContainer.nodeType===1?range.startContainer as Element:range.startContainer.parentElement)?.closest('.attachment-space,.syntax-preview,.cm-editor'))){
+      event.preventDefault();extendTo(range.startContainer,range.startOffset);
+    }
+  };
+  const dragStart=(event:DragEvent)=>{
+    // Our first range extension must not become a native drag of that newly
+    // selected content when the pointer crosses the browser's drag threshold.
+    if(dragging&&driven)event.preventDefault();
+  };
   const release = (event: Event) => {
     if (!dragging) return;
-    const commit = event.type === "pointerup";
-    const wasSelecting = selecting, chosen = clicked;
+    const commit = event.type === "pointerup"&&!event.defaultPrevented
+      &&(!origin?.touch||performance.now()-origin.at<touchSettings().longPressTimeout);
+    const wasSelecting = selecting, chosen = clicked, action = activation;
     dragging = false;
     selecting = false;
     clicked = undefined;
+    activation = undefined;
     origin = undefined;
     dragAnchor = undefined;
+    driven=false;
     for (const entry of entries) entry.preview.classList.remove("drag-selected");
-    if (commit && !wasSelecting && chosen) chosen.activate();
-    else editor.dispatchEvent(new Event("moyu-attachment-selection-settle"));
+    if (commit && !wasSelecting && chosen) {
+      if(action)chosen.activate(action==='edit');
+    } else editor.dispatchEvent(new Event("moyu-attachment-selection-settle"));
     editor.dispatchEvent(new Event("moyu-inline-selection"));
   };
   host.addEventListener("pointerdown", down, true);
+  host.addEventListener('mousedown',gapDown,true);
   host.addEventListener("pointermove", move, true);
+  host.addEventListener('mousemove',mouseMove,true);
+  host.addEventListener('dragstart',dragStart,true);
   window.addEventListener("pointerup", release);
   window.addEventListener("pointercancel", release);
   window.addEventListener("blur", release);
@@ -82,6 +151,8 @@ function createLayer(editor: HTMLElement, host: HTMLElement) {
     });
     for (const { entry, box, maxWidth } of positions) {
       style(entry.preview, "maxWidth", maxWidth);
+      style(entry.preview, "width", maxWidth);
+      style(entry.space, "width", maxWidth);
       style(entry.preview, "left", box.left - origin.left);
       style(entry.preview, "top", box.top - origin.top);
     }
@@ -123,32 +194,13 @@ function createLayer(editor: HTMLElement, host: HTMLElement) {
   window.addEventListener("resize", schedule);
   return {
     schedule,
-    choose(entry: Entry) {
+    choose(entry: Entry, action?:'select'|'edit') {
       clicked = entry;
-      const parent = entry.space.parentNode;
-      if (parent) {
-        const at = [...parent.childNodes].indexOf(entry.space);
-        editor.ownerDocument.getSelection()?.setBaseAndExtent(parent, at, parent, at);
-      }
+      activation = action;
     },
     extend(entry: Entry) {
       if (!selecting || !dragAnchor || !editor.contains(dragAnchor.node)) return;
-      const parent = entry.space.parentNode;
-      if (!parent) return;
-      const at = [...parent.childNodes].indexOf(entry.space);
-      const point = editor.ownerDocument.createRange();
-      point.setStart(dragAnchor.node, dragAnchor.offset);
-      point.collapse(true);
-      const backward = point.comparePoint(parent, at) < 0;
-      const selection = editor.ownerDocument.getSelection();
-      const offset = at + (backward ? 0 : 1);
-      if (
-        selection?.anchorNode !== dragAnchor.node || selection.anchorOffset !== dragAnchor.offset
-        || selection.focusNode !== parent || selection.focusOffset !== offset
-      ) {
-        selection?.setBaseAndExtent(dragAnchor.node, dragAnchor.offset, parent, offset);
-      }
-      markSelection();
+      extendEntry(entry);
     },
     get dragging() {
       return dragging;
@@ -170,7 +222,10 @@ function createLayer(editor: HTMLElement, host: HTMLElement) {
         editor.ownerDocument.removeEventListener("selectionchange", markSelection);
         window.removeEventListener("resize", schedule);
         host.removeEventListener("pointerdown", down, true);
+        host.removeEventListener('mousedown',gapDown,true);
         host.removeEventListener("pointermove", move, true);
+        host.removeEventListener('mousemove',mouseMove,true);
+        host.removeEventListener('dragstart',dragStart,true);
         window.removeEventListener("pointerup", release);
         window.removeEventListener("pointercancel", release);
         window.removeEventListener("blur", release);
@@ -183,18 +238,19 @@ export function createAttachmentPreview(
   source: HTMLElement,
   preview: HTMLElement,
   editor: HTMLElement,
-  onActivate: () => void,
+  onActivate: (edit?:boolean) => void,
 ) {
   const host = editor.closest<HTMLElement>(".editor-host") || editor.parentElement!,
     space = document.createElement("span");
   space.className = "attachment-space";
   space.contentEditable = "false";
   space.setAttribute("aria-hidden", "true");
-  const entry: Entry = { source, preview, space, initialEditing: false, activate: () => onActivate() };
+  const entry: Entry = { source, preview, space, initialEditing: false, activate: edit => onActivate(edit) };
   let external = false, layer: ReturnType<typeof createLayer> | undefined;
   preview.id = "moyu-attachment-preview-" + (++previewId);
   source.dataset.attachmentPreview = preview.id;
   const choose = (event: MouseEvent) => {
+    if(attachmentControlTarget(event.target))return;
     if (external && event.button === 2) {
       event.preventDefault();
       return;
@@ -202,9 +258,24 @@ export function createAttachmentPreview(
     if (!external || event.button !== 0 || event.ctrlKey || event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
-    layer?.choose(entry);
+    layer?.choose(entry,(event.target as Element).closest('.attachment-preview-caption')?'edit':'select');
   };
   preview.addEventListener("mousedown", choose);
+  const touchDown=(event:PointerEvent)=>{
+    if(attachmentControlTarget(event.target))return;
+    if(!external||event.pointerType!=='touch'||event.button!==0)return;
+    // Pointer cancellation still leaves panning to the browser. Suppress the
+    // compatibility mouse event, which arrives after touch pointerup.
+    event.preventDefault();layer?.choose(entry,(event.target as Element).closest('.attachment-preview-caption')?'edit':'select');
+  };
+  preview.addEventListener('pointerdown',touchDown);
+  const previewKey=(event:KeyboardEvent)=>{
+    const caption=(event.target as Element).closest('.attachment-preview-caption');
+    if(external&&(caption&&['Enter',' '].includes(event.key)||event.key===' '&&(event.target as Element).closest('.attachment-card'))){
+      event.preventDefault();event.stopPropagation();onActivate(!!caption);
+    }
+  };
+  preview.addEventListener('keydown',previewKey);
   const extend = (event: MouseEvent) => {
     if (!external || !layer?.dragging || !(event.buttons & 1)) return;
     layer.extend(entry);
@@ -254,6 +325,8 @@ export function createAttachmentPreview(
       layer?.remove(entry);
       delete source.dataset.attachmentPreview;
       preview.removeEventListener("mousedown", choose);
+      preview.removeEventListener('pointerdown',touchDown);
+      preview.removeEventListener('keydown',previewKey);
       preview.removeEventListener("mousemove", extend);
       preview.remove();
     },

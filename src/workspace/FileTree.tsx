@@ -239,6 +239,9 @@ export function FileTree({
     <div
       className={"file-tree" + (dragging ? " dragging-files" : "")}
       tabIndex={0}
+      onKeyDownCapture={event=>{if(['Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))event.currentTarget.dataset.keyboardFocus='true';}}
+      onPointerDownCapture={event=>{delete event.currentTarget.dataset.keyboardFocus;}}
+      onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node|null))delete event.currentTarget.dataset.keyboardFocus;}}
       onDragOver={event => over(event, baseFolder)}
       onDrop={event => drop(event, baseFolder)}
       onDragLeave={event => {

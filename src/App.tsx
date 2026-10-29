@@ -1,3 +1,5 @@
+import {initialScore} from './attachments/scoreAdapter';
+import {scoreFile} from '../shared/attachment-previews.mjs';
 import { AppUpdates } from './AppUpdates';
 import { createElementContextMenu } from './documents/elementContextMenu';
 import { DocumentOutline } from './DocumentOutline';
@@ -94,19 +96,23 @@ import { FileIcon } from './FileIcon';
 import { companionNode, explorerTree, normalizeOrder, sortLabels, type ExplorerOrder } from "./workspace/fileExplorer";
 import { ExplorerSortMenu } from "./workspace/ExplorerSortMenu";
 import ImageViewer, { isImage } from './ImageViewer';
+import DocumentImageLayer from './attachments/DocumentImageLayer';
+import {flushAttachmentViews} from './attachments/viewState';
 import {fileKind,isNativeImage} from './fileKinds';
 const TextFileEditor = lazy(() => import('./TextFileEditor'));
 const TerminalPanel=lazy(()=>import("./terminal/TerminalPanel").then(module=>({default:module.TerminalPanel})));
 const HTMLFileViewer = lazy(() => import('./HTMLFileViewer'));
-const PdfViewer = lazy(() => import('./PdfViewer'));
+const PdfViewer = lazy(() => import('./EmbedPDFViewer'));
+const ScoreFileViewer = lazy(() => import('./ScoreFileViewer'));
 const SqliteViewer = lazy(() => import('./SqliteViewer'));
 import { InlineCodeLayer } from './InlineCodeLayer';
+import {HTMLPreviewLayer} from './HTMLPreviewLayer';
 import { relativeLink } from './markdownLinks';
 import { Modal } from './Modal';
 import { ConflictComparison } from './ConflictComparison';
 import Navigation from './Navigation';
 import { appearanceStyle, loadAppearance, Preferences } from './Preferences';
-import { resourcePath,invalidateResourceImages } from './resourcePreview';
+import { invalidateResourceImages } from './resourcePreview';
 import { settingsStore } from './settingsStore';
 import { flushPreferences } from './preferenceDraft';
 import { SidebarDivider } from './SidebarDivider';
@@ -154,7 +160,11 @@ export default function App() {
     if (!api.desktop || !ws.workspace || syncPhase === 'syncing') return;
     let alive = true;
     void api.feature<{ files: Record<string, string> }>('webdav.status').then(s => {
-      if (alive) setSyncFiles(s.files);
+      if (alive) {
+        const files={...s.files},excluded=new Set(Object.keys(files).filter(path=>files[path]==='excluded'));
+        for(const file of flatten(ws.workspace?.tree||[]))if(!files[file.path]&&file.path.split('/').some((_,index,parts)=>excluded.has(parts.slice(0,index+1).join('/'))))files[file.path]='excluded';
+        setSyncFiles(files);
+      }
     }).catch(() => {
       if (alive) setSyncFiles({});
     });
@@ -284,7 +294,7 @@ export default function App() {
   const activeDoc = ws.documents[ws.active];
   const searchNavigation = useSearchNavigation(ws.workspace?.root || '', ws.active,
     ws.workspace?.readOnly && mode === 'rich' ? 'read' : mode, editor);
-  const binaryReadOnly = ['image','pdf','sqlite'].includes(fileKind(ws.active));
+  const binaryReadOnly = ['image','pdf','score','sqlite'].includes(fileKind(ws.active));
   useLayoutEffect(() => {
     const tabs = document.querySelector<HTMLElement>('.tabs'),
       active = tabs?.querySelector<HTMLElement>('.tab.active');
@@ -360,7 +370,7 @@ export default function App() {
   useEffect(() => {
     const previous = resourceVersions.current,
       next = new Map(
-        files.filter(f => /\.excalidraw$/i.test(f.path)||isNativeImage(f.path)).map(f => [f.path, String(f.updated)+':'+f.size]),
+        files.filter(f => /\.excalidraw$/i.test(f.path)||isNativeImage(f.path)||f.path.endsWith('/document.json')).map(f => [f.path, String(f.updated)+':'+f.size]),
       );
     resourceVersions.current = next;
     const changed = [...new Set([...previous.keys(), ...next.keys()])].filter(p =>
@@ -379,6 +389,7 @@ export default function App() {
     return walk(ws.workspace?.tree ?? []);
   }, [ws.workspace?.tree]);
   const notify = useCallback((message: string) => setToast(message), []);
+  useEffect(()=>{const failed=(event:Event)=>notify((event as CustomEvent<string>).detail);window.addEventListener('moyu-attachment-view-error',failed);return()=>window.removeEventListener('moyu-attachment-view-error',failed);},[notify]);
   const codeRuns = useCodeRuns(ws.workspace?.root || '', ws.active, markdownValue, ws.tabs, content=>{const value=editor.current?.ensureCodeIds?.()||normalizeCodeIds(ws.workspace?.root,ws.active,content).content;ws.change(ws.active,value);return value;});
   const imagePath = (image: HTMLImageElement) => {
     const src = image.getAttribute('src') || '';
@@ -459,6 +470,7 @@ export default function App() {
   }, [context, menu]);
   const beforeFeatureAction = async () => {
     await flushPreferences();
+    await flushAttachmentViews();
     editor.current?.flush();
     await drawingEditor.current?.flush();
     if (ws.savePolicy === 'realtime' && !(await ws.saveAll())) throw new Error('请先处理文档保存错误或冲突。');
@@ -584,6 +596,22 @@ export default function App() {
       insertion?.cancel();
       drawingCreation.current = false;
     }
+  };
+  const createScore = async () => {
+    if(drawingCreation.current)return;
+    const path=ws.active,root=ws.workspace?.root,insertion=mode==='rich'?editor.current?.prepareDrawingInsert?.():null;
+    if(mode==='rich'&&!insertion)throw Error('请在正文中插入乐谱链接。');
+    const selection=insertion?undefined:editor.current?.captureSelection?.();drawingCreation.current=true;
+    try {
+      const {path:target}=await api.feature<{path:string}>('attachment.upload',{
+        root,document:path,name:'未命名乐谱.alphatex',bytes:new TextEncoder().encode(initialScore),
+      });
+      if(currentLocation.current.root!==root||currentLocation.current.path!==path){await ws.refresh();notify('乐谱已创建，请在附件中打开。');return;}
+      const link=standardAttachment(path,target,'乐谱');
+      if(insertion){if(!insertion.insert(link))throw Error('插入位置已失效，乐谱已保存在附件中。');}
+      else {if(selection)editor.current?.restoreSelection?.(selection);editor.current?.insert(link);}
+      editor.current?.flush();await ws.refresh();await openDocument(target);
+    } finally {insertion?.cancel();drawingCreation.current=false;}
   };
   const insertDrawing = async (_image: string, source: string) => {
     await api.feature('clipboard.write', {
@@ -819,7 +847,7 @@ export default function App() {
     }
   };
   const execute = (command: string) => {
-    if (dialog && command !== 'save') return;
+    if ((dialog||window.document.querySelector('.modal[role="dialog"]')) && command !== 'save') return;
     editor.current?.flush();
     setMenu(null);
     switch (command) {
@@ -1150,13 +1178,13 @@ export default function App() {
                       </button>
                     )}
                   </div>
-                  <div className='search-meta'>
+                  {(searching||!!query)&&<div className='search-meta'>
                     {searching
                       ? '正在搜索…'
                       : query
                       ? `${results.length} 篇匹配文档`
-                      : '搜索文件名与正文'}
-                  </div>
+                      : ''}
+                  </div>}
                   {results.map((result) => (
                     <button
                       key={result.path}
@@ -1433,9 +1461,10 @@ export default function App() {
               )
               : activeDoc && isImage(ws.active)
               ? <ImageViewer key={ws.active} path={ws.active} onClose={() => void safe(() => closeDocuments([ws.active]))} />
-              : activeDoc && ['pdf','sqlite','html','text'].includes(fileKind(ws.active))
+              : activeDoc && ['pdf','score','sqlite','html','text'].includes(fileKind(ws.active))
               ? <Suspense fallback={<div className='editor-loading'>正在打开文件…</div>}>
-                  {fileKind(ws.active)==='pdf' ? <PdfViewer key={ws.active+activeDoc.version} path={ws.active} onClose={() => void safe(() => closeDocuments([ws.active]))}/>
+                  {scoreFile(ws.active) ? <ScoreFileViewer key={(ws.workspace?.root||'')+ws.active+ws.editorEpoch} revision={activeDoc.version} editor={editor} path={ws.active} value={activeDoc.content} onChange={content=>ws.change(ws.active,content)} onError={notify} theme={theme} fontSize={fontSize} readOnly={!!ws.workspace?.readOnly||fileKind(ws.active)==='score'} onClose={() => void safe(() => closeDocuments([ws.active]))}/>
+                    : fileKind(ws.active)==='pdf' ? <PdfViewer key={(ws.workspace?.root||'')+ws.active+activeDoc.version} path={ws.active} onClose={() => void safe(() => closeDocuments([ws.active]))}/>
                     : fileKind(ws.active)==='sqlite' ? <SqliteViewer key={ws.active+activeDoc.version} path={ws.active} onClose={() => void safe(() => closeDocuments([ws.active]))}/>
                     : fileKind(ws.active)==='html' ? <HTMLFileViewer key={(ws.workspace?.root||'')+ws.active+ws.editorEpoch} root={ws.workspace?.root} path={ws.active} readOnly={ws.workspace?.readOnly} value={activeDoc.content} editor={editor} onChange={content=>ws.change(ws.active,content)} onError={notify} theme={theme} fontSize={fontSize} selection={restoredSelection} onClose={() => void safe(() => closeDocuments([ws.active]))}/>
                     : <div className='text-file-container'>
@@ -1566,7 +1595,7 @@ export default function App() {
                     </div>
                   </div>
                   {formatbar && mode !== 'read' && (
-                    <FormattingToolbar menu={menu} setMenu={setMenu} doAction={doAction} drawingAllowed={drawingAllowed} onDrawing={() => void safe(() => createDrawing(true))}/>
+                    <FormattingToolbar menu={menu} setMenu={setMenu} doAction={doAction} drawingAllowed={drawingAllowed} onDrawing={() => void safe(() => createDrawing(true))} onScore={() => void safe(createScore)}/>
                   )}
                   {activeDoc.conflict && (
                     <div className='conflict-banner'>
@@ -1639,6 +1668,7 @@ export default function App() {
                             theme={theme}
                             fontSize={fontSize}
                             onDrawing={() => void safe(() => createDrawing(true))}
+                            onScore={() => void safe(createScore)}
                             onDrawingAllowed={setDrawingAllowed}
                           />
                         )
@@ -1658,6 +1688,8 @@ export default function App() {
                           />
                         )}
                     </Suspense>
+                    {mode!=='source'&&<HTMLPreviewLayer key={ws.workspace?.root+'-'+ws.active+'-'+mode} root={ws.workspace?.root||''} files={files} path={ws.active} mode={mode} editor={editor} content={activeDoc.content} change={content=>ws.change(ws.active,content)} readOnly={ws.workspace?.readOnly}/>}
+                    {mode!=='source'&&<DocumentImageLayer key={ws.workspace?.root+'-'+ws.active+'-'+mode+'-'+ws.editorEpoch} path={ws.active} mode={mode==='read'||ws.workspace?.readOnly?'read':'rich'} editor={editor}/>}
                     {mode !== 'source' && !ws.workspace?.readOnly && (
                       <InlineCodeLayer
                         key={ws.workspace?.root + '-' + ws.active + '-' + mode}
@@ -1774,9 +1806,7 @@ export default function App() {
                       trash={removeFile}
                       insert={text => editor.current?.insert(text)}
                       locate={(path,offset)=>{
-                        if(mode!=='read'){editor.current?.scrollToOffset?.(offset);return;}
-                        const target=[...document.querySelectorAll<HTMLElement>('.reading-view [data-resource-link],.reading-view a[href],.reading-view img[src]')].find(el=>resourcePath(ws.active,el.dataset.resourceLink||el.getAttribute('href')||el.getAttribute('src')||'')===path);
-                        if(target){target.scrollIntoView({block:'center'});target.tabIndex=-1;target.focus({preventScroll:true});}
+                        searchNavigation.reveal({root:ws.workspace?.root||'',path:ws.active,offset,source:markdownValue,attachment:path});
                       }}
                     />
                   )
@@ -1819,7 +1849,7 @@ export default function App() {
               ? '保存失败，点击重试'
               : activeDoc?.dirty
               ? '本地未保存'
-              : ['pdf','sqlite','image'].includes(fileKind(ws.active)) ? '只读' : '已保存到本地'}
+              : ['pdf','score','sqlite','image'].includes(fileKind(ws.active)) ? '只读' : '已保存到本地'}
           </span>
         </button>
         <span className='status-divider' />

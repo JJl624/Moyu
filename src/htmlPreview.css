@@ -1,0 +1,47 @@
+.html-preview-ui { position: relative; width: 100%; color: var(--text); font: 12px/1.4 var(--font-ui, sans-serif); }
+.html-note-preview > .html-note-tools { display: flex; align-items: center; gap:3px; box-sizing:border-box; min-height:40px; padding:0 12px; border-bottom:1px solid var(--border); background:var(--sidebar); }
+.html-note-tools > span { margin-right: 6px; color: var(--secondary); font-size: 11px; }
+.html-note-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 28px; min-height: 28px; padding: 4px 6px; border: 0; border-radius: 4px; background: transparent; color: var(--secondary); cursor: pointer; }
+.html-note-tools button[aria-pressed=true] { color: var(--accent); }
+.html-note-tools > .html-note-tabs { display: flex; flex:0 0 auto; align-items: center; order:1; gap:2px; margin-left:auto; }
+.html-note-tabs button { width:42px; flex:0 0 42px; }
+.html-note-tabs button[aria-selected=true] { background: var(--selected); color: var(--accent); }
+.html-note-tools button:active { background: var(--selected); color: var(--accent); }
+.html-note-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-mobile-input=touch]) .html-note-tools button:hover { background: var(--hover); color: var(--text); }
+}
+.html-note-tools button:disabled { opacity: .45; cursor: default; }
+.html-note-window { position: relative; min-height: 100px; max-width: 100%; background: var(--bg); }
+.html-note-window iframe { display: block; border: 0; width: 100%; height: calc(100% - 12px); background: white; }
+.html-note-window .html-note-resize { position: absolute; inset: auto 0 0; height: 12px; cursor: ns-resize; z-index: 2; background: var(--sidebar); }
+.html-note-resize::after { content: ''; position: absolute; width: 28px; height: 2px; left: calc(50% - 14px); top: 5px; border-radius: 2px; background: var(--secondary); opacity: .45; }
+.html-note-error { margin: 0; padding: 12px; color: var(--danger); overflow-wrap: anywhere; }
+.html-note-placeholder { height: 100%; display: grid; place-content: center; color: var(--secondary); }
+.reading-view .code-block-shell[data-html-source=false] > pre,.reading-view .code-block-shell[data-html-source] > .mobile-code-copy,.reading-view .code-block-shell[data-html-source=false] > .reading-code-resize { display: none; }
+.app .reading-view .code-block-shell[data-html-source]::before { content: none; display: none; }
+.app .reading-view .code-block-shell[data-html-source] { padding: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.app .reading-view .code-block-shell[data-html-source] > pre { padding: 8px; border: 0; border-radius: 0; }
+.milkdown-code-block[data-html-source=false] .cm-editor,.milkdown-code-block[data-html-source=false] > .code-resize,.milkdown-code-block[data-html-source=false] > .code-attributes { display: none; }
+.milkdown-code-block[data-html-source=false] > .codemirror-host,.milkdown-code-block[data-html-source] > .tools { display: none; }
+.mobile-app .html-note-tools { min-height:40px; padding:0 8px; gap:0; }
+.mobile-app .html-note-tools button { min-height: 36px; min-width: 36px; padding: 6px; }
+.mobile-app .html-note-tabs button { width:36px; flex-basis:36px; }
+.mobile-app .html-note-tools > span { padding-left: 5px; }
+.app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-source=false],.app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-code=false] { padding: 0; overflow: hidden; }
+.app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-source] > .tools { display: none; }
+
+/* Source keeps the ordinary code toolbar. Preview replaces that toolbar and
+   editor together; only the mutually exclusive view switch is shared. */
+.app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-code=true][data-html-source=true] { display:grid; grid-template-columns:minmax(0,1fr) max-content; padding-top:0; }
+.app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-code=true][data-html-source=true] > .tools { display:flex; grid-area:1 / 1; min-width:0; }
+.milkdown-code-block[data-html-code=true][data-html-source=true] > .html-preview-ui,.milkdown-code-block[data-html-code=true][data-html-source=true] > .html-preview-ui > .html-note-preview { display:contents; }
+.milkdown-code-block[data-html-code=true][data-html-source=true] .html-note-tools { grid-area:1 / 2; min-width:0; padding:0 0 0 4px; border:0; border-bottom:1px solid transparent; background:transparent; }
+.milkdown-code-block[data-html-code=true][data-html-source=true] .html-note-tabs { margin:0; }
+.milkdown-code-block[data-html-code=true][data-html-source=true] .html-note-error,.milkdown-code-block[data-html-code=true][data-html-source=true] > .codemirror-host { grid-column:1 / -1; min-width:0; }
+.app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-code=true][data-html-source=true] .code-attributes { min-width:0; }
+@container moyu-code (max-width:260px) {
+  .app .editor-host .milkdown .ProseMirror .milkdown-code-block[data-html-code=true][data-html-source=true] > .tools { grid-area:2 / 1 / auto / -1; }
+  .milkdown-code-block[data-html-code=true][data-html-source=true] .html-note-tools { grid-area:1 / 1 / auto / -1; justify-self:end; }
+}
+.milkdown-code-block[data-html-code=true][data-html-source=true] > .code-resize { grid-column:1 / -1; }

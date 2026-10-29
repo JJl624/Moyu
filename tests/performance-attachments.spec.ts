@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import {_electron as electron, expect, test, type Page} from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -19,6 +20,7 @@ async function open(page:Page,file:string,content:string){
   await page.locator('.tree-item[title="'+file+'"]').dblclick();
   await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title',file);
   await expect(page.locator('.editor-host')).not.toHaveAttribute('data-editor-pending','true');
+  await page.locator('.ProseMirror > p').last().click({position:{x:2,y:8}});
 }
 test('Local attachment deletion uses confirmation and recycling from preview, raw link and reading menus; remote links offer no deletion',async()=>{
   const{app,page,root,data,errors}=await fixture();
@@ -38,7 +40,7 @@ test('Local attachment deletion uses confirmation and recycling from preview, ra
     await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click();
     await expect(page.locator('.attachment-overlay img')).toHaveCount(2);
     expect(await fs.readFile(path.join(root,'中文 图片.svg'),'utf8')).toContain('<svg');
-    await page.locator('.attachment-overlay img').first().click();
+    await editPreviewReference(page,page.locator('.attachment-overlay').first());
     await page.locator('.visual-attachment').first().locator('.syntax-raw').click({button:'right'});await menu.click();await confirm.click();
     // The transaction stages the file before recycling it. Wait for the UI to
     // commit the complete deletion, not just for the original path to vanish.
@@ -73,13 +75,14 @@ test('Failed recycling preserves the link; deleting one duplicate preserves surr
     const markdown='前文 ![相同](重复.svg) 中间 ![相同](重复.svg) 后文';
     await open(page,'重复.md',markdown);
     const menu=page.getByRole('menuitem',{name:'删除附件',exact:true}),dialog=page.getByRole('dialog');
+    const second=page.locator('.attachment-link').nth(1),rightClick=async()=>{const raw=second.locator('.syntax-raw'),target=await raw.isVisible()?raw:second.locator('a');await target.click({button:'right'});};
     await app.evaluate(({shell})=>{shell.trashItem=async()=>{throw new Error('模拟回收站失败');};});
-    await page.locator('.attachment-overlay img').nth(1).click({button:'right'});await menu.click();await dialog.getByRole('button',{name:'移至回收站',exact:true}).click();
+    await rightClick();await menu.click();await dialog.getByRole('button',{name:'移至回收站',exact:true}).click();
     await expect(dialog).toContainText('模拟回收站失败');await dialog.getByRole('button',{name:'取消',exact:true}).click();
-    await expect(page.locator('.attachment-overlay img')).toHaveCount(2);expect(await fs.readFile(path.join(root,'重复.svg'),'utf8')).toContain('<svg');
+    await expect(page.locator('.attachment-link a')).toHaveCount(2);expect(await fs.readFile(path.join(root,'重复.svg'),'utf8')).toContain('<svg');
     await app.evaluate(async({shell},base)=>{const fs=process.getBuiltinModule('fs/promises'),path=process.getBuiltinModule('path');await fs.mkdir(path.join(base,'recycled'),{recursive:true});shell.trashItem=async file=>fs.rename(file,path.join(base,'recycled',path.basename(file)));},data);
-    await page.locator('.attachment-overlay img').nth(1).click({button:'right'});await menu.click();await dialog.getByRole('button',{name:'移至回收站',exact:true}).click();await expect(dialog).toHaveCount(0);
-    await expect(page.locator('.visual-attachment')).toHaveCount(1);
+    await rightClick();await menu.click();await dialog.getByRole('button',{name:'移至回收站',exact:true}).click();await expect(dialog).toHaveCount(0);
+    await expect(page.locator('.attachment-link')).toHaveCount(1);
     await expect(page.locator('.ProseMirror')).toContainText('中间');await expect(page.locator('.ProseMirror')).toContainText('后文');
     expect(await fs.readFile(path.join(root,'重复.md'),'utf8')).toBe(markdown);
     await page.getByRole('button',{name:'源码',exact:true}).click();await expect(page.locator('.source-editor .cm-content')).toHaveText('前文 ![相同](重复.svg) 中间  后文');
@@ -119,7 +122,7 @@ test('Dragging text keeps previews rendered until release without moving the dra
     await page.mouse.move(image.x+10,image.y+10,{steps:12});
     await expect(raw).toBeHidden();await expect(preview).toBeVisible();await expect(preview).toHaveClass(/drag-selected/);
     expect(await page.evaluate(()=>({text:getSelection()?.anchorNode?.textContent,offset:getSelection()?.anchorOffset}))).toEqual(anchor);
-    await page.mouse.up();await expect(raw).toBeVisible();await expect(preview).toBeHidden();await page.locator('.ProseMirror > p').last().click();await expect(preview.locator('img')).toBeVisible();
+    await page.mouse.up();await expect(raw).toBeHidden();await expect(preview).toHaveClass(/range-selected/);await page.locator('.ProseMirror > p').last().click();await expect(preview.locator('img')).toBeVisible();
     expect(errors).toEqual([]);
   }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
 });
@@ -144,7 +147,7 @@ test('The full formula/code guide keeps arrow navigation, code editing, executio
     await expect(js.locator('.cm-content')).toContainText('// 性能回归');
     await js.locator('.cm-content').click({button:'right'});await page.getByRole('menuitem',{name:'格式化代码',exact:true}).click();
     await expect(js.locator('.cm-content')).toContainText('const extra = 1;');
-    const paragraph=page.locator('.ProseMirror > p').filter({hasText:'语言只控制高亮'}).first();await paragraph.scrollIntoViewIfNeeded();await paragraph.click();const box=(await paragraph.boundingBox())!;
+    const paragraph=page.locator('.ProseMirror > p').filter({hasText:'更换语言会更新高亮'}).first();await paragraph.scrollIntoViewIfNeeded();await paragraph.click();const box=(await paragraph.boundingBox())!;
     await page.mouse.move(box.x+5,box.y+10);await page.mouse.down();await page.mouse.move(box.x+260,box.y+10,{steps:30});await page.mouse.up();
     expect(await page.evaluate(()=>getSelection()?.toString())).toContain('语言');
     await app.evaluate(({Menu})=>Menu.getApplicationMenu()!.items.flatMap(x=>x.submenu?.items||[]).find(x=>x.label==='保存')!.click());
@@ -173,7 +176,7 @@ test('Repeated drags through an image continue beyond its source without a selec
    await expect.poll(()=>page.evaluate(()=>getSelection()?.toString())).toContain('末尾');
    const before=await page.evaluate(()=>(window as any).__selectionEvents);await page.waitForTimeout(200);
    expect((await page.evaluate(()=>(window as any).__selectionEvents))-before).toBeLessThan(10);
-   await page.mouse.up();await expect(preview).toBeHidden();
+   await page.mouse.up();await expect(preview).toBeVisible();await expect(preview).toHaveClass(/range-selected/);
   }
   expect(errors).toEqual([]);
  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}

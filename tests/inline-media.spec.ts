@@ -1,7 +1,8 @@
+import {editPreviewReference} from './attachment-helper';
 import { _electron as electron, expect, type Page, test } from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { previewFor } from './attachment-helper';
+import { previewFor, editAttachment } from './attachment-helper';
 const project = path.resolve(import.meta.dirname, '..');
 async function fixture() {
   const base = path.resolve(project, '../../work/e2e');
@@ -52,106 +53,30 @@ async function save(app: Awaited<ReturnType<typeof electron.launch>>) {
   );
 }
 const image = '![中文 图|180](<中文 图.svg>)', drawing = '[中文 图|100](<attachments/中文 图.excalidraw>)';
-test('Inline media preserve both-side text, shared-line layout, live sizing, raw editing, context menus and reading output', async () => {
-  const { app, page, root, errors } = await fixture();
+test('Mixed media use name links and preserve raw editing, size metadata, context menus and reading output', async () => {
+  const {app,page,root,errors}=await fixture();
   try {
-    await open(page, '行内.md', '左' + image + '中' + drawing + '右**加粗**\n\n后文');
-    const overlays = page.locator('.attachment-overlay'),
-      sources = page.locator('.visual-attachment');
-    await expect(overlays.locator('img')).toBeVisible();
-    await expect(overlays.locator('svg')).toBeVisible();
-    await expect(page.locator('.ProseMirror > p')).toHaveCount(2);
-    expect(await sources.evaluateAll(nodes => nodes.every(n => n.parentElement?.tagName === 'P')))
-      .toBe(true);
-    expect(
-      await page.locator('.attachment-space').evaluateAll(nodes =>
-        nodes.every(n => n.closest('.inline-syntax'))
-      ),
-    ).toBe(true);
-    const layout = await overlays.evaluateAll(nodes =>
-      nodes.map(n => {
-        const b = n.getBoundingClientRect();
-        return { x: b.x, y: b.y, w: b.width, h: b.height };
-      })
-    );
-    expect(layout[0].w).toBeCloseTo(180, 0);
-    expect(layout[1].w).toBeCloseTo(100, 0);
-    expect(layout[1].x).toBeGreaterThan(layout[0].x + layout[0].w);
-    expect(Math.abs((layout[0].y + layout[0].h / 2) - (layout[1].y + layout[1].h / 2)))
-      .toBeLessThan(5);
-    await overlays.first().click();
-    await expect(sources.first().locator('.syntax-raw')).toHaveText(image);
-    await expect(overlays.locator('img')).toBeHidden();
-    await expect(sources.first().locator('.attachment-space')).toBeHidden();
-    await expect(overlays.locator('svg')).toBeVisible();
-    await page.keyboard.press('Home');
-    await page.keyboard.insertText('前');
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('End');
-    await page.keyboard.insertText('后');
-    await save(app);
-    await expect.poll(() => fs.readFile(path.join(root, '行内.md'), 'utf8')).toContain(
-      '左前' + image + '后中' + drawing + '右**加粗**',
-    );
-    // Update only the size text with the real native caret; keep the same image DOM.
-    await overlays.first().click();
-    await sources.first().locator('.syntax-raw').evaluate(el => {
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-      let remaining = el.textContent!.indexOf('180');
-      while (walker.nextNode()) {
-        const n = walker.currentNode;
-        if (remaining <= n.textContent!.length) {
-          const r = document.createRange();
-          r.setStart(n, remaining);
-          r.setEnd(n, remaining + 3);
-          getSelection()!.removeAllRanges();
-          getSelection()!.addRange(r);
-          break;
-        }
-        remaining -= n.textContent!.length;
-      }
-    });
-    await page.keyboard.insertText('90');
-    await expect(overlays.locator('img')).toBeHidden();
-    await page.locator('.ProseMirror > p').last().click();
-    await expect(overlays.locator('img')).toHaveCSS('width', '90px');
-    await expect(page.locator('.attachment-space').first()).toHaveCSS('width', '90px');
-    await expect(sources.first().locator('.syntax-raw')).toBeHidden();
-    await overlays.nth(1).click({ button: 'right' });
-    await expect(page.getByRole('menuitem', { name: '编辑绘图', exact: true })).toBeVisible();
-    await expect(overlays.locator('svg')).toBeVisible();
-    await expect(sources.nth(1).locator('.syntax-raw')).toBeHidden();
-    await page.keyboard.press('Escape');
-    await overlays.nth(1).click();
-    await expect(overlays.locator('svg')).toBeHidden();
-    await sources.nth(1).locator('.syntax-raw').click({ button: 'right' });
-    await expect(page.getByRole('menuitem', { name: '编辑绘图', exact: true })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await save(app);
-    await expect.poll(() => fs.readFile(path.join(root, '行内.md'), 'utf8')).toContain(
-      '![中文 图|90]',
-    );
-    const saved = await fs.readFile(path.join(root, '行内.md'), 'utf8');
-    expect(saved).toContain('左前![中文 图|90](<中文 图.svg>)后中' + drawing + '右**加粗**');
-    expect(saved).not.toMatch(/\\!|\\\[|%E[0-9A-F]/);
-    await page.getByRole('button', { name: '源码', exact: true }).click();
-    await expect(page.locator('.source-editor .cm-content')).toContainText(
-      '左前![中文 图|90](<中文 图.svg>)后中',
-    );
-    await page.getByRole('button', { name: '阅读', exact: true }).click();
-    await expect.poll(() =>
-      page.locator('.reading-view p').first().evaluate(el =>
-        [...el.childNodes].filter(n => !(n instanceof Element && n.matches('.resource-preview')))
-          .map(n => n.textContent || '').join('')
-      )
-    ).toBe('左前后中右加粗');
-    await expect(page.locator('.reading-view img')).toHaveCSS('width', '90px');
-    await expect(page.locator('.reading-view .resource-preview svg')).toHaveCSS('width', '100px');
-    expect(errors).toEqual([]);
-  } finally {
-    await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
-  }
+    await open(page,'行内.md','左'+image+'中'+drawing+'右**加粗**\n\n'+image+'\n\n'+drawing+'\n\n后文');
+    const sources=page.locator('.ProseMirror > p').first().locator('.attachment-link'),overlays=page.locator('.attachment-overlay');
+    await expect(sources).toHaveCount(2);await expect(overlays).toHaveCount(2);
+    await expect(sources.first().locator('a')).toHaveText('中文 图');
+    await expect(overlays.locator('img')).toHaveCSS('width','180px');await expect(overlays.locator('svg')).toHaveCSS('width','100px');
+    await (await previewFor(page,sources.first())).click();await expect(sources.first().locator('.syntax-raw')).toHaveText(image);
+    await page.keyboard.press('Home');await page.keyboard.insertText('前');await page.keyboard.press('ArrowRight');await page.keyboard.press('End');await page.keyboard.insertText('后');
+    await page.locator('.ProseMirror > p').last().click();await save(app);
+    await expect.poll(()=>fs.readFile(path.join(root,'行内.md'),'utf8')).toContain('左前'+image+'后中'+drawing+'右**加粗**');
+    await editPreviewReference(page,overlays.first());const raw=page.locator('.visual-attachment .syntax-raw:visible');
+    await raw.evaluate(el=>{const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let remaining=el.textContent!.indexOf('180');while(walker.nextNode()){const node=walker.currentNode;if(remaining<node.textContent!.length){const range=document.createRange();range.setStart(node,remaining);range.setEnd(node,remaining+3);getSelection()!.removeAllRanges();getSelection()!.addRange(range);return;}remaining-=node.textContent!.length;}throw Error('Size text missing');});
+    await page.keyboard.insertText('90');await page.locator('.ProseMirror > p').last().click();await expect(overlays.locator('img')).toHaveCSS('width','90px');
+    expect(await page.locator('.attachment-space').first().evaluate(el=>el.getBoundingClientRect().width)).toBeGreaterThan(180);
+    await overlays.nth(1).click({button:'right'});await expect(page.getByRole('menuitem',{name:'编辑绘图',exact:true})).toBeVisible();await page.keyboard.press('Escape');await save(app);
+    await expect.poll(()=>fs.readFile(path.join(root,'行内.md'),'utf8')).toContain('![中文 图|90]');
+    await page.getByRole('button',{name:'源码',exact:true}).click();await expect(page.locator('.source-editor .cm-content')).toContainText('左前'+image+'后中');
+    await page.getByRole('button',{name:'阅读',exact:true}).click();await expect(page.locator('.reading-view p').first().locator('a')).toHaveCount(2);await expect(page.locator('.reading-view p').first().locator('img,svg')).toHaveCount(0);
+    await expect(page.locator('.reading-view img')).toHaveCSS('width','90px');await expect(page.locator('.reading-view .resource-preview svg')).toHaveCSS('width','100px');expect(errors).toEqual([]);
+  }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
 });
+
 test('Images are ordinary list content: single items, Enter splitting, indentation, undo and ordered marker input', async () => {
   test.setTimeout(100000);
   const { app, page, root, errors } = await fixture();
@@ -159,12 +84,12 @@ test('Images are ordinary list content: single items, Enter splitting, indentati
     for (const raw of [image, drawing]) {
       const file = raw === image ? '图片列表.md' : '绘图列表.md';
       await open(page, file, '- 上一项\n- 左' + raw + '右\n- ' + raw + '\n- 后文');
-      const sources = page.locator('.visual-attachment'),
+      const sources = page.locator('.attachment-link'),
         overlays = page.locator('.attachment-overlay');
-      await expect(overlays).toHaveCount(2);
+      await expect(overlays).toHaveCount(1);
       await expect(page.locator('.list-item')).toHaveCount(4);
       await expect(page.locator('.list-item').nth(1).locator('p')).toHaveCount(1);
-      await (await previewFor(page, sources.first())).click();
+      await editAttachment(page,sources.first());
       await page.keyboard.press('Home');
       await page.keyboard.press('Enter');
       // The same split as before any ordinary text, not a media continuation.
@@ -173,7 +98,7 @@ test('Images are ordinary list content: single items, Enter splitting, indentati
       await expect(page.locator('.list-item').nth(2).locator('.syntax-raw')).toHaveText(raw);
       await page.keyboard.insertText('新');
       await expect(page.locator('.list-item').nth(2).locator('p')).toContainText('新');
-      await (await previewFor(page, sources.first())).click();
+      await editAttachment(page,sources.first());
       await page.keyboard.press('Tab');
       await expect.poll(() =>
         sources.first().evaluate(el =>
@@ -186,7 +111,7 @@ test('Images are ordinary list content: single items, Enter splitting, indentati
           !!el.closest('.list-item')!.parentElement!.closest('.list-item')
         )
       ).toBe(false);
-      await (await previewFor(page, sources.last())).click();
+      await editAttachment(page,sources.last());
       await page.keyboard.press('End');
       await page.keyboard.press('Enter');
       await expect(page.locator('.list-item')).toHaveCount(6);
@@ -204,19 +129,20 @@ test('Images are ordinary list content: single items, Enter splitting, indentati
       await page.getByRole('button', { name: '阅读', exact: true }).click();
       await expect(page.locator('.reading-view li')).toHaveCount(6);
       await page.getByRole('button', { name: '预览编辑', exact: true }).click();
-      await expect(overlays).toHaveCount(2);
+      await expect(overlays).toHaveCount(1);
       await expect(page.locator('.list-item')).toHaveCount(6);
     }
     await open(page, '建立列表.md', image + '\n\n后文');
     await expect(page.locator('.attachment-overlay')).toHaveCount(1);
-    await page.locator('.attachment-overlay').click();
+    await editAttachment(page,page.locator('.visual-attachment'));
     await page.keyboard.press('Home');
     await page.keyboard.type('3. ');
     await page.keyboard.insertText('前文');
     await expect(page.locator('.list-item')).toHaveCount(1);
     await expect(page.locator('.list-item p')).toHaveCount(1);
     await expect(page.locator('.list-item p')).toContainText('前文');
-    await expect(page.locator('.attachment-overlay img')).toBeVisible();
+    await expect(page.locator('.attachment-overlay img')).toHaveCount(0);
+    await expect(page.locator('.list-item .attachment-link')).toHaveCount(1);
     await save(app);
     await expect.poll(() => fs.readFile(path.join(root, '建立列表.md'), 'utf8')).toContain(
       '3. 前文' + image,
@@ -247,10 +173,11 @@ test('Clipboard images paste inline between text and remain individual list item
       );
     });
     await page.locator('.list-item').last().locator('p').click();
-    await expect(page.locator('.attachment-overlay img')).toBeVisible();
+    await expect(page.locator('.attachment-link a')).toHaveCount(1);
+    await expect(page.locator('.attachment-overlay')).toHaveCount(0);
     await expect(page.locator('.list-item')).toHaveCount(3);
     await expect(page.locator('.list-item').nth(1).locator('p')).toHaveCount(1);
-    await expect(page.locator('.visual-attachment')).toHaveCount(1);
+    await expect(page.locator('.attachment-link')).toHaveCount(1);
     await save(app);
     await expect.poll(() => fs.readFile(path.join(root, '粘贴.md'), 'utf8')).toMatch(
       /[-*] 左!\[.*\]\(.*\.png\)右/,
@@ -260,12 +187,14 @@ test('Clipboard images paste inline between text and remain individual list item
     await expect(page.locator('.list-item').nth(1).locator('p')).toHaveText('左右');
     await page.keyboard.press('Control+Shift+z');
     await page.locator('.list-item').last().locator('p').click();
-    await expect(page.locator('.attachment-overlay img')).toBeVisible();
+    await expect(page.locator('.attachment-link a')).toHaveCount(1);
+    await expect(page.locator('.attachment-overlay')).toHaveCount(0);
     await page.getByRole('button', { name: '源码', exact: true }).click();
     await expect(page.locator('.source-editor .cm-content')).not.toContainText('blob:');
     await page.getByRole('button', { name: '预览编辑', exact: true }).click();
     await page.locator('.list-item').last().locator('p').click();
-    await expect(page.locator('.attachment-overlay img')).toBeVisible();
+    await expect(page.locator('.attachment-link a')).toHaveCount(1);
+    await expect(page.locator('.attachment-overlay')).toHaveCount(0);
     await expect(page.locator('.list-item')).toHaveCount(3);
     expect(errors).toEqual([]);
   } finally {
@@ -287,7 +216,8 @@ test('The drawing insert menu places a standard inline link between list text wi
     await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title', /\.excalidraw$/);
     await page.locator('.tab-name[title="插入绘图.md"]').dblclick();
     await page.locator('.ProseMirror > p').last().click();
-    await expect(page.locator('.attachment-overlay svg')).toBeVisible();
+    await expect(page.locator('.attachment-overlay')).toHaveCount(0);
+    await expect(page.locator('.list-item .attachment-link a')).toHaveText('绘图');
     await expect(page.locator('.list-item')).toHaveCount(1);
     await expect(page.locator('.list-item p')).toHaveCount(1);
     await save(app);
@@ -310,13 +240,13 @@ test('Exiting a code block edits the following inline image paragraph directly a
         ? '- 正文\n\n' + code.split('\n').map(line => '  ' + line).join('\n')
         : code;
       await open(page, file, content);
-      await expect(page.locator('.attachment-overlay img')).toBeVisible();
+      await expect(page.locator('.attachment-link a')).toHaveCount(1);
       await page.locator('.milkdown-code-block .cm-content').click();
       await page.keyboard.press('Control+End');
       await page.keyboard.press('Control+Enter');
       await page.keyboard.insertText('左');
-      const source = page.locator('.visual-attachment');
-      await expect(source.locator('xpath=..')).toContainText('左' + image + '右');
+      const source = page.locator('.attachment-link');
+      expect(await source.locator('xpath=..').evaluate(p=>{const clone=p.cloneNode(true) as HTMLElement;clone.querySelectorAll('.syntax-preview').forEach(el=>el.remove());return clone.textContent;})).toBe('左'+image+'右');
       await expect(source.locator('xpath=..')).toHaveJSProperty('tagName', 'P');
       await expect(page.locator('.milkdown-code-block .cm-content')).not.toContainText('左');
       if (listed) await expect(page.locator('.list-item')).toHaveCount(1);

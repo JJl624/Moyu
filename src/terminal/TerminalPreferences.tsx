@@ -99,14 +99,14 @@ export function TerminalPreferences() {
       </section>
       <section className='pref-section terminal-profile-settings'>
         <div className='pref-section-heading'>
-          <h4>默认 Shell</h4>
+          <h4>新终端</h4>
           <button className='icon-button' aria-label='重新检测 Shell' title='重新检测 Shell' onClick={detect}>
             <RefreshCw size={14} />
           </button>
         </div>
         <div className='terminal-launch-fields'>
           <label className='compact-inline-field'>
-            <span>新终端使用</span>
+            <span>Shell</span>
             <select aria-label='默认终端 Shell' value={chosen}
               onChange={e => {
                 const id = e.target.value;
@@ -139,14 +139,13 @@ export function TerminalPreferences() {
             </label>
           )}
           <label className='compact-inline-field terminal-arguments-field'>
-            <span>启动选项<small>每行一个<br />可留空</small></span>
+            <span>启动参数</span>
             <textarea aria-label='终端程序参数' rows={3}
-              placeholder={'PowerShell 示例：\n-NoLogo\n-NoProfile'}
+              title='每行一个参数' placeholder={'-NoLogo\n-NoProfile'}
               value={config.arguments.join('\n')}
               onChange={e => change({ arguments: e.target.value ? e.target.value.split('\n') : [] })} />
           </label>
         </div>
-        <p className='muted-note'>Shell 和启动选项仅用于新建终端。</p>
       </section>
       {(draft.error || error) && <p role='alert' className='feature-error'>{draft.error || error}</p>}
     </div>

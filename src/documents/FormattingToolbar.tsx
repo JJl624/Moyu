@@ -7,6 +7,7 @@ import {
   ListOrdered,
   ListTodo,
   PencilLine,
+  Music2,
   Plus,
   Quote,
   Redo2,
@@ -24,9 +25,10 @@ interface FormattingToolbarProps {
   doAction(action: EditorAction): void;
   drawingAllowed: boolean;
   onDrawing(): void;
+  onScore(): void;
 }
 
-export function FormattingToolbar({ menu, setMenu, doAction, drawingAllowed, onDrawing }: FormattingToolbarProps) {
+export function FormattingToolbar({ menu, setMenu, doAction, drawingAllowed, onDrawing, onScore }: FormattingToolbarProps) {
   return (
     <div className='formatbar'>
       <div className='popover-anchor'>
@@ -141,6 +143,7 @@ export function FormattingToolbar({ menu, setMenu, doAction, drawingAllowed, onD
             >
               <PencilLine size={16} />Excalidraw 绘图
             </button>
+            <button disabled={!drawingAllowed} onClick={()=>{setMenu(null);onScore();}}><Music2 size={16}/>乐谱</button>
           </div>
         )}
       </div>

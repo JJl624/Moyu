@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import {selectPreference} from './helpers/runtime-ui';
 import { _electron as electron, expect, test, type Page, type Locator } from './helpers/test';
 import fs from 'node:fs/promises';
@@ -5,7 +6,7 @@ import path from 'node:path';
 const project = path.resolve(import.meta.dirname, '..');
 async function fixture() {
   const data = await fs.mkdtemp(path.resolve(project, '../../work/editing-consistency-'));
-  await fs.writeFile(path.join(data, 'settings.json'), JSON.stringify({version: 1, values: {'moyu-save-policy': 'manual', 'moyu-highlight-line': 'true'}}));
+  await fs.writeFile(path.join(data, 'settings.json'), JSON.stringify({version: 1, values: {'moyu-save-policy': 'manual'}}));
   const env = {...process.env, MOYU_USER_DATA: data, MOYU_TEST: '1', MOYU_DEMO: '1', MOYU_TEST_OFFSCREEN: '1'};
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch(process.env.MOYU_E2E_EXECUTABLE
@@ -80,7 +81,7 @@ test('Tab before an image stays at the same position; list indentation and outde
     await fs.writeFile(path.join(data, '示例知识库', '图.svg'), '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="80" height="40"/></svg>');
     await open(page, 'Tab.md', '前文\n\n![图](图.svg)\n\n- 第一项\n- ![图](图.svg)\n\n后文\n');
     const regions = page.locator('.visual-attachment');
-    await page.locator('.attachment-overlay').first().click();
+    await editPreviewReference(page,page.locator('.attachment-overlay').first());
     await place(regions.first().locator('.syntax-raw'), 0);
     await page.keyboard.press('Tab');
     await expect.poll(() => raw(page.locator('.ProseMirror > p').nth(1))).toBe('    ![图](图.svg)');
@@ -89,7 +90,7 @@ test('Tab before an image stays at the same position; list indentation and outde
     await first.click(); await place(first, 0); await page.keyboard.press('Tab');
     await expect(page.locator('.ProseMirror li')).toHaveCount(2);
     expect(await first.evaluate(el => el.contains(getSelection()?.focusNode || null))).toBe(true);
-    await page.locator('.attachment-overlay').last().click(); await place(regions.last().locator('.syntax-raw'), 0);
+    await editPreviewReference(page,page.locator('.attachment-overlay').last()); await place(regions.last().locator('.syntax-raw'), 0);
     await page.keyboard.press('Tab'); await expect(page.locator('.ProseMirror li li')).toHaveCount(1);
     expect(await regions.last().evaluate(el => el.contains(getSelection()?.focusNode || null))).toBe(true);
     await page.keyboard.press('Shift+Tab'); await expect(page.locator('.ProseMirror li li')).toHaveCount(0);
@@ -156,7 +157,7 @@ test('Startup does not recreate the absent legacy userData folder', async () => 
     try {
       const page = await app.firstWindow(); await expect(page.locator('.ProseMirror h1')).toBeVisible();
       const result: any = await page.evaluate(() => window.moyu!.feature('data.list'));
-      expect(result.ok).toBe(true); expect(result.data.find((x:any) => x.id === 'directory').path).toBe(path.join(documents, 'Moyu应用数据'));
+      expect(result.ok).toBe(true); expect(result.data.find((x:any) => x.id === 'directory').path).toBe(path.join(documents, 'MoyuData'));
       expect(await fs.stat(path.join(appData, 'moyu-editor')).catch(() => null)).toBeNull();
     } finally {await app.evaluate(({app}) => app.exit(0)).catch(() => {});}
     expect(await fs.stat(path.join(appData, 'moyu-editor')).catch(() => null)).toBeNull();

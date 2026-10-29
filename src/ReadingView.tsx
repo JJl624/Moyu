@@ -1,28 +1,28 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { applyAttachmentSize } from './attachmentLayout';
 import { renderMarkdown } from './markdownRender';
-import { drawingSvg,resourceImageURL } from './resourcePreview';
+import { resourceImageURL } from './resourcePreview';
 import { bindReadingCodeTabs } from './tabbedCodePreview';
+import {patchHTMLPreviewMetadata} from './htmlPreviewMetadata';
+import {previewKind,mountAttachmentPreview,disposePreviews} from './attachments/previewRegistry';
 import 'katex/dist/katex.min.css';
-function sizeDrawing(svg: SVGSVGElement, alt: string) {
-  applyAttachmentSize(
-    svg,
-    alt,
-    Number((svg.getAttribute('viewBox') || '').split(/[ ,]+/)[2]) || 400,
-  );
-}
 export default function ReadingView(
   { value, path, scrollTop = 0 }: { value: string; path: string; scrollTop?: number },
 ) {
   const [rendered, setRendered] = useState<HTMLElement | null>(null);
   const element = useRef<HTMLElement>(null);
+  const installed = useRef<HTMLElement|null>(null);
+  const renderedSource=useRef<{value:string;path:string}|null>(null);
+  useEffect(()=>{const root=element.current;return()=>{if(root)disposePreviews(root);};},[]);
   useLayoutEffect(() => {
-    if (!rendered || !element.current) return;
+    if (!rendered || !element.current || installed.current===rendered) return;
+    installed.current=rendered;
+    disposePreviews(element.current);
     const fragment = document.createDocumentFragment();
     while (rendered.firstChild) fragment.append(rendered.firstChild);
     element.current.replaceChildren(fragment);
   }, [rendered]);
-  useEffect(() => element.current ? bindReadingCodeTabs(element.current) : undefined, [rendered]);
+  useEffect(() => {const root=element.current;const unbind=root?bindReadingCodeTabs(root):undefined;return ()=>{unbind?.();};}, [rendered]);
   useLayoutEffect(() => {
     if (!rendered || !element.current) return;
     const root = element.current, scroll = root.closest('.document-scroll');
@@ -32,8 +32,6 @@ export default function ReadingView(
     delete root.dataset.editorPending;
   }, [rendered, scrollTop]);
   useEffect(() => {
-    let alive = true;
-    const revisions = new WeakMap<HTMLElement, number>();
     const refresh = (event: Event) => {
       const paths = (event as CustomEvent<string[]>).detail;
       for(const image of element.current?.querySelectorAll<HTMLImageElement>('img[data-resource-link]')||[]){
@@ -43,34 +41,21 @@ export default function ReadingView(
         const resource of element.current?.querySelectorAll<HTMLElement>('.resource-preview') || []
       ) {
         if (paths.includes(resource.dataset.resourcePath || '')) {
-          const revision = (revisions.get(resource) || 0) + 1;
-          revisions.set(resource, revision);
-          void drawingSvg(resource.dataset.resourcePath!).then(svg => {
-            if (
-              alive && revisions.get(resource) === revision && element.current?.contains(resource)
-            ) {
-              sizeDrawing(svg, resource.dataset.resourceAlt || '');
-              resource.replaceChildren(svg);
-            }
-          }).catch(() => {
-            if (
-              alive && revisions.get(resource) === revision && element.current?.contains(resource)
-            ) resource.textContent = resource.dataset.resourceLabel || '绘图文件不可用';
-          });
+          const kind=previewKind(resource.dataset.resourceLink||'',resource.dataset.resourceImage==='true',true);
+          if(kind)void mountAttachmentPreview(resource,kind,path,resource.dataset.resourceLink||'',resource.dataset.resourceAlt||'');
         }
       }
     };
     const themeChanged = () =>
       refresh(
         new CustomEvent('moyu-resources-changed', {
-          detail: [...element.current?.querySelectorAll<HTMLElement>('.resource-preview') || []]
+          detail: [...element.current?.querySelectorAll<HTMLElement>('.resource-preview[data-preview-kind=drawing]') || []]
             .map(resource => resource.dataset.resourcePath),
         }),
       );
     window.addEventListener('moyu-resources-changed', refresh);
     window.addEventListener('moyu-diagram-theme', themeChanged);
     return () => {
-      alive = false;
       window.removeEventListener('moyu-resources-changed', refresh);
       window.removeEventListener('moyu-diagram-theme', themeChanged);
     };
@@ -93,8 +78,12 @@ export default function ReadingView(
   }, [rendered]);
   useEffect(() => {
     let alive = true;
-    void renderMarkdown(value, path, { interactiveTabs: true, sourceLocations: true }).then(root => {
-      if (alive) setRendered(root);
+    const previous=renderedSource.current;
+    if(element.current&&previous?.path===path&&!element.current.hasAttribute('data-editor-pending')&&patchHTMLPreviewMetadata(element.current,previous.value,value)){
+      renderedSource.current={value,path};return;
+    }
+    void renderMarkdown(value, path, { interactiveTabs: true, sourceLocations: true, attachmentPreviews:true }).then(root => {
+      if (alive) {renderedSource.current={value,path};setRendered(root);}else disposePreviews(root);
     }).catch(error => {
       if (alive) setRendered(document.createElement('div'));
       console.error('Markdown 阅读渲染失败', error);

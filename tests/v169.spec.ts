@@ -1,3 +1,4 @@
+import {editPreviewReference} from './attachment-helper';
 import { _electron as electron, expect, type Page, test } from './helpers/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -67,7 +68,7 @@ test('Image context viewer stays responsive across repeated open and back operat
   try {
     await open(page, '图片文档.md', '前文\n\n![图片](图片.svg)\n\n![像素图](中文图片.png)\n\n末尾');
     for (let i = 0; i < 3; i++) {
-      await page.locator('.attachment-overlay img').nth(i % 2).click();
+      await editPreviewReference(page,page.locator('.attachment-overlay').nth(i % 2));
       await page.locator('.visual-attachment .syntax-raw').nth(i % 2).click({ button: 'right' });
       await page.getByRole('menuitem', { name: '查看图片', exact: true }).click();
       await expect(page.locator('.image-viewer img')).toBeVisible();

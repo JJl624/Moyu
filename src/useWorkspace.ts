@@ -1,9 +1,12 @@
 import {idFloor,reserveIds,setCodeNamespace} from './codeIds';
+import {setAttachmentScope} from './attachments/preferences';
+import {flushAttachmentViews,reloadAttachmentViews} from './attachments/viewState';
 import {fileKind} from './fileKinds';
 import { settingsStore } from './settingsStore';
 import {settleHTMLResults} from './htmlResultLifecycle';
 import { createCloseQueue } from './documents/closeQueue';
 import { DocumentLifetimes } from '../shared/document-lifetimes.mjs';
+import {visitDocument} from '../shared/document-stack.mjs';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./bridge";
 import {
@@ -13,7 +16,7 @@ import {
   type DiskDocument,
 } from "./types";
 const isDrawing=(path:string)=>/\.excalidraw$/i.test(path);
-const readDocument=async(path:string)=>{const document=['image','pdf','sqlite'].includes(fileKind(path))?await api.feature<DiskDocument>('file.binary-read',{path}):isDrawing(path)?await api.feature<DiskDocument>('drawing.read',{path}):await api.read(path);if(api.desktop&&api.platform!=='android'&&/\.(md|markdown)$/i.test(path)){const counter=await api.feature<{next:number}>('code.counter',{document:path});reserveIds(undefined,path,counter.next);}return document;};
+const readDocument=async(path:string)=>{const document=['image','pdf','score','sqlite'].includes(fileKind(path))?await api.feature<DiskDocument>('file.binary-read',{path}):isDrawing(path)?await api.feature<DiskDocument>('drawing.read',{path}):await api.read(path);if(api.desktop&&api.platform!=='android'&&/\.(md|markdown)$/i.test(path)){const counter=await api.feature<{next:number}>('code.counter',{document:path});reserveIds(undefined,path,counter.next);}return document;};
 const initialMarkdown=(files:{path:string}[])=>files.find(f=>f.path==='markdown完全语法示例.md') ?? files.find(f=>f.path==='开始使用.md') ?? files.find(f=>/\.(md|markdown)$/i.test(f.path));
 export type SavePolicy='manual'|'close'|'realtime';
 
@@ -29,7 +32,7 @@ export function useWorkspace() {
   const currentTabs=useRef(tabs),currentActive=useRef(active),generation=useRef(0),openTicket=useRef(0),currentRoot=useRef(workspace?.root);
   currentTabs.current=tabs;currentActive.current=active;
   currentRoot.current=workspace?.root;
-  if(workspace)setCodeNamespace(workspace.root);
+  if(workspace){setCodeNamespace(workspace.root);setAttachmentScope(workspace.root);}
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [editorEpoch, setEditorEpoch] = useState(0);
@@ -63,10 +66,20 @@ export function useWorkspace() {
     const existing=currentTabs.current,next=existing.filter(tab=>tab!==path);
     currentTabs.current=next;setTabs(next);
     if(currentActive.current===path){
-      currentActive.current=next[Math.max(0,existing.indexOf(path)-1)]||'';
+      currentActive.current=api.platform==='android'?next.at(-1)||'':next[Math.max(0,existing.indexOf(path)-1)]||'';
       setActive(currentActive.current);
     }
     const remaining={...docs.current};delete remaining[path];commit(remaining);
+  },[commit,pin]);
+  // Recover buffers in the background without visiting documents or saving the
+  // previously active buffer. Their asynchronous work needs a lifetime too.
+  const restoreDraft=useCallback((root:string,disk:DiskDocument,content:string,version:string)=>{
+    if(currentRoot.current!==root||docs.current[disk.path]?.dirty)return false;
+    if(!docs.current[disk.path])lifetimes.current.open(disk.path);
+    pin(disk.path);
+    commit({...docs.current,[disk.path]:{...disk,content,savedContent:disk.content,version,dirty:content!==disk.content,saving:false,conflict:disk.version===version?undefined:disk}});
+    if(!currentTabs.current.includes(disk.path)){const next=[disk.path,...currentTabs.current];currentTabs.current=next;setTabs(next);}
+    return true;
   },[commit,pin]);
   const open = useCallback(
     async (path: string,preview=false) => {
@@ -101,7 +114,8 @@ export function useWorkspace() {
           if(disposable){next=currentActive.current===old?next.map(tab=>tab===old?path:tab):next.filter(tab=>tab!==old);lifetimes.current.close(old);const remaining={...docs.current};delete remaining[old];commit(remaining);}
           currentPreview.current=path;setPreviewTab(path);
         }
-        if(!next.includes(path)){
+        if(api.platform==='android')next=visitDocument(next,path);
+        else if(!next.includes(path)){
           const index=next.indexOf(currentActive.current), at=index<0?next.length:index+1;
           next=[...next.slice(0,at),path,...next.slice(at)];
         }
@@ -171,6 +185,7 @@ export function useWorkspace() {
     [update,pin],
   );
   const saveAll = useCallback(async () => {
+    await flushAttachmentViews();
     await settleHTMLResults();
     // A write can finish while new typing is already dirty. Drain until every
     // latest snapshot is saved before closing a tab or changing workspaces.
@@ -260,8 +275,9 @@ export function useWorkspace() {
           ) ?? [];
         if (restored.length) {
           for (const path of restored) await open(path);
-          if (session?.active && restored.includes(session.active))
-            setActive(session.active);
+          if (session?.active && restored.includes(session.active)){
+            if(api.platform==='android')await open(session.active);else setActive(session.active);
+          }
         } else {
           const first =
             initialMarkdown(files) ?? files[0];
@@ -362,6 +378,7 @@ export function useWorkspace() {
     const request=generation.current;
     return closingQueue.current!(async()=>{
       if(request!==generation.current)return false;
+      await flushAttachmentViews();
       await settleHTMLResults({documents:paths});
       await Promise.all(paths.map(path=>pending.current.get(path)));
       if(request!==generation.current)return false;
@@ -390,13 +407,15 @@ export function useWorkspace() {
     commit(next);
     if(next[currentActive.current]?.content!==previous)setEditorEpoch(epoch=>epoch+1);
   };
-  const copy=async(from:string,to:string)=>{const root=currentRoot.current;await Promise.all(pending.current.values());if(root!==currentRoot.current)throw new Error('知识库已切换。');renaming.current=true;try{await api.feature('file.copy',{root,from,to,buffers:Object.values(docs.current).filter(d=>/\.(md|markdown)$/i.test(d.path)).map(d=>({path:d.path,content:d.content,version:d.version}))});await refresh();return true;}finally{renaming.current=false;}};
+  const copy=async(from:string,to:string)=>{const root=currentRoot.current;await flushAttachmentViews();await Promise.all(pending.current.values());if(root!==currentRoot.current)throw new Error('知识库已切换。');renaming.current=true;try{await api.feature('file.copy',{root,from,to,buffers:Object.values(docs.current).filter(d=>/\.(md|markdown)$/i.test(d.path)).map(d=>({path:d.path,content:d.content,version:d.version}))});await refresh();return true;}finally{renaming.current=false;}};
   const rename = async (from: string, to: string) => {
     const root=currentRoot.current;
+    await flushAttachmentViews();
     await Promise.all(pending.current.values());renaming.current=true;
     try{
     if(root!==currentRoot.current)throw new Error('知识库已切换。');
     const result=api.desktop?await api.feature<{moves?:{from:string;to:string}[];documents:DiskDocument[];buffers:{original:string;path:string;content:string}[]}>('attachment.rename',{root,from,to,buffers:Object.values(docs.current).filter(d=>/\.(md|markdown)$/i.test(d.path)).map(d=>({path:d.path,content:d.content,version:d.version}))}):(await api.rename(from,to),{documents:[],buffers:[]});
+    await reloadAttachmentViews(result.documents.map(document=>document.path));
     const remap=(path:string)=>{const move=(result.moves||[{from,to}]).find(m=>path===m.from||path.startsWith(m.from+'/'));return move?move.to+path.slice(move.from.length):path;};
     lifetimes.current.rename(remap);
     commit(
@@ -492,6 +511,7 @@ export function useWorkspace() {
     editorEpoch,
     setEditorEpoch,
     open,
+    restoreDraft,
     save,
     saveAll,
     settleSaves:()=>Promise.all(pending.current.values()),

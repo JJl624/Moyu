@@ -13,10 +13,10 @@ async function choose(page: Page, category: string, label: string) {
   await expect(page.locator('.element-menu')).toHaveCount(0);
 }
 async function context(target: Locator) { await target.click({ button: 'right' }); }
-async function fixture() {
+async function fixture(offscreen=true) {
   const data = await fs.mkdtemp(path.resolve(project, '../../work/context-actions-'));
   await fs.writeFile(path.join(data, 'settings.json'), JSON.stringify({ version: 1, values: { 'moyu-save-policy': 'manual', 'moyu-theme': 'light' } }));
-  const env = { ...process.env, MOYU_USER_DATA: data, MOYU_TEST: '1', MOYU_DEMO: '1', MOYU_TEST_OFFSCREEN: '1' };
+  const env = { ...process.env, MOYU_USER_DATA: data, MOYU_TEST: '1', MOYU_DEMO: '1', MOYU_TEST_OFFSCREEN: offscreen?'1':'0' };
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch(process.env.MOYU_E2E_EXECUTABLE ? { executablePath: process.env.MOYU_E2E_EXECUTABLE, args: [], env } : { args: [project], env });
   const page = await app.firstWindow(), errors: string[] = [];
@@ -166,7 +166,7 @@ test('Ordinary and tabbed code menus copy/format the clicked code, run the corre
     await context(code.locator('.cm-content')); await choose(page, '代码块', '查看数据目录'); await expect(page.getByRole('tab', { name: '数据', exact: true })).toHaveAttribute('aria-selected', 'true'); await expect(page.locator('.code-data-group.selected')).toContainText('0011');
     const output = code.locator('.code-output'); await context(output); await choose(page, '运行结果', '复制运行结果'); await expect.poll(clipboard).toBe('3\n');
     await context(output); await choose(page, '运行结果', '保存结果为文本文件'); await expect.poll(async () => fs.readdir(path.join(data, 'exports'))).toContain('代码菜单-运行结果.txt'); expect(await fs.readFile(path.join(data, 'exports/代码菜单-运行结果.txt'), 'utf8')).toBe('3\n');
-    await context(output); await choose(page, '运行结果', '保存文本到附件'); await expect.poll(async () => fs.readdir(path.join(root, '代码菜单.assets/attachments'))).toContain('代码菜单-运行结果.txt');
+    await context(output); await choose(page, '运行结果', '保存文本到附件'); await expect.poll(async () => fs.readdir(path.join(root, '代码菜单.assets/attachments')).catch(error=>{if(error.code==='ENOENT')return [];throw error;})).toContain('代码菜单-运行结果.txt');
     const tabs = page.locator('[data-tabbed-code]'); await context(tabs.locator('.cm-content')); await choose(page, '标签代码', '复制代码'); await expect.poll(clipboard).toBe('const  value=1;');
     await context(tabs.locator('.cm-content')); await choose(page, '标签代码', '格式化代码'); await expect(tabs.locator('.cm-content')).toHaveText('const value = 1;');
     await context(tabs.locator('.cm-content')); await expect(page.getByRole('menuitem', { name: '运行代码块', exact: true })).toHaveCount(0); await page.keyboard.press('Escape'); expect(errors).toEqual([]);
@@ -180,13 +180,14 @@ test('Local images, drawing previews, Markdown links and external links open, co
     await page.evaluate(() => window.moyu!.feature('drawing.create', { path: '绘图.excalidraw' }));
     await page.evaluate(() => window.moyu!.create('目标.md','file','目标文档'));
     await open(page, '链接菜单.md', '![图片|80](中文图.svg)\n\n[绘图](绘图.excalidraw)\n\n[本地](目标.md)\n\n[网页](https://example.com/test)\n\n末尾');
+    await page.locator('.ProseMirror > p').last().click();
     const preview = page.locator('.attachment-overlay img'); await context(preview); await expect(page.locator('.visual-attachment.editing')).toHaveCount(0);
     await choose(page, '图片', '复制链接'); await expect.poll(clipboard).toBe('![图片|80](中文图.svg)');
     await context(preview); await choose(page, '图片', '复制链接地址'); await expect.poll(clipboard).toBe('中文图.svg');
     await context(preview); await choose(page, '图片', '在文件夹中显示'); expect(await app.evaluate(() => (globalThis as any).__menuCalls.at(-1))).toEqual(['reveal',path.join(root,'中文图.svg')]);
     await context(preview); await choose(page, '图片', '查看图片'); await expect(page.locator('.image-viewer')).toBeVisible();
     await page.locator('.tab-name[title="链接菜单.md"]').click(); await context(preview); await choose(page, '图片', '重命名附件'); await page.getByLabel('名称', { exact: true }).fill('新中文图.svg'); await page.getByRole('button', { name: '保存名称', exact: true }).click();
-    await expect.poll(() => fs.access(path.join(root,'新中文图.svg')).then(()=>true,()=>false)).toBe(true); await expect(preview).toHaveAttribute('data-resource-link','新中文图.svg');
+    await expect.poll(() => fs.access(path.join(root,'新中文图.svg')).then(()=>true,()=>false)).toBe(true); await expect(preview).toHaveAttribute('src',new RegExp(encodeURIComponent('新中文图.svg')));
     const drawing = page.locator('.attachment-overlay svg'); await context(drawing); await choose(page, '绘图', '编辑绘图'); await expect(page.locator('.drawing-editor')).toBeVisible(); await page.locator('.tab-name[title="链接菜单.md"]').click();
     const local = page.locator('.inline-syntax').filter({ hasText: '本地' }); await context(local); await choose(page, 'Markdown链接', '打开链接'); await expect(page.locator('.tab.active .tab-name')).toHaveAttribute('title','目标.md'); await page.locator('.tab-name[title="链接菜单.md"]').click();
     await context(local); await choose(page, 'Markdown链接', '重命名文件'); await page.getByLabel('名称',{exact:true}).fill('新目标'); await page.getByRole('button',{name:'保存名称',exact:true}).click(); await expect.poll(() => fs.access(path.join(root,'新目标.md')).then(()=>true,()=>false)).toBe(true);
@@ -256,14 +257,22 @@ test('Image viewer and reading links copy, open, rename, reveal and recycle with
 });
 
 test('Result file previews copy their own text and PDF selection menus copy readable text',async()=>{
-  const{app,page,root,errors}=await fixture();const clipboard=()=>app.evaluate(({clipboard})=>clipboard.readText());
+  const{app,page,root,errors}=await fixture(false);const clipboard=()=>app.evaluate(({clipboard})=>clipboard.readText());
   try{
+    await app.evaluate(({BrowserWindow})=>{const window=BrowserWindow.getAllWindows()[0];window.show();window.focus();window.webContents.focus();});
     await open(page,'结果文件.md','```python\nwith open("/output/message.txt", "w") as f:\n    f.write("artifact text")\nprint("console output")\n```');await context(page.locator('.milkdown-code-block .cm-content'));await choose(page,'代码块','运行代码块');
     const text=page.getByLabel('文件内容预览');await expect(text).toHaveText('artifact text',{timeout:30000});await context(text);await choose(page,'结果文件','复制文本');await expect.poll(clipboard).toBe('artifact text');
     const stream='BT /F1 24 Tf 40 100 Td (PDF menu text) Tj ET',objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
     let pdf='%PDF-1.4\n',offsets:number[]=[];objects.forEach((o,i)=>{offsets.push(pdf.length);pdf+=`${i+1} 0 obj\n${o}\nendobj\n`;});const start=pdf.length;pdf+=`xref\n0 6\n0000000000 65535 f \n`+offsets.map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Root 1 0 R /Size 6 >>\nstartxref\n${start}\n%%EOF`;
-    await fs.writeFile(path.join(root,'菜单.pdf'),pdf);await open(page,'菜单.pdf');const line=page.locator('.pdf-viewer .textLayer span').filter({hasText:'PDF menu text'});await expect(line).toBeVisible();
-    await line.evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);getSelection()!.removeAllRanges();getSelection()!.addRange(r);});await context(line);await choose(page,'PDF','复制');await expect.poll(clipboard).toBe('PDF menu text');expect(errors).toEqual([]);
+    await fs.writeFile(path.join(root,'菜单.pdf'),pdf);await open(page,'菜单.pdf');const reader=page.locator('.pdf-viewer embedpdf-container');await expect(reader.locator('img').first()).toBeVisible();
+    // EmbedPDF owns its text selection; browser DOM ranges from PDF.js no
+    // longer represent a selected PDF range. Use its public range API, then
+    // exercise the real reader copy control and native clipboard.
+    const pointer=await reader.evaluate(async(element:any)=>(await element.registry).getPlugin('commands').provides().resolve('pointer:toggle').label);await reader.getByRole('button',{name:pointer,exact:true}).click();
+    await reader.evaluate(async(element:any)=>{const selection=(await element.registry).getPlugin('selection').provides();await new Promise((resolve,reject)=>selection.setSelection({start:{page:0,index:0},end:{page:0,index:1000}}).wait(resolve,reject));});
+    await reader.getByRole('button',{name:'复制',exact:true}).click();await expect.poll(clipboard).toBe('PDF menu text');
+    await page.evaluate(()=>{const frame=document.createElement('iframe');frame.title='剪贴板权限边界';frame.srcdoc='<button>尝试写入</button>';frame.style.cssText='position:fixed;left:10px;top:100px;z-index:10000;width:200px;height:70px;background:white';document.body.append(frame);});
+    const child=page.frameLocator('iframe[title="剪贴板权限边界"]'),attempt=child.getByRole('button',{name:'尝试写入',exact:true});await attempt.evaluate(button=>button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText('child frame');document.body.textContent='ALLOWED';}catch{document.body.textContent='DENIED';}}));await attempt.click();await expect(child.locator('body')).toHaveText('DENIED');expect(await clipboard()).toBe('PDF menu text');expect(errors).toEqual([]);
   }finally{await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
 });
 

@@ -3,7 +3,7 @@ import {codeId} from '../shared/code-documents.mjs';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
-import remarkEmptyTasks from '../shared/remark-empty-tasks.mjs';
+import remarkDocumentStructure from '../shared/remark-document-structure.mjs';
 import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
@@ -13,13 +13,14 @@ import remarkUnderline from '../shared/remark-underline.mjs';
 import remarkFoldingQuotes, { foldingQuoteHTML } from '../shared/remark-folding-quotes.mjs';
 import { readableHref } from '../shared/link-destinations.mjs';
 import { applyAttachmentSize, attachmentSize } from './attachmentLayout';
-import { attachmentMarkdown } from './attachmentLinks';
-import { resourceImageURL } from './resourcePreview';
+import { attachmentMarkdown,attachmentLabel,isAttachmentLink } from './attachmentLinks';
+import {previewKind,mountAttachmentPreview} from './attachments/previewRegistry';
+import {standaloneAttachment} from '../shared/attachment-previews.mjs';
 import { runnable } from './codeBlocks';
 import { isTabbedCode } from './codeTabs';
 import { heightFromMeta } from './editor/codeMetadata';
 import { highlightReading } from './highlight';
-import { drawingSvg, isPreviewResource, resourcePath } from './resourcePreview';
+import {  isPreviewResource, resourcePath } from './resourcePreview';
 import { renderCodeTabs } from './tabbedCodePreview';
 import 'katex/dist/katex.min.css';
 
@@ -29,30 +30,24 @@ const resourceAttributes = [
   'dataResourceLabel',
   'dataResourceImage',
   'dataResourceAlt',
+  'dataResourceStandalone',
   'dataSourceFrom',
   'dataSourceTo',
 ];
-function sizeDrawing(svg: SVGSVGElement, alt: string) {
-  applyAttachmentSize(
-    svg,
-    alt,
-    Number((svg.getAttribute('viewBox') || '').split(/[ ,]+/)[2]) || 400,
-  );
-}
 export async function renderMarkdown(
   value: string,
   path: string,
-  options: { limitCodeHeight?: boolean; interactiveTabs?: boolean; sourceLocations?: boolean } = {},
+  options: { limitCodeHeight?: boolean; interactiveTabs?: boolean; sourceLocations?: boolean; attachmentPreviews?:boolean } = {},
 ) {
   const heights: (number | null)[] = [], metas: string[] = [];
-  return unified().use(remarkParse).use(remarkGfm).use(remarkEmptyTasks).use(remarkMath).use(remarkHighlight).use(remarkUnderline).use(remarkFoldingQuotes).use(() => tree => {
+  return unified().use(remarkParse).use(remarkGfm).use(remarkDocumentStructure).use(remarkMath).use(remarkHighlight).use(remarkUnderline).use(remarkFoldingQuotes).use(() => tree => {
     const definitions = new Map<string, string>();
     const collect = (node: any) => {
       if (node.type === 'definition' && !definitions.has(node.identifier)) definitions.set(node.identifier, node.url);
       node.children?.forEach(collect);
     };
     collect(tree);
-    const walk = (node: any) => {
+    const walk = (node: any, parent?:any) => {
       if (options.sourceLocations && node.position && ['paragraph', 'heading', 'listItem', 'tableCell', 'code', 'math'].includes(node.type)) {
         node.data = { ...node.data, hProperties: { ...node.data?.hProperties,
           dataSourceFrom: node.position.start.offset, dataSourceTo: node.position.end.offset } };
@@ -69,26 +64,27 @@ export async function renderMarkdown(
         }
       }
       if (['image', 'link', 'imageReference', 'linkReference'].includes(node.type)) {
-        const alt = node.alt || node.children?.map((n: any) => n.value || '').join('') || '';
+        const alt = attachmentLabel(node);
         const href = node.url || definitions.get(node.identifier);
         const image = ['image', 'imageReference'].includes(node.type);
         node.data = {
           ...node.data,
           hProperties: {
             ...node.data?.hProperties,
-            ...((image || isPreviewResource(href || '')) ? {
+            ...((image || isPreviewResource(href || '') || options.attachmentPreviews && isAttachmentLink({...node,url:href})) ? {
               dataResourceLink: href,
               dataResourceRaw: value.slice(node.position.start.offset, node.position.end.offset),
               dataResourceLabel: attachmentSize(alt).label,
               dataResourceImage: String(image),
               dataResourceAlt: alt,
+              dataResourceStandalone:String(standaloneAttachment(parent)),
             } : {}),
             dataSourceFrom: node.position.start.offset,
             dataSourceTo: node.position.end.offset,
           },
         };
       }
-      node.children?.forEach(walk);
+      node.children?.forEach((child:any)=>walk(child,node));
     };
     walk(tree);
   }).use(remarkRehype, { handlers: { blockquote: foldingQuoteHTML } }).use(rehypeSanitize, {
@@ -174,22 +170,17 @@ export async function renderMarkdown(
           p = resourcePath(path, href),
           alt = resource.dataset.resourceAlt || '';
         resource.dataset.resourcePath = p;
-        if (isPreviewResource(p)) {
-          const link = document.createElement('a');
+        const kind=previewKind(href,resource instanceof HTMLImageElement,resource.dataset.resourceStandalone==='true');
+        if (kind) {
+          const link = document.createElement('span');
           Object.assign(link.dataset, resource.dataset);
-          link.href = href;
           link.className = 'resource-preview';
           link.textContent = attachmentSize(alt).label || '绘图';
           resource.replaceWith(link);
-          try {
-            const svg = await drawingSvg(p);
-            sizeDrawing(svg, alt);
-            link.replaceChildren(svg);
-          } catch { /* Missing attachments keep a usable link. */ }
-        } else if (resource instanceof HTMLImageElement) {
-          resource.src = resourceImageURL(path, href);
-          resource.alt = attachmentSize(alt).label;
-          applyAttachmentSize(resource, alt, resource.naturalWidth);
+          if(kind==='image')void mountAttachmentPreview(link,kind,path,href,alt);
+          else await mountAttachmentPreview(link,kind,path,href,alt);
+        } else if (!kind && resource instanceof HTMLImageElement) {
+          const link=document.createElement('a');Object.assign(link.dataset,resource.dataset);link.href=href;link.textContent=attachmentSize(alt).label||'附件';resource.replaceWith(link);
         }
       }),
     );

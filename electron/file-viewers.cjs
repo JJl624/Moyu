@@ -3,7 +3,7 @@ const { fileKind } = require('../shared/file-kind.mjs');
 const LIMIT = 128 * 1024 * 1024;
 async function binaryRead(vault, relative, bytes = false) {
   const kind = fileKind(relative);
-  if (!['image', 'pdf', 'sqlite'].includes(kind)) throw Error('文件格式无效。');
+  if (!['image', 'pdf', 'score', 'sqlite'].includes(kind)) throw Error('文件格式无效。');
   const target = await vault.resolve(relative), stat = await fs.stat(target);
   if (!stat.isFile() || stat.size > LIMIT) throw Error('文件超过 128 MB 或不是普通文件。');
   if (bytes && kind !== 'sqlite') throw Error('此文件不支持数据库查询。');
