@@ -76,6 +76,7 @@ class DocumentFiles {
   async rename(input) {
     return this.vault.mutate(async () => {
       const map = await this.documents.read();
+      const viewLocations=new Map(Object.entries(map.documents).map(([name,record])=>[name,record.directory]));
       this.structure(input.from, map);
       this.structure(input.to, map);
       const moves = [{ from: input.from, to: input.to }],
@@ -109,11 +110,20 @@ class DocumentFiles {
       for (const record of Object.values(next)) {
         if (record.directory) record.directory = remap(record.directory, moves);
       }
+      for(const [document,record]of Object.entries(map.documents)){
+        if(!record.attachmentViews)continue;
+        const name=remap(document,moves),views=require('./attachment-views.cjs').renameAttachmentViews(record.attachmentViews,document,name,moves);
+        const changed=JSON.stringify(views)!==JSON.stringify(record.attachmentViews);record.attachmentViews=views;
+        const location=viewLocations.get(document);if(!location)continue;
+        const existing=overrides.find(edit=>edit.path===location+'/document.json');
+        if(existing)existing.content=this.documents.owner(name,record);
+        else if(changed){const owner=await this.vault.read(location+'/document.json');overrides.push({path:owner.path,version:owner.version,content:this.documents.owner(name,record)});}
+      }
       const file = await this.documents.file(),
         before = await fs.readFile(file, "utf8").catch(() => null);
       const history = await this.vault.history?.move(input.from, input.to);
       map.documents = next;
-      const after = JSON.stringify(map, null, 2);
+      const after = this.documents.indexText(map);
       return this.references.renameUnlocked(
         { ...input, moves, overrides, history },
         () => atomic(file, after),
@@ -317,6 +327,7 @@ class DocumentFiles {
           const name = remap(document, moves);
           map.documents[name] = {
             ...structuredClone(record),
+            ...(record.attachmentViews?{attachmentViews:require('./attachment-views.cjs').renameAttachmentViews(record.attachmentViews,document,name,moves)}:{}),
             ...(record.directory ? { directory: remap(record.directory, moves) } : {}),
           };
           const copiedDocument = documents.find(doc => doc.path === name);
@@ -336,7 +347,7 @@ class DocumentFiles {
             await replace(this.vault, owner, Buffer.from(body), disk.version);
           }
         }
-        transaction.mapAfter = JSON.stringify(map, null, 2);
+        transaction.mapAfter = this.documents.indexText(map);
         await this.saveJournal(transaction);
         await atomic(await this.documents.file(), transaction.mapAfter);
         return { path: input.to, documents, buffers: [] };
@@ -398,7 +409,6 @@ class DocumentFiles {
               (await this.vault.read(document)).content,
             );
             await this.mkdir(path.posix.join(directory, "attachments"), record);
-            await this.mkdir(path.posix.join(directory, "code-data"), record);
             const ownerPath = path.posix.join(directory, "document.json");
             if (!await fs.lstat(await this.vault.resolve(ownerPath, true)).catch(() => null)) {
               const body = this.documents.owner(document, owner);
@@ -452,7 +462,7 @@ class DocumentFiles {
           await this.saveJournal(record);
           await fs.rename(await this.vault.resolve(root), await this.vault.resolve(to, true));
         }
-        record.mapAfter = JSON.stringify(map, null, 2);
+        record.mapAfter = this.documents.indexText(map);
         await this.saveJournal(record);
         await atomic(await this.documents.file(), record.mapAfter);
         const history=await this.vault.history?.move(input.path,input.path);if(history){record.history={...history,remove:true};await this.saveJournal(record);await this.vault.history.apply(record.history);}
@@ -483,7 +493,7 @@ class DocumentFiles {
       map.documents[input.target] = { ...record, directory: next };
       const file = await this.documents.file(),
         before = await fs.readFile(file, "utf8"),
-        after = JSON.stringify(map, null, 2);
+        after = this.documents.indexText(map);
       return this.references.renameUnlocked(
         {
           moves,

@@ -55,9 +55,8 @@ test('Changing code or language keeps identity metadata byte-identical and does 
   const before = await Promise.all(files.map(name => fs.readFile(path.join(root, name), 'utf8')));
   for (const body of before) {
     assert.doesNotMatch(body, /language|Python|py|active|hash/);
-    assert.deepEqual(JSON.parse(body).blocks || JSON.parse(body).documents[doc.path].blocks, [
-      '0001',
-    ]);
+    if(JSON.parse(body).documents)assert.deepEqual(JSON.parse(body).documents[doc.path],{directory:'代码.assets'});
+    else assert.deepEqual(JSON.parse(body).blocks,['0001']);
   }
   for (const language of ['js', 'sql', 'text', 'cpp']) {
     doc = await vault.save(doc.path, `\`\`\`${language} {id=0001}\nchanged\n\`\`\``, doc.version);

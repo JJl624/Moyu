@@ -52,7 +52,7 @@ class Vault {
   }
   async list() {
     let records;
-    try {records=(await new (require('./document-map.cjs').DocumentMap)(this).read()).documents;}
+    try {records=(await new (require('./document-map.cjs').DocumentMap)(this).readIndex()).documents;}
     catch(error){if(!this.recoveryError)throw error;records={};}
     const owners = new Map(Object.entries(records).filter(([, r]) => r.directory).map(([doc, r]) => [r.directory, doc]));
     const visit = async (dir, prefix = "", depth = 0) => {

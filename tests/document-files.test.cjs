@@ -81,7 +81,8 @@ test("Read-only counter and data queries do not allocate IDs, rewrite documents 
   assert.equal((await data.list({ document: doc.path }))[0].associated, true);
   assert.equal(await fs.readFile(file, "utf8"), before);
   const r = JSON.parse(before).documents[doc.path];
-  assert.deepEqual(r, { nextId: 2, blocks: ["0001"], directory: "只读.assets" });
+  assert.deepEqual(r, { directory: "只读.assets" });
+  assert.deepEqual((await attachments.documents.read(doc.path)).documents[doc.path], { nextId: 2, blocks: ["0001"], directory: "只读.assets" });
 });
 test("Deleted blocks retain unassociated data and can rebind without ordinal guessing", async t => {
   const { vault, data, attachments, root } = await fixture(t);
@@ -397,7 +398,8 @@ test("Ownership stores only IDs and paths; owned links identify renamed notes wi
   for (const name of [".data/document_map.json", "原.assets/document.json"]) {
     const body = await fs.readFile(path.join(root, name), "utf8");
     assert.doesNotMatch(body, /hash|fingerprint|print\(1\)/i);
-    assert.match(body, /0001/);
+    if(name.endsWith('/document.json'))assert.match(body, /0001/);
+    else assert.deepEqual(JSON.parse(body).documents['原.md'],{directory:'原.assets'});
   }
   await fs.rename(path.join(root, "原.md"), path.join(root, "改名.md"));
   const renamed = await vault.read("改名.md");
