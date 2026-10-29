@@ -32,6 +32,13 @@ function adaptCodeBlocks(code: string) {
     /    this\.cm\.focus\(\);\n    this\.updating = true;\n    try \{\n      this\.cm\.dispatch\(\{ selection: \{ anchor, head \} \}\);/,
     '    if (!this.cm.hasFocus) this.cm.focus();\n    const selected = this.cm.state.selection.main;\n    if (selected.anchor === anchor && selected.head === head) return;\n    this.updating = true;\n    try {\n      this.cm.dispatch({ selection: { anchor, head } });',
   );
+  // The stock picker measures its hidden popup once for every mounted block.
+  // Our language control opens its own menu on demand; retain the stock path
+  // for compatibility, but only measure when that picker is actually opened.
+  replace(
+    /watch\(\[showPicker, triggerRef, pickerRef\], \(\) => \{\n      filter.value = "";/,
+    'watch([showPicker, triggerRef, pickerRef], () => {\n      if (!showPicker.value) return;\n      filter.value = "";',
+  );
   return code;
 }
 export function stableCodeBlocks(): Plugin {

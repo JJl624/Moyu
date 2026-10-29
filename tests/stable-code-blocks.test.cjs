@@ -53,3 +53,14 @@ test('CodeMirror selection echoes avoid redundant focus and dispatch while genui
   cm.hasFocus=false;setSelection.call(block,4,2);assert.equal(focused,1);assert.equal(dispatched,1);
   cm.dom.isConnected=false;setSelection.call(block,5,5);assert.equal(dispatched,1);
 });
+
+test('Closed stock language pickers never measure layout; opening still positions the popup',async()=>{
+  const entry=path.resolve(__dirname,'../node_modules/@milkdown/components/lib/code-block/index.js');
+  const code=mod.exports.stableCodeBlocks().transform(fs.readFileSync(entry,'utf8'),entry);
+  const body=code.match(/watch\(\[showPicker, triggerRef, pickerRef\], \(\) => \{([\s\S]*?)\n    \}\);\n    const onTogglePicker/)[1];
+  const position=new Function('showPicker','filter','triggerRef','pickerRef','computePosition',body);
+  let measurements=0;const open={value:false},filter={value:'old'},trigger={value:{}},popup={value:{style:{}}};
+  const measure=()=>{measurements++;return Promise.resolve({x:12,y:34});};
+  for(let i=0;i<80;i++)position(open,filter,trigger,popup,measure);assert.equal(measurements,0);
+  open.value=true;position(open,filter,trigger,popup,measure);await Promise.resolve();assert.equal(measurements,1);assert.equal(filter.value,'');assert.deepEqual(popup.value.style,{left:'12px',top:'34px'});
+});
