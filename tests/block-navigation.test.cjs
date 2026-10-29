@@ -2,6 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),path=requir
 const source=require('esbuild').buildSync({entryPoints:[path.resolve(__dirname,'../src/editor/blockNavigation.ts')],bundle:true,write:false,platform:'node',format:'cjs',external:['prosemirror-*','@codemirror/*']}).outputFiles[0].text;
 const mod=new Module(__filename,module);mod.filename=__filename;mod.paths=module.paths;mod._compile(source,__filename);
 const {continueList,leaveCodeBlock}=mod.exports,{Schema}=require('prosemirror-model'),{EditorState,TextSelection}=require('prosemirror-state');
+const headlessEditorView=require('./helpers/headless-editor-view.cjs');
 const schema=new Schema({nodes:{doc:{content:'block+'},paragraph:{content:'text*',group:'block'},code_block:{content:'text*',group:'block',code:true},text:{},bullet_list:{content:'list_item+',group:'block'},ordered_list:{content:'list_item+',group:'block',attrs:{order:{default:1}}},list_item:{content:'paragraph block*',attrs:{checked:{default:null}}}}});
 const paragraph=text=>schema.node('paragraph',null,text?schema.text(text):null),item=(nodes,checked=null)=>schema.node('list_item',{checked},nodes);
 function stateAtEmpty(doc){let pos;doc.descendants((node,at)=>{if(node.type.name==='paragraph'&&!node.content.size)pos=at+1;});return EditorState.create({doc,selection:TextSelection.create(doc,pos)});}
@@ -37,10 +38,11 @@ test('Leaving an empty code block uses its own position despite a stale outer se
     const doc=schema.node('doc',null,nested?[paragraph('outside'),schema.node('bullet_list',null,item([paragraph('item'),code]))]:[paragraph('outside'),code,code]);
     let state=EditorState.create({doc,selection:TextSelection.create(doc,2)}),pos;
     doc.descendants((node,at)=>{if(node===code&&pos===undefined)pos=at;});
-    const view={state,editable:true,dispatch:tr=>{state=state.apply(tr);view.state=state;},focus:()=>{}};
+    const view=headlessEditorView(state);view.dispatch=tr=>{state=state.apply(tr);view.state=state;};
     assert(leaveCodeBlock(view,pos));state.doc.check();
     assert.equal(state.selection.$head.parent.type.name,'paragraph');
     assert.equal(state.selection.$head.depth,nested?3:1);
+    assert.equal(view.focusCount,1);
     const previousCount=state.doc.childCount;assert(leaveCodeBlock(view,pos));assert.equal(state.doc.childCount,previousCount);
     view.editable=false;assert.equal(leaveCodeBlock(view,pos),false);
   }

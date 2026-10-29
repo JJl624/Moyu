@@ -9,6 +9,7 @@ const parser=unified().use(remarkParse);
 // file link uses the same attachment editor, regardless of its file extension.
 export const isAttachmentLink=(node:LinkNode)=>node.type==='image'||node.type==='link'&&!!node.url&&!/^([a-z][\w+.-]*:|\/|#)/i.test(node.url)&&! /\.(md|markdown)(?:[?#].*)?$/i.test(node.url);
 const labelText=(node:LinkNode):string=>node.value??node.children?.map(labelText).join('')??'';
+export const attachmentLabel=(node:LinkNode):string=>node.type==='image'?node.alt||'':labelText(node);
 export function attachmentMarkdown(node:LinkNode):string {
   if(node.attachmentRaw!==undefined)return node.attachmentRaw;
   const label=(node.type==='image'?node.alt||'':labelText(node)).replace(/[\\\[\]]/g,'\\$&');

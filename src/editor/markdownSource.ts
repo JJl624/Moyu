@@ -1,4 +1,5 @@
 import type { Node } from '@milkdown/kit/prose/model';
+import { assertBlockRoundTrip } from './documentContract';
 
 export interface SourceSpan { from: number; to: number }
 interface Block extends SourceSpan { node: Node }
@@ -112,10 +113,15 @@ export class MarkdownSource {
       return gaps ? sameDocument(parsed, expected) : parsed.eq(expected);
     } catch { return false; }
   }
+  private serializeChecked(document: Node) {
+    const source = this.serialize(document);
+    assertBlockRoundTrip(document, this.parse(source));
+    return source;
+  }
   write(current: Node) {
     if (this.comparable(current).eq(this.comparable(this.document))) return this.source;
     const blocks = this.index();
-    if (!blocks?.length) return this.serialize(current);
+    if (!blocks?.length) return this.serializeChecked(current);
     const groups = new Map<string, number[]>();
     blocks.forEach((block, i) => {
       const key = this.key(block.node), group = groups.get(key) || [];
@@ -149,6 +155,6 @@ export class MarkdownSource {
     });
     result += this.source.slice(blocks.at(-1)!.to);
     // A splice is accepted only if it still parses as the live document.
-    return this.matches(result, current, true) ? result : this.serialize(current);
+    return this.matches(result, current, true) ? result : this.serializeChecked(current);
   }
 }

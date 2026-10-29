@@ -1,7 +1,7 @@
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { $prose } from '@milkdown/kit/utils';
 import { clipboardImages, importClipboardImages } from './clipboardImages';
-import { readNativeSelection } from './nativeSelection';
+import { readNativeSelection, focusEditorSelection } from './selectionOwnership';
 import { acceptsAttachmentDrop, droppedAttachmentLinks } from './attachmentDrop';
 export const imagePaste = (
   document: string,
@@ -93,7 +93,7 @@ export const imagePaste = (
           tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(end, tr.doc.content.size))));
         }
         view.dispatch(tr);
-        if (dropped != null) view.focus();
+        if (dropped != null) focusEditorSelection(view, 'edit');
       }).catch(error => {
         if (!destroyed) onError((error as Error).message);
       }).finally(() => pending.delete(job));

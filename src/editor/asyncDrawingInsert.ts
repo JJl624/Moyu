@@ -2,7 +2,7 @@ import { Plugin, TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { $prose } from "@milkdown/kit/utils";
 import { canInsertInlineDrawing } from "./drawingInsertion";
-import { readNativeSelection } from "./nativeSelection";
+import { readNativeSelection, focusEditorSelection } from "./selectionOwnership";
 
 interface Job {
   from: number;
@@ -68,7 +68,7 @@ export function prepareDrawingInsert(view: EditorView) {
       const tr = view.state.tr.replaceWith(job.from, job.to, node);
       tr.setSelection(TextSelection.near(tr.doc.resolve(job.from + node.nodeSize)));
       view.dispatch(tr.scrollIntoView());
-      view.focus();
+      focusEditorSelection(view, 'edit');
       return true;
     },
   };

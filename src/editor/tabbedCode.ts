@@ -1,4 +1,9 @@
 import { Compartment, EditorState, Prec } from '@codemirror/state';
+import {codeBlockSelection} from './codeBlockSelection';
+import {mayFocusSelection,registerCodeFocus} from './codeSelection';
+import {clampCodeRange, type FocusIntent} from './selectionPolicy';
+import {focusEditorSelection} from './selectionOwnership';
+import {codeLanguageMenu} from './codeLanguageMenu';
 import { EditorView as CodeView, keymap, type ViewUpdate } from '@codemirror/view';
 import {
   type CodeBlockConfig,
@@ -20,13 +25,14 @@ import {
   parseCodeTabs,
   removeCodeTab,
   renameCodeTab,
-  replaceTabCode,
+  editCodeTab,
   tabAtOffset,
 } from '../codeTabs';
 import { codeLanguage } from '../highlight';
 import { codeTabPreview } from '../tabbedCodePreview';
 import { heightFromMeta } from './codeMetadata';
 import { isComposingKey } from '../keyboardComposition';
+import {keepClosedKeyboard} from './controlFocus';
 
 function button(label: string, text: string, action: () => void) {
   const el = document.createElement('button');
@@ -34,6 +40,7 @@ function button(label: string, text: string, action: () => void) {
   el.title = label;
   el.setAttribute('aria-label', label);
   el.textContent = text;
+  el.addEventListener('pointerdown',event=>{if(el.closest('.mobile-app')){keepClosedKeyboard(el);event.preventDefault();}});
   el.addEventListener('click', action);
   return el;
 }
@@ -46,6 +53,7 @@ class TabbedCodeView implements NodeView {
   private bar = document.createElement('div');
   private pages = document.createElement('div');
   private manage = document.createElement('div');
+  private manageButton:HTMLButtonElement|undefined;
   private language = document.createElement('input');
   private title = document.createElement('input');
   private toggle: HTMLButtonElement;
@@ -75,6 +83,7 @@ class TabbedCodeView implements NodeView {
     private getPos: () => number | undefined,
     private config: CodeBlockConfig,
   ) {
+    this.sourceMode=!node.textContent.trim();
     this.dom.className = 'milkdown-code-block tabbed-code';
     this.dom.contentEditable = 'false';
     this.dom.dataset.tabbedCode = 'true';
@@ -85,7 +94,7 @@ class TabbedCodeView implements NodeView {
     lang.textContent = 'Tabs';
     const actions = document.createElement('div');
     actions.className = 'tools-button-group';
-    this.toggle = button('显示源码', '源码', () => this.setMode(!this.sourceMode));
+    this.toggle = button('显示源码', '源码', () => this.setMode(!this.sourceMode,!this.dom.closest('.mobile-app')));
     const copy = button('复制代码', '', () => {
       const text = this.sourceMode ? this.node.textContent : this.tabs()[this.active]?.code || '';
       void (api.desktop
@@ -108,6 +117,7 @@ class TabbedCodeView implements NodeView {
     this.pages.id = 'tabs-panel-' + crypto.randomUUID();
     this.pages.setAttribute('role', 'tabpanel');
     this.manage.className = 'tabs-management';
+    this.manage.id='tabs-management-'+crypto.randomUUID();
     this.manage.hidden = true;
     this.language.setAttribute('aria-label', '标签页语言');
     this.language.placeholder = '语言';
@@ -143,8 +153,8 @@ class TabbedCodeView implements NodeView {
         }
         if (e.key === 'Escape') {
           e.preventDefault();
-          this.manage.hidden = true;
-          this.cm.focus();
+          this.setManagement(false);
+          if(mayFocusSelection(this.view,'restore'))this.cm.focus();
         }
       });
     }
@@ -219,7 +229,7 @@ class TabbedCodeView implements NodeView {
       this.view.state.tr.setSelection(TextSelection.near(this.view.state.doc.resolve(pos), -1))
         .scrollIntoView(),
     );
-    this.view.focus();
+    focusEditorSelection(this.view,'edit');
     return true;
   }
   private remember() {
@@ -229,6 +239,7 @@ class TabbedCodeView implements NodeView {
     }
   }
   private select(index: number) {
+    const focus=this.cm.hasFocus||!this.dom.closest('.mobile-app');
     this.remember();
     this.active = index;
     this.render();
@@ -236,8 +247,7 @@ class TabbedCodeView implements NodeView {
     if (saved) this.setCodeSelection(saved.anchor, saved.head);
     else this.setCodeSelection(0, 0);
     this.pages.scrollTop = saved?.scroll ?? 0;
-    this.cm.focus();
-    this.forwardSelection();
+    if(focus){this.cm.focus();this.forwardSelection();}
   }
   private setMode(source: boolean, focus = true) {
     if (source === this.sourceMode) return;
@@ -254,15 +264,27 @@ class TabbedCodeView implements NodeView {
       this.forwardSelection();
     }
   }
+  private setManagement(open:boolean,focus=false){
+    this.manage.hidden=!open;
+    this.manageButton?.setAttribute('aria-expanded',String(open));
+    this.manageButton?.setAttribute('aria-pressed',String(open));
+    if(!open)return;
+    if(focus)this.title.focus({preventScroll:true});
+    if(this.dom.closest('.mobile-app'))requestAnimationFrame(()=>{
+      if(this.destroyed||this.manage.hidden)return;const scroll=this.dom.closest<HTMLElement>('.mobile-document');if(!scroll)return;
+      const box=this.manage.getBoundingClientRect(),viewport=scroll.getBoundingClientRect();
+      if(box.bottom>viewport.bottom-12)scroll.scrollTop+=box.bottom-viewport.bottom+12;
+      else if(box.top<viewport.top+8)scroll.scrollTop+=box.top-viewport.top-8;
+    });
+  }
   private setCodeSelection(anchor: number, head: number) {
-    const length = this.cm.state.doc.length;
+    const range = clampCodeRange(anchor, head, this.cm.state.doc.length);
+    const current=this.cm.state.selection.main;
+    if(current.anchor===range.anchor&&current.head===range.head)return;
     this.syncing = true;
     try {
       this.cm.dispatch({
-        selection: {
-          anchor: Math.max(0, Math.min(length, anchor)),
-          head: Math.max(0, Math.min(length, head)),
-        },
+        selection: range,
       });
     } finally {
       this.syncing = false;
@@ -285,11 +307,12 @@ class TabbedCodeView implements NodeView {
     if (this.syncing || this.destroyed) return;
     if (update.docChanged) {
       const previous = this.tabs(), origin = previous[this.active];
-      const source = this.sourceMode
-        ? update.state.doc.toString()
-        : replaceTabCode(this.node.textContent, this.active, update.state.doc.toString());
+      const edited = this.sourceMode
+        ? {source:update.state.doc.toString(),offset:0}
+        : editCodeTab(this.node.textContent, this.active, update.state.doc.toString());
+      const source=edited.source;
       const next = parseCodeTabs(source);
-      const offset = this.sourceMode ? 0 : origin?.from ?? 0;
+      const offset = edited.offset;
       const head = offset + update.state.selection.main.head;
       const newDeclaration = !this.sourceMode && next.length > previous.length
         ? next.findIndex(tab =>
@@ -313,8 +336,8 @@ class TabbedCodeView implements NodeView {
           if (this.destroyed) return;
           this.active = newDeclaration;
           this.render();
-          this.manage.hidden = false;
-          this.language.focus({ preventScroll: true });
+          this.setManagement(true);
+          if(!this.dom.closest('.mobile-app'))this.language.focus({ preventScroll: true });
         });
       }
     } else if (update.selectionSet && this.cm.hasFocus) {
@@ -409,13 +432,15 @@ class TabbedCodeView implements NodeView {
       const add = button('新建代码标签页', '+', () => {
         const source = createCodeTab(this.node.textContent);
         this.changeSource(source, parseCodeTabs(source).length - 1);
-        this.manage.hidden = false;
-        this.title.focus({ preventScroll: true });
+        this.setManagement(true,!this.dom.closest('.mobile-app'));
       });
       const edit = button('管理代码标签页', '⋯', () => {
-        this.manage.hidden = !this.manage.hidden;
-        if (!this.manage.hidden) this.title.focus({ preventScroll: true });
+        this.setManagement(this.manage.hidden,!this.dom.closest('.mobile-app'));
       });
+      this.manageButton=edit;
+      edit.setAttribute('aria-controls',this.manage.id);
+      edit.setAttribute('aria-expanded',String(!this.manage.hidden));
+      edit.setAttribute('aria-pressed',String(!this.manage.hidden));
       add.disabled = !this.view.editable;
       edit.disabled = !tabs.length;
       this.bar.replaceChildren(...buttons, add, edit);
@@ -435,7 +460,7 @@ class TabbedCodeView implements NodeView {
     moves[1].disabled = !this.view.editable || !active || active.declarationFrom === null
       || this.active === tabs.length - 1;
     moves[2].disabled = !this.view.editable || !active || active.declarationFrom === null;
-    if (this.sourceMode || !tabs.length) this.manage.hidden = true;
+    if (this.sourceMode || !tabs.length) this.setManagement(false);
     this.pages.hidden = !this.sourceMode && !active;
     this.cm.dom.dataset.codeSourceOffset = String(this.offset());
     const text = this.sourceMode ? this.node.textContent : active?.code || '',
@@ -531,12 +556,25 @@ class TabbedCodeView implements NodeView {
             }
           });
         }
-      } else this.render();
+      } else {
+        this.render();
+        // History and outer document commands own their PM selection. The
+        // code view can retain focus, so PM will not necessarily call its
+        // setSelection hook after replacing the text. Synchronize without
+        // requesting focus or borrowing an old page-local caret.
+        const pos=this.getPos(),selection=this.view.state.selection;
+        if(pos!==undefined&&selection.$head.parent===node&&selection.$anchor.parent===node)
+          this.syncSelection(selection.anchor-pos-1,selection.head-pos-1);
+      }
     } else if (metaChanged) this.renderPreview(this.loadedLanguage, this.cm.state.doc.toString());
     return true;
   }
   setSelection(anchor: number, head: number) {
-    if (this.syncing) return;
+    if (this.syncing || this.destroyed) return;
+    this.syncSelection(anchor, head);
+    if (!this.cm.hasFocus && mayFocusSelection(this.view, 'node-update')) this.cm.focus();
+  }
+  private syncSelection(anchor: number, head: number) {
     const tabs = this.tabs();
     if (
       !this.sourceMode
@@ -553,7 +591,14 @@ class TabbedCodeView implements NodeView {
       }
     }
     this.setCodeSelection(anchor - this.offset(), head - this.offset());
-    if (!this.cm.hasFocus) this.cm.focus();
+  }
+  focusSelection(anchor: number, head: number, intent: FocusIntent) {
+    if (this.syncing || this.destroyed) return;
+    // With no pages, the tabs view has no visible editing surface. History can
+    // still restore a text selection here, so expose its source before focus.
+    if(!this.sourceMode&&!this.tabs().length)this.setMode(true,false);
+    this.syncSelection(anchor, head);
+    if (mayFocusSelection(this.view, intent)) this.cm.focus();
   }
   selectNode() {
     this.dom.classList.add('selected');
@@ -584,11 +629,17 @@ export const tabbedCodeView = $view(codeBlockSchema.node, ctx => {
   } as unknown as ConstructorParameters<typeof CodeMirrorBlock>[3];
   return (node, view, getPos) => {
     if (isTabbedCode(node.attrs.language || '')) {
-      return new TabbedCodeView(node, view, getPos, config);
+      const block = new TabbedCodeView(node, view, getPos, config);
+      const destroy = block.destroy.bind(block);
+      const release = registerCodeFocus(block.dom, (anchor, head, intent) => block.focusSelection(anchor, head, intent));
+      block.destroy = () => { release(); destroy(); };
+      return block;
     }
     const block = new CodeMirrorBlock(node, view, getPos, loader, config),
       update = block.update.bind(block);
+    const cleanupLanguage=codeLanguageMenu(block,config.languages),destroy=block.destroy.bind(block);
+    block.destroy=()=>{cleanupLanguage();destroy();};
     block.update = next => !isTabbedCode(next.attrs.language || '') && update(next);
-    return block;
+    return codeBlockSelection(block);
   };
 });

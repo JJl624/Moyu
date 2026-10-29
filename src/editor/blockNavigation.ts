@@ -1,5 +1,5 @@
 import { Prec } from '@codemirror/state';
-import { type EditorView as CodeView, keymap } from '@codemirror/view';
+import { EditorView as CodeView, keymap } from '@codemirror/view';
 import { editorViewCtx } from '@milkdown/kit/core';
 import type { Ctx } from '@milkdown/kit/ctx';
 import { Fragment } from '@milkdown/kit/prose/model';
@@ -7,6 +7,24 @@ import { liftListItem } from '@milkdown/kit/prose/schema-list';
 import { type Command, NodeSelection, Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { CellSelection, deleteTable } from '@milkdown/kit/prose/tables';
 import { $prose } from '@milkdown/kit/utils';
+import {focusEditorSelection} from './selectionOwnership';
+import {closeHistory} from '@milkdown/kit/prose/history';
+import {codeBoundaryAt} from './codeBoundary';
+
+// A code block is a separate editor, even when it has no text. Generic PM
+// joins clear an empty preceding textblock; cross this boundary explicitly.
+export function enterAdjacentCode(view:import('@milkdown/kit/prose/view').EditorView,backward:boolean,selection=view.state.selection){
+  if(!view.editable||view.composing)return false;
+  const boundary=codeBoundaryAt(view.state,selection,backward);
+  if(!boundary)return false;
+  const {container:parent,paragraphIndex:index,code:adjacent,position}=boundary;
+  const at=boundary.selection.$head,tr=view.state.tr;
+  // Only remove an empty outside paragraph. Text outside code stays outside.
+  if(!at.parent.content.size&&parent.canReplace(index,index+1))tr.delete(at.before(),at.after());
+  const mapped=tr.mapping.map(position,backward?1:-1),offset=backward?adjacent.content.size:0;
+  view.dispatch(closeHistory(tr.setSelection(TextSelection.create(tr.doc,mapped+1+offset))).scrollIntoView());
+  focusEditorSelection(view, 'edit');return true;
+}
 
 // An empty continuation after a block first becomes a sibling item. An empty
 // item then lifts one level per Enter, including the final exit to a paragraph.
@@ -56,7 +74,7 @@ export function leaveCodeBlock(view: import('@milkdown/kit/prose/view').EditorVi
     tr.insert(position, view.state.schema.nodes.paragraph.create());
   }
   view.dispatch(tr.setSelection(TextSelection.create(tr.doc, position + 1)).scrollIntoView());
-  view.focus();
+  focusEditorSelection(view, 'edit');
   return true;
 }
 
@@ -73,6 +91,21 @@ export const adjacentParagraph=(side:'before'|'after'):Command=>(state,dispatch)
   return true;
 };
 export function codeExitKeys(ctx: Ctx) {
+  const backspace=(code:CodeView)=>{
+    const selected=code.state.selection.main,view=ctx.get(editorViewCtx);
+    if(code.state.selection.ranges.length!==1||!selected.empty||selected.head!==0||code.state.doc.lines!==1||code.compositionStarted||view.composing||!view.editable)return false;
+    let position:number|undefined;
+    view.state.doc.descendants((node,pos)=>{
+      if(position!==undefined)return false;
+      if(['code_block','math_block'].includes(node.type.name)&&view.nodeDOM(pos)?.contains(code.dom)&&node.textContent===code.state.doc.toString())position=pos;
+      return position===undefined;
+    });
+    if(position===undefined)return false;
+    const node=view.state.doc.nodeAt(position)!;
+    const tr=view.state.tr.replaceWith(position,position+node.nodeSize,view.state.schema.nodes.paragraph.create({},node.content));
+    view.dispatch(tr.setSelection(TextSelection.create(tr.doc,position+1)).scrollIntoView());focusEditorSelection(view, 'edit');
+    return true;
+  };
   const leave = (code: CodeView) => {
     if (!code.state.selection.main.empty) return false;
     const view = ctx.get(editorViewCtx);
@@ -86,7 +119,23 @@ export function codeExitKeys(ctx: Ctx) {
     });
     return position !== undefined && leaveCodeBlock(view, position);
   };
-  return Prec.highest(keymap.of([
+  const before = (code:CodeView,line:boolean) => {
+    const selected=code.state.selection.main,view=ctx.get(editorViewCtx);
+    if(!selected.empty||code.compositionStarted||view.composing
+      ||(line?code.state.doc.lineAt(selected.head).from:selected.head)>0)return false;
+    let position:number|undefined;
+    view.state.doc.descendants((node,pos)=>{
+      if(position===undefined&&['code_block','math_block'].includes(node.type.name)&&view.nodeDOM(pos)?.contains(code.dom))position=pos;
+      return position===undefined;
+    });
+    if(position===undefined)return false;
+    view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(position),-1)).scrollIntoView());
+    focusEditorSelection(view,'edit');return true;
+  };
+  return [CodeView.domEventHandlers({beforeinput:(event,code)=>event.inputType==='deleteContentBackward'&&!event.isComposing&&backspace(code)}),Prec.highest(keymap.of([
+    {key:'Backspace',run:backspace},
+    {key:'ArrowUp',run:code=>before(code,true)},
+    {key:'ArrowLeft',run:code=>before(code,false)},
     {
       key: 'ArrowDown',
       run: code =>
@@ -98,7 +147,7 @@ export function codeExitKeys(ctx: Ctx) {
       run: code => code.state.selection.main.head === code.state.doc.length && leave(code),
     },
     { key: 'Mod-Enter', run: leave },
-  ]));
+  ]))];
 }
 
 export const tableDeleteKeys = $prose(() =>

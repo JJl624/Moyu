@@ -1,4 +1,5 @@
 import { isComposingKey } from '../keyboardComposition';
+import {bindCodeResize} from '../codeResizeGesture';
 import { codeBlockSchema } from "@milkdown/kit/preset/commonmark";
 import { Plugin } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
@@ -191,99 +192,26 @@ export const resizeCodeBlocks = $prose(() =>
           field.addEventListener("keydown", keys);
           field.readOnly = !view.editable;
           const mobile=!!view.dom.closest('.mobile-app');
-          if(mobile)handle.title='长按 1 秒后拖动调整高度；双击恢复默认高度';
-          let pointer: number | null = null, start = 0, startX=0, base = 0, moved = false,armed=false,timer:ReturnType<typeof setTimeout>|null=null,pressedAt=0,lastTap=0,lastX=0,lastY=0;
-          const finish = () => {
-            if(timer)clearTimeout(timer);timer=null;armed=false;handle.classList.remove('resize-ready');
-            const id = pointer;
-            pointer = null;
-            dragging.delete(dom);
-            if (id !== null && handle.hasPointerCapture(id)) handle.releasePointerCapture(id);
-          };
-          const down = (e: PointerEvent) => {
-            if (e.button !== 0 || !view.editable || pointer !== null) return;
-            if(!mobile)e.preventDefault();
-            e.stopPropagation();
-            pointer = e.pointerId;
-            start = e.clientY;
-            startX=e.clientX;
-            pressedAt=performance.now();
-            base = heightTarget.getBoundingClientRect().height;
-            moved = false;
-            const arm=()=>{timer=null;if(pointer===null)return;armed=true;dragging.add(dom);handle.classList.add('resize-ready');handle.setPointerCapture(pointer);};
-            if(mobile)timer=setTimeout(arm,1000);else arm();
-          };
-          const move = (e: PointerEvent) => {
-            if (e.pointerId !== pointer) return;
-            if(!armed){if(Math.hypot(e.clientX-startX,e.clientY-start)>8){lastTap=0;finish();}return;}
-            e.preventDefault();
-            if (Math.abs(e.clientY - start) > 2) moved = true;
-            if (moved) {
-              heightTarget.style.height =
-                Math.max(60, Math.min(4000, Math.round(base + e.clientY - start)))
-                + "px";
-            }
-          };
-          const up = (e: PointerEvent) => {
-            if (e.pointerId !== pointer) return;
-            const height = moved ? Number.parseFloat(heightTarget.style.height) : null;
-            const now=performance.now(),tap=mobile&&!armed&&!moved&&now-pressedAt<500;
-            finish();
-            if (height !== null && Number.isFinite(height)) save(height);
-            if(tap){
-              // Android WebView does not consistently synthesize dblclick from
-              // two touch releases, especially after a captured resize gesture.
-              if(lastTap&&now-lastTap<400&&Math.hypot(e.clientX-lastX,e.clientY-lastY)<20){e.preventDefault();e.stopPropagation();lastTap=0;save(null);}
-              else{lastTap=now;lastX=e.clientX;lastY=e.clientY;}
-            }else lastTap=0;
-          };
-          // Before the hold completes Android owns vertical scrolling. Once
-          // armed, cancel touchmove's scrolling default to keep pointer events.
-          const touchMove=(event:TouchEvent)=>{if(armed)event.preventDefault();};
-          const cancel = () => {
-            if (pointer === null) return;
-            lastTap=0;
-            finish();
-            const at = position(),
-              meta = at === undefined ? "" : view.state.doc.nodeAt(at)?.attrs.meta || "",
-              height = heightFromMeta(meta);
-            heightTarget.style.height = height ? height + "px" : "";
-          };
-          const reset = (e: MouseEvent) => {
-            if (!view.editable) return;
-            e.preventDefault();
-            e.stopPropagation();
-            cancel();
-            save(null);
-          };
-          const menu=(event:MouseEvent)=>{if(mobile){event.preventDefault();event.stopPropagation();}};
-          handle.addEventListener("pointerdown", down);
-          handle.addEventListener('contextmenu',menu);
-          if(mobile)handle.addEventListener('touchmove',touchMove,{passive:false});
-          handle.addEventListener("pointermove", move);
-          handle.addEventListener("pointerup", up);
-          handle.addEventListener("dblclick", reset);
-          handle.addEventListener("pointercancel", cancel);
-          handle.addEventListener("lostpointercapture", cancel);
+          if(mobile)handle.title='长按后拖动调整高度；双击恢复默认高度';
+          const disposeResize=bindCodeResize(handle,{
+            mobile,enabled:()=>view.editable,
+            measure:()=>heightTarget.getBoundingClientRect().height,
+            value:()=>{const at=position();return at===undefined?null:heightFromMeta(view.state.doc.nodeAt(at)?.attrs.meta||'');},
+            preview:height=>{heightTarget.style.height=height===null?'':height+'px';},
+            commit:save,
+            active:value=>{if(value)dragging.add(dom);else dragging.delete(dom);},
+          });
           cleanups.set(dom, {
             cm,
             handle,
             field,
             cleanup: () => {
-              finish();
+              disposeResize();
               field.removeEventListener("blur", blur);
               field.removeEventListener("input", input);
               field.removeEventListener("keydown", keys);
               attributes.remove();
               badge.remove();
-              handle.removeEventListener("pointerdown", down);
-              handle.removeEventListener('contextmenu',menu);
-              handle.removeEventListener('touchmove',touchMove);
-              handle.removeEventListener("pointermove", move);
-              handle.removeEventListener("pointerup", up);
-              handle.removeEventListener("dblclick", reset);
-              handle.removeEventListener("pointercancel", cancel);
-              handle.removeEventListener("lostpointercapture", cancel);
               handle.remove();
             },
           });

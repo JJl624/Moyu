@@ -3,7 +3,7 @@ import {commandsCtx,type Editor} from '@milkdown/kit/core';
 import {AllSelection,Plugin,TextSelection,type Command} from '@milkdown/kit/prose/state';
 import {toggleStrongCommand,toggleEmphasisCommand,toggleInlineCodeCommand,toggleLinkCommand,isMarkSelectedCommand} from '@milkdown/kit/preset/commonmark';
 import {toggleStrikethroughCommand} from '@milkdown/kit/preset/gfm';
-import {readNativeSelection} from './nativeSelection';
+import {readNativeSelection,focusEditorSelection} from './selectionOwnership';
 import {toggleLinkCommand as toolbarLinkCommand} from '@milkdown/kit/component/link-tooltip';
 import {attachmentMarkdown} from '../attachmentLinks';
 import { inlineCodeSource } from './inlineActions';
@@ -97,7 +97,7 @@ export const inlineFormatting=$prose(()=>new Plugin({props:{handleDOMEvents:{key
   if(event.isComposing)return !!action;
   if(event.key.toLowerCase()==='a'&&!event.shiftKey&&!event.altKey){
     view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
-    view.focus();event.preventDefault();return true;
+    focusEditorSelection(view, 'edit');event.preventDefault();return true;
   }
   const kind=action?inlineKinds[action]:undefined;
   if(kind)readNativeSelection(view);

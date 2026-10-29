@@ -14,6 +14,7 @@ import { selectedFold, toggleFoldDefault } from './foldingQuoteEditing';
 import {adjacentParagraph} from './blockNavigation';
 import {setSourceHeading} from './headingSource';
 import {parseAttachment} from '../attachmentLinks';
+import {focusEditorSelection} from './selectionOwnership';
 import {isPreviewResource} from '../resourcePreview';
 const visualResourceCache=new WeakMap<EditorState['doc'],boolean>();
 function visualResource(selection:EditorState['selection']){
@@ -48,8 +49,8 @@ export const contextCommands: Partial<Record<EditorAction | BlockAction, Command
   paragraphAfter: adjacentParagraph('after'),
   indent: (state, dispatch) => sinkListItem(state.schema.nodes.list_item)(state, dispatch),
   outdent: (state, dispatch) => liftListItem(state.schema.nodes.list_item)(state, dispatch),
-  indentBlock:(state,dispatch)=>{const pos=selectionBlock(state);return pos!==undefined&&indentBlockIntoList(state,pos,dispatch);},
-  outdentBlock:(state,dispatch)=>{const pos=selectionBlock(state);return pos!==undefined&&outdentBlockFromList(state,pos,dispatch);},
+  indentBlock:(state,dispatch,view)=>{const pos=selectionBlock(state);return pos!==undefined&&indentBlockIntoList(state,pos,dispatch,view);},
+  outdentBlock:(state,dispatch,view)=>{const pos=selectionBlock(state);return pos!==undefined&&outdentBlockFromList(state,pos,dispatch,view);},
   rowAfter: addRowAfter,
   columnAfter: addColumnAfter,
   deleteRow,
@@ -124,10 +125,10 @@ function richContext(view:EditorView,selection:EditorState['selection']):EditorC
   // Query commands without dispatching transactions or revealing an attachment
   // just because its context menu opened. Reject stale menus after a doc edit.
   const query = EditorState.create({ doc, selection });
-  const restore = () => {
+  const restore = (options?:{focus?:boolean}) => {
     if (view.isDestroyed || view.state.doc !== doc) return false;
     if (!selection.eq(view.state.selection)) view.dispatch(view.state.tr.setSelection(selection));
-    view.focus();
+    if(options?.focus!==false)focusEditorSelection(view, 'edit');
     return true;
   };
   return {
@@ -156,11 +157,14 @@ function richContext(view:EditorView,selection:EditorState['selection']):EditorC
     canInsertDrawing: canInsertInlineDrawing(query),
     active: action=>action === 'toggleFoldDefault' ? !!selectedFold(query)?.node.attrs.folding : !!inlineKinds[action]&&richFormatState(query,inlineKinds[action]).active,
     can: action => view.editable&&!!contextCommands[action]?.(query),
-    run: action => {
+    run: (action,options) => {
       const command = contextCommands[action];
-      if (!view.editable||!command?.(query) || !restore()) return false;
-      const result = command(view.state, view.dispatch);
-      view.focus();
+      // Restore the model selection without briefly focusing the outer editor
+      // at an inner CodeMirror position. Gecko may keep that invalid native
+      // input range after the command has moved the caret into a paragraph.
+      if (!view.editable||!command?.(query) || !restore({focus:false})) return false;
+      const result = command(view.state, view.dispatch, view);
+      if(options?.focus!==false)focusEditorSelection(view, 'edit');
       return result;
     },
     restore,

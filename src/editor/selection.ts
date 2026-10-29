@@ -8,6 +8,7 @@ import remarkFoldingQuotes from '../../shared/remark-folding-quotes.mjs';
 import { readableSource } from '../../shared/link-destinations.mjs';
 import { attachmentFromSource, isAttachmentLink } from '../attachmentLinks';
 import { inlineRaw, inlineSourceRequired } from '../inlineSyntax';
+import remarkDocumentStructure from '../../shared/remark-document-structure.mjs';
 type Ast = {
   type: string;
   depth?: number;
@@ -22,7 +23,7 @@ const mappings = new WeakMap<
   Node,
   { markdown: string; blocks: { start: number; size: number; offsets: number[] }[] }
 >();
-const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkHighlight).use(remarkFoldingQuotes);
+const parser = unified().use(remarkParse).use(remarkGfm).use(remarkDocumentStructure).use(remarkMath).use(remarkHighlight).use(remarkFoldingQuotes);
 function pairs(markdown: string, doc: Node) {
   const cached = mappings.get(doc);
   if (cached?.markdown === markdown) return cached.blocks;
@@ -34,7 +35,7 @@ function pairs(markdown: string, doc: Node) {
   const blocks: { text: string; offsets: number[] }[] = [];
   const walk = (n: Ast) => {
     if (['paragraph', 'heading', 'tableCell', 'code', 'math'].includes(n.type) || n.type === 'html' && /^<!--/.test(n.value || '')) {
-      let text = '', offsets: number[] = [], end = 0;
+      let text = '', offsets: number[] = [], end = n.position?.start.offset ?? 0;
       const add = (child: Ast) => {
         if (
           sources && inlineSourceRequired(child,inlineRaw(child,markdown)) && !(legacyMath && child.type === 'inlineMath')

@@ -1,22 +1,49 @@
-.app :is(.ProseMirror,.reading-view) .folding-quote {
-  border:1px solid var(--border);border-radius:5px;background:transparent;
-  margin:1em 0;padding:0 12px;color:inherit;
+.app .editor-host .milkdown .ProseMirror .folding-quote,
+.app .reading-view .folding-quote {
+  --fold-gutter:24px;
+  --fold-padding:max(4px,calc((32px - 1.6em)/2));
+  --fold-line:1.6em;
+  --fold-icon:clamp(12px,.85em,18px);
+  border:0;border-inline-start:2px solid var(--accent);border-radius:0 6px 6px 0;
+  background:color-mix(in srgb,var(--accent) 4%,var(--bg));color:var(--secondary);margin:1em 0;padding:0;overflow:clip;
 }
-.app .ProseMirror .folding-quote > p:first-child {
-  position:relative;padding-left:21px;margin:8px 0;font-weight:600;
+.app .editor-host .milkdown .ProseMirror .folding-quote > p:first-child,
+.app .reading-view details.folding-quote > summary {
+  position:relative;box-sizing:border-box;margin:0;padding:var(--fold-padding) 8px var(--fold-padding) var(--fold-gutter);
+  min-height:0;line-height:var(--fold-line);font-size:inherit;font-weight:inherit;color:inherit;
 }
-.app .ProseMirror .folding-quote[data-fold-open="false"] > :not(:first-child) {display:none;}
-/* Zero advance keeps the source marker hidden without giving the native caret
-   a zero font height, including when the heading has no visible text yet. */
-.app .ProseMirror .folding-quote-marker {
-  font-family:monospace;font-size:inherit;letter-spacing:-1ch;color:transparent;
+.app .editor-host .milkdown .ProseMirror .folding-quote > :not(:first-child),
+.app .reading-view details.folding-quote > :not(summary) {margin-inline:var(--fold-gutter) 8px;}
+.app .editor-host .milkdown .ProseMirror .folding-quote > :last-child:not(:first-child),
+.app .reading-view details.folding-quote > :last-child:not(summary) {margin-bottom:8px;}
+.app .editor-host .milkdown .ProseMirror .folding-quote[data-fold-open="false"] > :not(:first-child) {display:none;}
+.app .editor-host .milkdown .ProseMirror .folding-quote-marker {
+  font-family:monospace;font-size:inherit;line-height:0;letter-spacing:-1ch;color:transparent;
 }
-.app .ProseMirror .folding-quote-toggle {
-  position:absolute;left:0;top:0;width:18px;height:1lh;padding:0;border:0;
-  background:transparent;color:var(--muted);cursor:pointer;
+/* Both modes position the icon from the title's first line, including when
+   the title wraps or the font is smaller than the mobile touch target. */
+.app .editor-host .milkdown .ProseMirror .folding-quote > p:first-child::before,
+.app .reading-view details.folding-quote > summary::before {
+  content:'';position:absolute;pointer-events:none;
+  left:calc((var(--fold-gutter) - var(--fold-icon))/2);
+  top:calc(var(--fold-padding) + (var(--fold-line) - var(--fold-icon))/2);
+  width:var(--fold-icon);height:var(--fold-icon);color:var(--secondary);background:currentColor;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 6 6 6-6 6' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
 }
-.app .ProseMirror .folding-quote-toggle::before {content:'▸';display:inline-block;}
-.app .ProseMirror .folding-quote-toggle[aria-expanded="true"]::before {transform:rotate(90deg);}
-.app .ProseMirror .folding-quote-toggle:focus-visible {outline:2px solid var(--accent);border-radius:3px;}
-.app .reading-view details.folding-quote > summary {cursor:pointer;margin:8px 0;font-weight:600;}
-.app .reading-view details.folding-quote > summary::marker {color:var(--muted);}
+.app .editor-host .milkdown .ProseMirror .folding-quote[data-fold-open="true"] > p:first-child::before,
+.app .reading-view details.folding-quote[open] > summary::before {transform:rotate(90deg);}
+.app .editor-host .milkdown .ProseMirror .folding-quote-toggle {
+  position:absolute;left:0;top:0;width:var(--fold-gutter);min-width:0;
+  height:calc(var(--fold-line) + var(--fold-padding)*2);min-height:0;
+  padding:0;border:0;border-radius:4px;background:transparent;cursor:pointer;font:inherit;
+}
+.app .editor-host .milkdown .ProseMirror .folding-quote-toggle:focus-visible,
+.app .reading-view details.folding-quote > summary:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+@media (hover:hover) {
+  .app .editor-host .milkdown .ProseMirror .folding-quote-toggle:hover {background:var(--hover);}
+  .app .reading-view details.folding-quote > summary:hover {background:var(--hover);}
+}
+.app .reading-view details.folding-quote > summary {cursor:pointer;list-style:none;}
+.app .reading-view details.folding-quote > summary::-webkit-details-marker {display:none;}
+.app .editor-host .milkdown .ProseMirror .folding-quote .folding-quote,
+.app .reading-view .folding-quote .folding-quote {margin-block:8px;}

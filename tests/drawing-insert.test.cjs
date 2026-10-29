@@ -15,6 +15,7 @@ mod.filename = __filename;
 mod.paths = module.paths;
 mod._compile(source, __filename);
 const { createAsyncDrawingInsertPlugin, prepareDrawingInsert } = mod.exports;
+const headlessEditorView=require('./helpers/headless-editor-view.cjs');
 const { Schema } = require("prosemirror-model"),
   { EditorState, TextSelection } = require("prosemirror-state"),
   { history, undo } = require("prosemirror-history");
@@ -30,19 +31,11 @@ const schema = new Schema({
 function fixture(text = "前后") {
   const plugin = createAsyncDrawingInsertPlugin(),
     doc = schema.node("doc", null, schema.node("paragraph", null, schema.text(text)));
-  const view = {
-    state: EditorState.create({
+  const view = headlessEditorView(EditorState.create({
       doc,
       selection: TextSelection.create(doc, text.length + 1),
       plugins: [plugin, history()],
-    }),
-    dom: { ownerDocument: { getSelection: () => null } },
-    isDestroyed: false,
-    focus() {},
-    dispatch(tr) {
-      this.state = this.state.apply(tr);
-    },
-  };
+    }));
   const lifecycle = plugin.spec.view(view);
   return { view, lifecycle };
 }
@@ -52,6 +45,7 @@ test("Asynchronous drawing insertion follows edits before the original caret, in
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1)));
   const raw = "![绘图](attachments/中文绘图.excalidraw)";
   assert.equal(job.insert(raw), true);
+  assert.equal(view.focusCount,1);
   assert.equal(job.insert(raw), false);
   assert.equal(view.state.doc.firstChild.childCount, 2);
   assert.equal(view.state.doc.firstChild.firstChild.textContent, "追加前后");

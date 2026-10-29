@@ -1,19 +1,20 @@
+import {api} from '../bridge';
 import { isComposingKey } from '../keyboardComposition';
 import { createTable } from '@milkdown/kit/preset/gfm';
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { $prose } from '@milkdown/kit/utils';
 import { canInsertInlineDrawing } from './drawingInsertion';
-import { readNativeSelection } from './nativeSelection';
+import { readNativeSelection, focusEditorSelection } from './selectionOwnership';
 
 // The stock slash menu clears the entire paragraph and only opens at its
 // beginning. Track the inserted slash separately so surrounding text survives.
-export const insertMenu = (drawing: () => void) =>
+export const insertMenu = (drawing: () => void, score?:()=>void) =>
   $prose(ctx => {
     let token: number | null = null, menu: HTMLElement | null = null, selected = 0;
     const items = [{ label: '代码块', icon: '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/>' }, {
       label: '表格',
       icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/>',
-    }, { label: 'Excalidraw 绘图', icon: '<path d="m4 20 4-1L20 7l-3-3L5 16Z"/>' }];
+    }, { label: 'Excalidraw 绘图', icon: '<path d="m4 20 4-1L20 7l-3-3L5 16Z"/>' },...(api.platform==='win32'&&score?[{label:'乐谱',icon:'<path d="M9 18V5l12-2v13M9 9l12-2"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'}]:[])];
     return new Plugin({
       view(view) {
         menu = document.createElement('div');
@@ -30,7 +31,7 @@ export const insertMenu = (drawing: () => void) =>
           if (token === null || view.composing) return;
           const s = view.state.selection, end = s.from;
           const allowed = canInsertInlineDrawing(view.state);
-          if (index === 2 && !allowed) return;
+          if (index >= 2 && !allowed) return;
           let tr = view.state.tr.delete(token, end);
           tr = tr.setSelection(TextSelection.create(tr.doc, token));
           if (index === 0) {
@@ -40,8 +41,9 @@ export const insertMenu = (drawing: () => void) =>
           } else if (index === 1) tr = tr.replaceSelectionWith(createTable(ctx, 3, 3));
           hide();
           view.dispatch(tr.scrollIntoView());
-          view.focus();
+          focusEditorSelection(view, 'edit');
           if (index === 2) drawing();
+          if (index === 3) score?.();
         };
         const update = () => {
           if (token === null) return;
@@ -69,7 +71,7 @@ export const insertMenu = (drawing: () => void) =>
               '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">'
               + item.icon + '</svg>';
             button.append(document.createTextNode(item.label));
-            button.disabled = index === 2 && !allowed;
+            button.disabled = index >= 2 && !allowed;
             if (button.disabled) button.title = '请在正文中插入绘图链接';
             button.dataset.index = String(index);
             button.addEventListener('mousedown', e => e.preventDefault());

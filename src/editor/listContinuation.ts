@@ -1,6 +1,17 @@
 import { Fragment, type Node } from '@milkdown/kit/prose/model';
 import { type EditorState, NodeSelection, TextSelection, type Transaction } from '@milkdown/kit/prose/state';
 import type { EditorView } from '@milkdown/kit/prose/view';
+import {closeHistory} from '@milkdown/kit/prose/history';
+import {withStructuralViewport} from './structuralViewport';
+
+function movedSelection(state:EditorState,position:number,block:Node,moved:number,tr:Transaction){
+  const selected=state.selection;
+  if(block.type.name==='table')return NodeSelection.create(tr.doc,moved);
+  if(['code_block','math_block'].includes(block.type.name)&&selected instanceof TextSelection&&selected.from>position&&selected.to<position+block.nodeSize){
+    return TextSelection.create(tr.doc,moved+selected.anchor-position,moved+selected.head-position);
+  }
+  return TextSelection.near(tr.doc.resolve(moved+1));
+}
 
 export function resourceBlockPosition(view: EditorView, target: HTMLElement) {
   const sourceId = target.closest<HTMLElement>('.attachment-overlay')?.id;
@@ -22,7 +33,7 @@ export function resourceBlockPosition(view: EditorView, target: HTMLElement) {
   });
   return found;
 }
-export function indentBlockIntoList(state: EditorState, pos: number, dispatch?: (tr: Transaction) => void) {
+export function indentBlockIntoList(state: EditorState, pos: number, dispatch?: (tr: Transaction) => void, view?: EditorView) {
   const at = state.doc.resolve(pos), block = state.doc.nodeAt(pos);
   if (!block || !['table', 'code_block', 'paragraph', 'math_block'].includes(block.type.name)) return false;
   let index = at.index() - 1;
@@ -47,16 +58,17 @@ export function indentBlockIntoList(state: EditorState, pos: number, dispatch?: 
     const tr = state.tr.replaceWith(listPos, pos + block.nodeSize, updated);
     const moved = listPos + updated.nodeSize - block.nodeSize - 2;
     tr.setSelection(
-      block.type.name === 'table' ? NodeSelection.create(tr.doc, moved) : TextSelection.near(tr.doc.resolve(moved + 1)),
+      movedSelection(state,pos,block,moved,tr),
     );
-    dispatch(tr.scrollIntoView());
+    if (view) withStructuralViewport(view, () => dispatch(closeHistory(tr)));
+    else dispatch(closeHistory(tr));
   }
   return true;
 }
 
 // Split the containing list around this block, keeping the remainder of the
 // item valid even when it begins with another resource rather than a paragraph.
-export function outdentBlockFromList(state: EditorState, pos: number, dispatch?: (tr: Transaction) => void) {
+export function outdentBlockFromList(state: EditorState, pos: number, dispatch?: (tr: Transaction) => void, view?: EditorView) {
   const at = state.doc.resolve(pos), block = state.doc.nodeAt(pos);
   if (
     !block || !['table', 'code_block', 'paragraph', 'math_block'].includes(block.type.name)
@@ -82,7 +94,7 @@ export function outdentBlockFromList(state: EditorState, pos: number, dispatch?:
   if (right.size) {
     nodes.push(list.type.create(
       list.type.name === 'ordered_list'
-        ? { ...list.attrs, order: (list.attrs.order ?? 1) + itemIndex + (suffix ? 0 : 1) }
+        ? { ...list.attrs, order: 1 }
         : list.attrs,
       right,
     ));
@@ -93,9 +105,10 @@ export function outdentBlockFromList(state: EditorState, pos: number, dispatch?:
     const tr = state.tr.replaceWith(listPos, listPos + list.nodeSize, nodes);
     const moved = listPos + (left.size ? nodes[0].nodeSize : 0);
     tr.setSelection(
-      block.type.name === 'table' ? NodeSelection.create(tr.doc, moved) : TextSelection.near(tr.doc.resolve(moved + 1)),
+      movedSelection(state,pos,block,moved,tr),
     );
-    dispatch(tr.scrollIntoView());
+    if (view) withStructuralViewport(view, () => dispatch(closeHistory(tr)));
+    else dispatch(closeHistory(tr));
   }
   return true;
 }

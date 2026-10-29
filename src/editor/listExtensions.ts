@@ -3,6 +3,12 @@ import { extendListItemSchemaForTask } from '@milkdown/kit/preset/gfm';
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { $prose, $view } from '@milkdown/kit/utils';
 import { continueList } from './blockNavigation';
+import {listNormalizationPlugin} from './listNormalization';
+import {focusEditorSelection} from './selectionOwnership';
+
+// Labels are derived from the current parent list. Metadata and history
+// transactions must update them too, without adding another undo step.
+export const consistentListOrder=$prose(listNormalizationPlugin);
 
 // Chromium can deliver a key before its selectionchange has been read.
 // Synchronize list text selections using public ProseMirror position APIs,
@@ -148,7 +154,7 @@ export const stableListItemView = $view(
             TextSelection.create(view.state.doc, pos + 2 + (source ? 1 : 0)),
           ),
         );
-        view.focus();
+        focusEditorSelection(view, 'edit');
       }
     };
     render();

@@ -3,13 +3,14 @@ import { TextSelection } from '@milkdown/kit/prose/state';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import type { EditorSelection } from '../editorTypes';
 import { codeLayoutsReady, codeScrollContainer } from './codeHeight';
-import { readNativeSelection } from './nativeSelection';
+import { readNativeSelection, focusEditorSelection } from './selectionOwnership';
+import {selectedCode} from './codeSelection';
 import { fromMarkdownSelection, toMarkdownSelection } from './selection';
 function codeView(view: EditorView) {
-  const selected = view.state.selection.$head;
-  if (!['code_block','math_block'].includes(selected.parent.type.name)) return null;
-  const pos = selected.before(),
-    content = (view.nodeDOM(pos) as HTMLElement)?.querySelector<HTMLElement>('.cm-content');
+  const selected = selectedCode(view);
+  if (!selected) return null;
+  const pos = selected.position,
+    content = (selected.dom as HTMLElement)?.querySelector<HTMLElement>('.cm-content');
   const code = content ? CodeView.findFromDOM(content) : null;
   return code ? { code, pos } : null;
 }
@@ -82,6 +83,7 @@ export function restoreRichSelection(
   markdown: string,
   selected: EditorSelection,
   focus = true,
+  restoreViewport = true,
 ) {
   const host = view.dom.closest<HTMLElement>('.editor-host');
   if (host) host.dataset.editorPending = 'true';
@@ -109,7 +111,8 @@ export function restoreRichSelection(
       TextSelection.between(view.state.doc.resolve(anchor), view.state.doc.resolve(head)),
     ),
   );
-  if (focus) view.focus();
+  if (focus) focusEditorSelection(view,'restore');
+  if(!restoreViewport){if(host)delete host.dataset.editorPending;return()=>{};}
   const initialCode = codeView(view);
   if (initialCode && selected.codeScroll?.pos === initialCode.pos) {
     codeScrollContainer(initialCode.code).scrollTop = selected.codeScroll.top;
@@ -126,8 +129,7 @@ export function restoreRichSelection(
     layoutsReady = false,
     stableFrames = 0,
     geometry = '',
-    started = performance.now(),
-    restoredTop = scope.scrollTop;
+    started = performance.now();
   const align = () => {
     frame = 0;
     if (stopped || view.isDestroyed) return;
@@ -167,7 +169,6 @@ export function restoreRichSelection(
           - selected.viewportAnchor.offset;
       } else scope.scrollTop = selected.scrollTop;
     } else scope.scrollTop = selected.scrollTop;
-    restoredTop = scope.scrollTop;
     {
       const next = [scope.scrollTop, caret(view)?.top].join(':');
       stableFrames = next === geometry ? stableFrames + 1 : 0;
@@ -204,17 +205,13 @@ export function restoreRichSelection(
     for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) {
       window.removeEventListener(type, stop, true);
     }
-    scope.removeEventListener('scroll', manualScroll);
   };
-  // Only our own scroll writes belong to restoration. Scrollbar navigation,
-  // outline/data navigation and any other explicit scroll take ownership.
-  const manualScroll = () => {
-    if (Math.abs(scope.scrollTop - restoredTop) > 1) stop();
-  };
+  // Media layout can trigger browser scroll anchoring before the first paint.
+  // A scroll event alone is not navigation. Explicit input, a newer restore,
+  // or editor disposal releases this restoration instead.
   for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) {
     window.addEventListener(type, stop, { capture: true, passive: true });
   }
-  scope.addEventListener('scroll', manualScroll);
   schedule();
   return stop;
 }

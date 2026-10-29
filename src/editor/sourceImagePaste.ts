@@ -2,6 +2,7 @@ import { EditorView, ViewPlugin } from '@codemirror/view';
 import { codeBlocks } from '../codeBlocks';
 import { clipboardImages, importClipboardImages } from './clipboardImages';
 import { acceptsAttachmentDrop, droppedAttachmentLinks } from './attachmentDrop';
+import { focusSourceEditor } from './sourceSelectionOwnership';
 
 // CodeMirror and ProseMirror share the file import pipeline. This adapter only
 // owns source-editor insertion bookmarks and their lifetime.
@@ -69,7 +70,7 @@ export function sourceImagePaste(
               ? { selection: { anchor: job.from + text.length } }
               : {}),
           });
-          if (dropped !== null) view.focus();
+          if (dropped !== null) focusSourceEditor(view, 'edit');
         }).catch(error => {
           if (!this.destroyed) onError((error as Error).message);
         }).finally(() => this.pending.delete(job));

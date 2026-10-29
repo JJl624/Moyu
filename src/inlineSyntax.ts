@@ -173,6 +173,14 @@ export function lastInline(raw: string) {
     ? node
     : null;
 }
+/** Source offset just inside a reference's name, not before its delimiters. */
+export function inlineLinkLabelOffset(raw: string): number {
+  const node = parseInline(raw)?.nodes[0];
+  if (!node || !['link', 'image'].includes(node.type)) return 0;
+  const start = node.position?.start.offset ?? 0;
+  const prefix = node.type === 'image' ? '![' : '[';
+  return raw.startsWith(prefix, start) ? start + prefix.length : 0;
+}
 export function inlineLinkAt(
   raw: string,
   offset: number,

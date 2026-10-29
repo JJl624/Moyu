@@ -61,9 +61,9 @@ export function parseCodeTabs(source: string): CodeTab[] {
   });
   return tabs;
 }
-export function replaceTabCode(source: string, index: number, code: string) {
+export function editCodeTab(source: string, index: number, code: string) {
   const tab = parseCodeTabs(source)[index];
-  if (!tab) return source;
+  if (!tab) return {source,offset:0};
   const newline = source.includes('\r\n') ? '\r\n' : '\n';
   const separator = tab.declarationFrom !== null && tab.from === tab.declarationTo && code
     ? newline
@@ -72,8 +72,9 @@ export function replaceTabCode(source: string, index: number, code: string) {
       && (tab.declarationFrom !== null || !/[\r\n]$/.test(code))
     ? newline
     : '';
-  return source.slice(0, tab.from) + separator + code + after + source.slice(tab.to);
+  return {source:source.slice(0, tab.from) + separator + code + after + source.slice(tab.to),offset:tab.from+separator.length};
 }
+export function replaceTabCode(source:string,index:number,code:string){return editCodeTab(source,index,code).source;}
 export function renameCodeTab(
   source: string,
   index: number,

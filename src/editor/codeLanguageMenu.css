@@ -1,0 +1,12 @@
+.app .code-language-menu { position:fixed; z-index:1000; box-sizing:border-box; width:min(230px,calc(100vw - 16px)); padding:5px; border:1px solid var(--border-strong); border-radius:6px; background:var(--elevated); color:var(--text); box-shadow:0 5px 18px #0002; font:12px/1.5 var(--font-ui); }
+.app .code-language-menu > input { box-sizing:border-box; width:100%; height:32px; padding:4px 7px; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--text); font:inherit; }
+.app .code-language-menu .language-list { display:flex; flex-direction:column; gap:0; max-height:min(250px,40dvh); overflow-y:auto; overscroll-behavior:contain; padding:0; margin:4px 0 0; }
+.app .code-language-menu .language-list-item { display:flex; flex:0 0 30px; align-items:center; box-sizing:border-box; width:100%; min-height:30px; height:30px; padding:5px 8px; margin:0; border:0; border-radius:3px; background:transparent; color:inherit; font:inherit; line-height:20px; text-align:left; cursor:pointer; }
+.app .code-language-menu .language-list-item[aria-selected=true] { color:var(--accent); background:var(--selected); }
+.app .code-language-menu .language-list-item:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.app .code-language-menu .language-no-result { padding:8px; color:var(--secondary); }
+.mobile-app .code-language-menu { font-size:var(--mobile-ui-size,14px); }
+.mobile-app .code-language-menu .language-list-item { flex-basis:38px; min-height:38px; height:38px; padding-block:8px; }
+@media (hover:hover) and (pointer:fine) {
+  html:not([data-mobile-input=touch]) .app .code-language-menu .language-list-item:hover { background:var(--hover); }
+}

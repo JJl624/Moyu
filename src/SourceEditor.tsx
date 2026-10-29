@@ -4,11 +4,13 @@ import { EditorState, Prec } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { basicSetup, EditorView } from "codemirror";
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from "react";
+import {prepareSourceFormula} from './editor/sourceFormulaEditing';
 import { documentHeadings } from "../shared/document-outline.mjs";
 import { codeBlocks } from "./codeBlocks";
 import { exhaustedIdsMessage, normalizeCodeIds } from "./codeIds";
 import { chineseEditorPhrases } from "./editor/chinesePhrases";
 import { prepareCodeContext } from "./editor/codeContext";
+import {focusSourceEditor} from './editor/sourceSelectionOwnership';
 import { inlineWrappers } from './editor/inlineActions';
 import { inlineShortcut } from './editor/inlineShortcut';
 import { codeIndentation } from "./editor/codeIndentation";
@@ -159,7 +161,7 @@ export default forwardRef<EditorHandle, EditorProps>(
       });
       view.current = editor;
       callbacks.current.onContextChange?.();
-      if (!props.readOnly && props.autoFocus !== false) editor.focus();
+      if (!props.readOnly && props.autoFocus !== false) focusSourceEditor(editor, 'edit');
       let frame = 0, disposed = false, applied = false, lastGeometry = "";
       const reveal = () => {
         editor.requestMeasure({
@@ -196,7 +198,7 @@ export default forwardRef<EditorHandle, EditorProps>(
         view.current = null;
       };
     }, [props.path, props.theme, props.readOnly, props.autoFocus]);
-    const insert = (text: string, wrap?: string) => {
+    const insert = (text: string, wrap?: string,options?:{focus?:boolean}) => {
       const editor = view.current;
       if (!editor || callbacks.current.readOnly) return;
       const { from, to } = editor.state.selection.main;
@@ -214,9 +216,10 @@ export default forwardRef<EditorHandle, EditorProps>(
         changes: { from, to, insert: content },
         selection: { anchor: from + content.length },
       });
-      editor.focus();
+      if(options?.focus!==false)focusSourceEditor(editor, 'edit');
     };
     useImperativeHandle(ref, () => ({
+      prepareFormula(){return view.current?prepareSourceFormula(view.current):null;},
       selectionContext:()=>view.current?prepareCodeContext(view.current,view.current.contentDOM,undefined,true):null,
       prepareContext: (target, coords) => view.current ? prepareCodeContext(view.current, target, coords) : null,
       prepareAttachmentDelete(target, coords) {
@@ -255,16 +258,17 @@ export default forwardRef<EditorHandle, EditorProps>(
         if (!v) return undefined;
         if (
           v.scrollDOM.scrollTop > 0 && v.scrollDOM.scrollHeight - v.scrollDOM.scrollTop - v.scrollDOM.clientHeight < 2
-        ) return v.state.doc.length;
-        return v.lineBlockAtHeight(Math.max(0, v.scrollDOM.getBoundingClientRect().top - v.documentTop + 24)).from;
+        ) return fileOffset(v.state,v.state.doc.length);
+        const box=v.scrollDOM.getBoundingClientRect(),point=v.posAtCoords({x:v.contentDOM.getBoundingClientRect().left+4,y:box.top+24});
+        return fileOffset(v.state,point??v.lineBlockAtHeight(Math.max(0, box.top - v.documentTop + 24)).from);
       },
-      scrollToOffset(offset) {
+      scrollToOffset(offset,options) {
         navigationEpoch.current++;
         const v = view.current;
         if (!v) return;
         const anchor = editorOffset(v.state, offset);
-        v.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, { y: "center" }) });
-        v.focus();
+        v.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, options?.top===undefined?{y:'center'}:{y:'start',yMargin:options.top}) });
+        if(options?.focus!==false)focusSourceEditor(v, 'edit');
       },
       scrollToCode(id) {
         navigationEpoch.current++;
@@ -276,7 +280,7 @@ export default forwardRef<EditorHandle, EditorProps>(
             selection: { anchor: block.start },
             effects: EditorView.scrollIntoView(block.start, { y: "center" }),
           });
-          v.focus();
+          focusSourceEditor(v, 'edit');
         }
       },
       restoreSelection(selected) {
@@ -340,9 +344,9 @@ export default forwardRef<EditorHandle, EditorProps>(
         });
         return true;
       },
-      insert,
-      focus: () => view.current?.focus(),
-      action(action) {
+      insert:(text,options)=>insert(text,undefined,options),
+      focus: () => { if(view.current)focusSourceEditor(view.current,'edit'); },
+      action(action,options) {
         if (action === "undo") {
           if (view.current) undo(view.current);
           return;
@@ -354,8 +358,8 @@ export default forwardRef<EditorHandle, EditorProps>(
         const wrappers=inlineWrappers;
         if (wrappers[action]) {
           const v=view.current;
-          if(v&&prepareCodeContext(v,v.contentDOM,undefined,true)?.run(action))return;
-          insert(wrappers[action][0], wrappers[action][1]);
+          if(v&&prepareCodeContext(v,v.contentDOM,undefined,true)?.run(action,options))return;
+          insert(wrappers[action][0], wrappers[action][1],options);
           return;
         }
         const blocks: Record<string, string> = {
@@ -370,7 +374,7 @@ export default forwardRef<EditorHandle, EditorProps>(
           codeblock: "```\n\n```\n",
           divider: "\n---\n",
         };
-        insert(blocks[action] ?? "");
+        insert(blocks[action] ?? "",undefined,options);
       },
       scrollToHeading(index) {
         navigationEpoch.current++;
@@ -382,7 +386,7 @@ export default forwardRef<EditorHandle, EditorProps>(
           selection: { anchor: heading.offset },
           effects: EditorView.scrollIntoView(heading.offset, { y: "start" }),
         });
-        if (callbacks.current.autoFocus !== false) v.focus();
+        if (callbacks.current.autoFocus !== false) focusSourceEditor(v, 'edit');
       },
     }));
     return (

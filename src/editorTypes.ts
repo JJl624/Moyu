@@ -51,6 +51,7 @@ export interface EditorSelection {
   viewportAnchor?: { pos: number; offset: number };
 }
 export interface EditorHandle {
+  prepareFormula?(target?:HTMLElement):import('./formulaSession').FormulaSession|null;
   selectionContext?(): EditorContext | null;
   prepareContext?(target: HTMLElement, coords: { left: number; top: number }): EditorContext | null;
   selectedText?(): string;
@@ -62,11 +63,12 @@ export interface EditorHandle {
   ensureCodeIds?(): string;
   captureSelection?(): EditorSelection | null;
   selectAt?(target: HTMLElement, coords?: { left: number; top: number }): void;
-  restoreSelection?(selection: EditorSelection): void;
+  restoreSelection?(selection: EditorSelection,options?:{focus?:boolean;viewport?:boolean}): void;
   codeAt?(target: HTMLElement): CodeContext | null;
+  setCodeAttributes?(target:HTMLElement,expected:string,patch:Record<string,string>):boolean;
   replaceCode?(target: HTMLElement, code: string, expected: string, tabIndex?: number): boolean;
   scrollToCode?(id: string): void;
-  scrollToOffset?(offset: number): void;
+  scrollToOffset?(offset: number,options?:{focus?:boolean;top?:number;selectAttachment?:boolean}): void;
   visibleOffset?():number|undefined;
   canInsertDrawing?(): boolean;
   prepareDrawingInsert?(): { insert(raw: string): boolean; cancel(): void } | null;
@@ -82,7 +84,7 @@ export interface EditorHandle {
     parameter?: string;
   } | null;
   action(action: EditorAction | BlockAction,options?:{focus?:boolean}): void;
-  insert(text: string): void;
+  insert(text: string,options?:{focus?:boolean}): void;
   focus(): void;
   scrollToHeading(index: number): void;
   flush(): void;
@@ -96,8 +98,8 @@ export interface EditorContext {
   canInsertDrawing: boolean;
   active?(action: EditorAction | BlockAction): boolean;
   can(action: EditorAction | BlockAction): boolean;
-  run(action: EditorAction | BlockAction): boolean;
-  restore(): boolean;
+  run(action: EditorAction | BlockAction,options?:{focus?:boolean}): boolean;
+  restore(options?:{focus?:boolean}): boolean;
 }
 export interface AttachmentDeletion {
   valid(): boolean;
@@ -117,6 +119,7 @@ export interface EditorProps {
   codeWrap?: boolean;
   selection?: EditorSelection | null;
   onDrawing?(): void;
+  onScore?(): void;
   onDrawingAllowed?(allowed: boolean): void;
   onContextChange?(): void;
 }

@@ -4,6 +4,7 @@ import { Decoration, DecorationSet } from '@milkdown/kit/prose/view';
 import { $prose, $remark } from '@milkdown/kit/utils';
 import remarkFoldingQuotes from '../../shared/remark-folding-quotes.mjs';
 import { foldHeadingAt, foldingMarker, foldingDraft } from './foldingQuoteEditing';
+import {keepClosedKeyboard} from './controlFocus';
 
 export const foldingQuoteRemark = $remark('foldingQuotes', () => remarkFoldingQuotes);
 export const foldingQuoteSchema = blockquoteSchema.extendSchema(previous => ctx => {
@@ -108,6 +109,7 @@ export const foldingQuotes = $prose(() => new Plugin({
           button.setAttribute('aria-expanded', String(open));button.setAttribute('aria-label', (open ? '折叠：' : '展开：') + node.firstChild!.textContent.slice(prefix.length));
           button.title = open ? '折叠' : '展开';
           button.onmousedown = event => event.preventDefault();
+          button.onpointerdown = event => {keepClosedKeyboard(button);event.preventDefault();};
           button.onclick = event => {
             event.preventDefault();event.stopPropagation();
             const tr = view.state.tr;

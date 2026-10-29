@@ -1,6 +1,7 @@
 import { EditorSelection } from '@codemirror/state';
 import { isolateHistory } from '@codemirror/commands';
 import type { EditorView } from '@codemirror/view';
+import {focusSourceEditor} from './sourceSelectionOwnership';
 import { codeBlocks } from '../codeBlocks';
 import type { EditorContext } from '../editorTypes';
 import { inlineActionText, inlineWrappers } from './inlineActions';
@@ -39,7 +40,7 @@ export function prepareCodeContext(
     canInsertDrawing: false,
     active,
     can: action => !!inlineWrappers[action] && supportsInline,
-    run: action => {
+    run: (action,options) => {
       const wrapper = inlineWrappers[action];
       if (!wrapper || !supportsInline || view.state.doc !== doc || !view.dom.isConnected) return false;
       const remove=active(action);
@@ -57,13 +58,13 @@ export function prepareCodeContext(
           remove?transaction.mapPos(selection.main.to,1):changes[0].from + (selection.main.empty ? wrapper[0].length : changes[0].insert.length - (action === 'link' ? 1 : 0)),
         ),
       });
-      view.focus();
+      if(options?.focus!==false)focusSourceEditor(view,'edit');
       return true;
     },
-    restore: () => {
+    restore: options => {
       if (view.state.doc !== doc || !view.dom.isConnected) return false;
       view.dispatch({ selection });
-      view.focus();
+      if(options?.focus!==false)focusSourceEditor(view,'restore');
       return true;
     },
   };

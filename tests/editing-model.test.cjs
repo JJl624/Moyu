@@ -135,8 +135,9 @@ test('Resource outdent removes exactly one list level, retains code ID and suppo
  let pos;d.descendants((n,p)=>{if(n===code)pos=p});let s=state(d,pos+1),next;
  assert(outdentBlockFromList(s,pos,tr=>next=s.apply(tr)));next.doc.check();assert.equal(next.doc.firstChild.type.name,'bullet_list');
  let moved;next.doc.descendants((n,p)=>{if(n.type.name==='code_block'){moved=p;assert.equal(n.attrs.meta,'id=00ab')}});
- assert.equal(next.doc.resolve(moved).depth,2);s=next;assert(outdentBlockFromList(s,moved,tr=>next=s.apply(tr)));next.doc.check();
+ assert.equal(next.doc.resolve(moved).depth,2);const afterFirst=next.doc.toJSON();s=next;assert(outdentBlockFromList(s,moved,tr=>next=s.apply(tr)));next.doc.check();
  next.doc.descendants((n,p)=>{if(n.type.name==='code_block')moved=p});assert.equal(next.doc.resolve(moved).depth,0);assert.equal(outdentBlockFromList(next,moved),false);
+ assert(undo(next,tr=>next=next.apply(tr)));assert.deepEqual(next.doc.toJSON(),afterFirst);
  assert(undo(next,tr=>next=next.apply(tr)));assert.deepEqual(next.doc.toJSON(),d.toJSON());
 });
 
@@ -148,7 +149,7 @@ test('Outdent keeps subsequent non-paragraph resources in a valid remaining list
  const d=doc(list),pos=2+list.firstChild.firstChild.nodeSize,s=state(d,pos+1);let next;
  assert(outdentBlockFromList(s,pos,tr=>next=s.apply(tr)));next.doc.check();assert.equal(next.doc.childCount,3);
  assert.equal(next.doc.child(1).textContent,'a');assert.equal(next.doc.child(2).firstChild.firstChild.type.name,'paragraph');
- assert.equal(next.doc.child(2).attrs.order,order);assert.equal(next.doc.child(2).firstChild.lastChild.textContent,'b');
+ assert.equal(next.doc.child(0).attrs.order,order);assert.equal(next.doc.child(2).attrs.order,1);assert.equal(next.doc.child(2).firstChild.lastChild.textContent,'b');
  assert.equal(next.doc.child(2).lastChild.textContent,'last');
  }
 });

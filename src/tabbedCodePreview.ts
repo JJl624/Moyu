@@ -213,10 +213,13 @@ export function bindReadingCodeTabs(root: HTMLElement) {
       tabs[next].focus();
     }
   };
+  const pointer=(event:PointerEvent)=>{if(event.pointerType==='touch'&&root.closest('.mobile-app')&&(event.target as Element).closest('[data-code-tab],[data-tabs-toggle],[data-tabs-copy]'))event.preventDefault();};
+  root.addEventListener('pointerdown',pointer);
   root.addEventListener("click", click);
   root.addEventListener("keydown", keys);
   return () => {
     root.removeEventListener("click", click);
+    root.removeEventListener('pointerdown',pointer);
     root.removeEventListener("keydown", keys);
   };
 }

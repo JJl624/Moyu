@@ -15,6 +15,12 @@ test('Repeated mapping uses the current source and immutable document after edit
  const changed=schema.node('doc',null,schema.node('paragraph',null,schema.text('beta')));
  assert.equal(toMarkdownSelection('beta',changed,4),3);
 });
+
+test('An empty paragraph marker maps to its own source offset instead of the document start',()=>{
+ const md='before\n\n<br />\n\n```text\n```',doc=schema.node('doc',null,[schema.node('paragraph',null,schema.text('before')),schema.node('paragraph'),schema.node('code_block')]);
+ const position=doc.firstChild.nodeSize+1,offset=md.indexOf('<br />');
+ assert.equal(toMarkdownSelection(md,doc,position),offset);assert.equal(fromMarkdownSelection(md,doc,offset),position);
+});
 test('Soft line breaks and CRLF map through actual hardbreak positions rather than disappearing from textContent',()=>{
  const rich=new Schema({nodes:{doc:{content:'block+'},paragraph:{content:'inline*',group:'block'},hardbreak:{inline:true,group:'inline'},text:{group:'inline'}}});
  for(const newline of ['\n','\r\n']){const md='首行'+newline+'第二行😀'+newline+'尾行 edited',doc=rich.node('doc',null,rich.node('paragraph',null,[rich.text('首行'),rich.node('hardbreak'),rich.text('第二行😀'),rich.node('hardbreak'),rich.text('尾行 edited')]));

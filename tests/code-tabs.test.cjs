@@ -2,6 +2,15 @@ const test = require('node:test'), assert = require('node:assert/strict'), path 
 const source = require('esbuild').buildSync({ entryPoints: [path.resolve(__dirname, '../src/codeTabs.ts')], bundle: true, write: false, platform: 'node', format: 'cjs' }).outputFiles[0].text;
 const mod = new Module(__filename, module); mod.filename = __filename; mod.paths = module.paths; mod._compile(source, __filename);
 const { parseCodeTabs: parse, replaceTabCode: edit, appendCodeTab: add, createCodeTab: create, renameCodeTab: rename, removeCodeTab: remove, moveCodeTab: move, tabAtOffset, isTabbedCode } = mod.exports;
+
+test('The first character after an EOF tab declaration uses the new body offset, including inserted LF/CRLF',()=>{
+  for(const newline of ['\n','\r\n'])for(const trailing of ['',newline]){
+    const source=':::js First'+newline+'one'+newline+':::text New'+trailing;
+    const result=mod.exports.editCodeTab(source,1,'a');
+    const tab=parse(result.source)[1];assert.equal(tab.code,'a');assert.equal(result.offset,tab.from);assert.equal(result.source.slice(result.offset,result.offset+1),'a');
+    const again=mod.exports.editCodeTab(result.source,1,'ab');assert.equal(parse(again.source)[1].code,'ab');assert.equal(again.offset,result.offset);
+  }
+});
 test('Tab declarations recognize column-zero language and optional title without parsing the code', () => {
   const tabs = parse(':::PY 第一页\nprint(":::js")\n  :::cpp 不声明\n:::c++\ncout << 1;\n');
   assert.deepEqual(tabs.map(t => [t.language, t.title, t.code]), [['PY', '第一页', 'print(":::js")\n  :::cpp 不声明'], ['c++', '', 'cout << 1;\n']]);

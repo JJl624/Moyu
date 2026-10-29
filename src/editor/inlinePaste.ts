@@ -4,7 +4,7 @@ import { $prose } from '@milkdown/kit/utils';
 import { inlineRaw, inlineSourceRequired, parseInline } from '../inlineSyntax';
 import { markdownDestination } from '../../shared/link-destinations.mjs';
 import {parserCtx} from '@milkdown/kit/core';
-import {readNativeSelection} from './nativeSelection';
+import {readNativeSelection} from './selectionOwnership';
 
 function markedSource(node: Node) {
   let raw = node.text || '';
